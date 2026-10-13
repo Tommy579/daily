@@ -7,23 +7,33 @@ import Base from '../../layouts/Base.astro';
   description="Emploi du temps universitaire hebdomadaire au design moderne et épuré."
 >
   <div class="calendar-app-root" data-timetable-root>
-    <!-- Barre de contrôle supérieure type iOS Calendar -->
+    <!-- Barre de contrôle supérieure -->
     <header class="cal-top-bar">
       <div class="cal-top-left">
-        <button type="button" class="btn-cal-month" id="cal-prev" title="Semaine précédente">‹</button>
-        <h1 class="cal-month-title" id="cal-month-display">Octobre 2026</h1>
-        <button type="button" class="btn-cal-month" id="cal-next" title="Semaine suivante">›</button>
+        <div class="cal-nav-group">
+          <button type="button" class="btn-cal-nav" id="cal-prev" title="Semaine précédente" aria-label="Semaine précédente">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <h1 class="cal-month-title" id="cal-month-display">Octobre 2026</h1>
+          <button type="button" class="btn-cal-nav" id="cal-next" title="Semaine suivante" aria-label="Semaine suivante">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
       </div>
 
       <div class="cal-top-actions">
-        <button type="button" class="icon-btn active" id="btn-view-week" title="Vue Semaine">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
-        </button>
-        <button type="button" class="icon-btn" id="btn-view-agenda" title="Vue Liste">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-        </button>
-        <a href="/configuration/#calendar-settings" class="icon-btn" title="Paramètres & Import">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <div class="view-switch-group">
+          <button type="button" class="icon-btn active" id="btn-view-week" title="Vue Semaine" aria-label="Vue Semaine">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+            <span class="btn-label-desktop">Semaine</span>
+          </button>
+          <button type="button" class="icon-btn" id="btn-view-agenda" title="Vue Liste" aria-label="Vue Liste">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            <span class="btn-label-desktop">Liste</span>
+          </button>
+        </div>
+        <a href="/configuration/#calendar-settings" class="icon-btn icon-btn-solo" title="Paramètres & Import" aria-label="Paramètres & Import">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </a>
       </div>
     </header>
@@ -228,6 +238,102 @@ import Base from '../../layouts/Base.astro';
     return 'card-cm';
   }
 
+  function escapeHtml(str: string): string {
+    return (str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  interface LayoutItem {
+    ev: CalendarEvent;
+    startMin: number;
+    endMin: number;
+    col: number;
+    totalCols: number;
+  }
+
+  /**
+   * Partitionne les événements d'une même journée en colonnes indépendantes
+   * afin qu'aucun événement ne se chevauche visuellement.
+   */
+  function layoutDayEvents(events: CalendarEvent[]): LayoutItem[] {
+    if (!events || events.length === 0) return [];
+
+    // Convertir les heures en minutes
+    const items = events.map((ev) => {
+      const startMin = ev.start.getHours() * 60 + ev.start.getMinutes();
+      const endMin = ev.end.getHours() * 60 + ev.end.getMinutes();
+      return {
+        ev,
+        startMin,
+        endMin: Math.max(endMin, startMin + 30), // Durée mini de 30 min pour calcul de chevauchement
+        col: 0,
+        totalCols: 1,
+      };
+    });
+
+    // Trier chronologiquement puis par durée décroissante
+    items.sort((a, b) => {
+      if (a.startMin !== b.startMin) return a.startMin - b.startMin;
+      return (b.endMin - b.startMin) - (a.endMin - a.startMin);
+    });
+
+    // Regrouper en clusters d'événements connectés (qui se chevauchent directement ou indirectement)
+    const clusters: (typeof items)[] = [];
+    let currentCluster: typeof items = [];
+    let clusterEnd = -1;
+
+    for (const item of items) {
+      if (currentCluster.length === 0) {
+        currentCluster.push(item);
+        clusterEnd = item.endMin;
+      } else if (item.startMin < clusterEnd) {
+        currentCluster.push(item);
+        clusterEnd = Math.max(clusterEnd, item.endMin);
+      } else {
+        clusters.push(currentCluster);
+        currentCluster = [item];
+        clusterEnd = item.endMin;
+      }
+    }
+    if (currentCluster.length > 0) {
+      clusters.push(currentCluster);
+    }
+
+    // Pour chaque cluster, assigner la première colonne libre
+    const result: LayoutItem[] = [];
+    for (const cluster of clusters) {
+      const colEndTimes: number[] = [];
+
+      for (const item of cluster) {
+        let placedCol = -1;
+        for (let c = 0; c < colEndTimes.length; c++) {
+          if (colEndTimes[c] <= item.startMin) {
+            placedCol = c;
+            colEndTimes[c] = item.endMin;
+            break;
+          }
+        }
+        if (placedCol === -1) {
+          placedCol = colEndTimes.length;
+          colEndTimes.push(item.endMin);
+        }
+        item.col = placedCol;
+      }
+
+      const totalCols = Math.max(1, colEndTimes.length);
+      for (const item of cluster) {
+        item.totalCols = totalCols;
+        result.push(item);
+      }
+    }
+
+    return result;
+  }
+
   function renderCalendar() {
     const monday = getStartOfWeek(activeDate);
     currentEvents = loadEventsForCurrentWeek();
@@ -330,7 +436,7 @@ import Base from '../../layouts/Base.astro';
       hourLinesContainer.innerHTML = linesHtml;
     }
 
-    // 7. Colonnes de jours et cartes de cours
+    // 7. Colonnes de jours et cartes de cours avec détection des chevauchements
     const columnsContainer = document.getElementById('cal-day-columns');
     if (columnsContainer) {
       let colsHtml = '';
@@ -342,8 +448,11 @@ import Base from '../../layouts/Base.astro';
           (e) => e.start.toDateString() === day.toDateString() && e.category !== 'habit' && !e.title.includes('pompes')
         );
 
+        // Positionnement intelligent sans chevauchement (algorithme multi-colonnes)
+        const layoutItems = layoutDayEvents(dayEvents);
+
         let eventsHtml = '';
-        dayEvents.forEach((ev) => {
+        layoutItems.forEach(({ ev, col, totalCols }) => {
           const startH = ev.start.getHours() + ev.start.getMinutes() / 60;
           const endH = ev.end.getHours() + ev.end.getMinutes() / 60;
 
@@ -354,18 +463,26 @@ import Base from '../../layouts/Base.astro';
           const topPercent = ((clampedStart - START_HOUR) / TOTAL_HOURS) * 100;
           const heightPercent = (duration / TOTAL_HOURS) * 100;
 
+          const widthPercent = 100 / totalCols;
+          const leftPercent = col * widthPercent;
+
           const cardTypeClass = getEventColorClass(ev);
+          const isTight = totalCols > 1;
 
           eventsHtml += `
             <div
-              class="course-card ${cardTypeClass}"
-              style="top: ${topPercent}%; height: ${heightPercent}%;"
+              class="course-card ${cardTypeClass} ${isTight ? 'is-condensed' : ''}"
+              style="top: ${topPercent}%; height: ${heightPercent}%; left: calc(${leftPercent}% + 2px); width: calc(${widthPercent}% - 4px);"
               data-ev-id="${ev.id}"
+              title="${escapeHtml(ev.title)}${ev.location ? ' — ' + escapeHtml(ev.location) : ''}"
             >
               <div class="card-inner">
-                <h3 class="card-title">${ev.title}</h3>
-                ${ev.location ? `<div class="card-meta">${ev.location}</div>` : ''}
-                <div class="card-meta">${formatTime(ev.start)} – ${formatTime(ev.end)}</div>
+                <div class="card-header-line">
+                  <span class="card-badge">${ev.category ? ev.category.toUpperCase() : 'COURS'}</span>
+                  <span class="card-time-pill">${formatTime(ev.start)}</span>
+                </div>
+                <h3 class="card-title">${escapeHtml(ev.title)}</h3>
+                ${ev.location ? `<div class="card-meta"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>${escapeHtml(ev.location)}</span></div>` : ''}
               </div>
             </div>
           `;
@@ -557,51 +674,57 @@ import Base from '../../layouts/Base.astro';
     --cal-text: var(--fg);
     --cal-text-muted: var(--muted);
     --cal-hour-line: var(--line);
-    --cal-today-col: color-mix(in srgb, var(--accent) 3%, transparent);
+    --cal-today-col: color-mix(in srgb, var(--accent) 3.5%, transparent);
 
-    --cal-btn-bg: var(--soft);
-    --cal-btn-hover: var(--line);
+    --cal-btn-bg: var(--surface);
+    --cal-btn-border: var(--line);
+    --cal-btn-hover: var(--soft);
     --cal-btn-fg: var(--fg);
 
-    --cal-pill-bg: color-mix(in srgb, var(--surface) 85%, transparent);
+    --cal-pill-bg: var(--surface);
     --cal-pill-border: var(--line-strong);
     --cal-pill-text: var(--fg);
-    --cal-pill-shadow: var(--shadow-md);
+    --cal-pill-shadow: var(--shadow-sm);
 
     --cal-modal-bg: var(--surface);
-    --cal-modal-border: var(--line);
+    --cal-modal-border: var(--line-strong);
     --cal-modal-text: var(--fg);
 
-    /* Carré Magenta Éclatant (Matlab, Algèbre, Programmation) */
-    --card-magenta-bg: #fdf2f8;
-    --card-magenta-border: #f472b6;
-    --card-magenta-bar: #db2777;
-    --card-magenta-title: #831843;
-    --card-magenta-meta: #9d174d;
+    /* Cartes cours : Fonds opaques solides & bordures précises */
+    --card-magenta-bg: #fff1f2;
+    --card-magenta-border: #fecdd3;
+    --card-magenta-bar: #e11d48;
+    --card-magenta-title: #881337;
+    --card-magenta-meta: #9f1239;
+    --card-magenta-badge-bg: #ffe4e6;
+    --card-magenta-badge-fg: #be123c;
 
-    /* Carré TD (Violet / Pourpre riche) */
     --card-td-bg: #f5f3ff;
-    --card-td-border: #c4b5fd;
+    --card-td-border: #ddd6fe;
     --card-td-bar: #7c3aed;
-    --card-td-title: #4c1d95;
-    --card-td-meta: #6d28d9;
+    --card-td-title: #3b0764;
+    --card-td-meta: #5b21b6;
+    --card-td-badge-bg: #ede9fe;
+    --card-td-badge-fg: #6d28d9;
 
-    /* Carré CM (Prune profond) */
-    --card-cm-bg: #faf5ff;
-    --card-cm-border: #d8b4fe;
-    --card-cm-bar: #9333ea;
-    --card-cm-title: #581c87;
-    --card-cm-meta: #7e22ce;
+    --card-cm-bg: #eff6ff;
+    --card-cm-border: #bfdbfe;
+    --card-cm-bar: #2563eb;
+    --card-cm-title: #1e3a8a;
+    --card-cm-meta: #1d4ed8;
+    --card-cm-badge-bg: #dbeafe;
+    --card-cm-badge-fg: #1e40af;
 
-    /* Carré Habitude / Quotidien */
-    --card-habit-bg: #f0f9ff;
-    --card-habit-border: #7dd3fc;
-    --card-habit-bar: #0284c7;
-    --card-habit-title: #0369a1;
-    --card-habit-meta: #0284c7;
+    --card-habit-bg: #ecfdf5;
+    --card-habit-border: #a7f3d0;
+    --card-habit-bar: #059669;
+    --card-habit-title: #064e3b;
+    --card-habit-meta: #047857;
+    --card-habit-badge-bg: #d1fae5;
+    --card-habit-badge-fg: #065f46;
   }
 
-  /* THÈME SOMBRE (forcé par toggle dark ou préférence système sombre) */
+  /* THÈME SOMBRE */
   :root[data-theme='dark'] {
     --cal-bg: var(--bg);
     --cal-surface: var(--surface);
@@ -609,48 +732,54 @@ import Base from '../../layouts/Base.astro';
     --cal-text: var(--fg);
     --cal-text-muted: var(--muted);
     --cal-hour-line: var(--line);
-    --cal-today-col: color-mix(in srgb, var(--accent) 3%, transparent);
+    --cal-today-col: color-mix(in srgb, var(--accent) 5%, transparent);
 
-    --cal-btn-bg: var(--soft);
-    --cal-btn-hover: var(--line);
+    --cal-btn-bg: var(--surface);
+    --cal-btn-border: var(--line);
+    --cal-btn-hover: var(--soft);
     --cal-btn-fg: var(--fg);
 
-    --cal-pill-bg: color-mix(in srgb, var(--surface) 85%, transparent);
+    --cal-pill-bg: var(--surface);
     --cal-pill-border: var(--line-strong);
     --cal-pill-text: var(--fg);
-    --cal-pill-shadow: var(--shadow-md);
+    --cal-pill-shadow: var(--shadow-sm);
 
     --cal-modal-bg: var(--surface);
-    --cal-modal-border: var(--line);
+    --cal-modal-border: var(--line-strong);
     --cal-modal-text: var(--fg);
 
-    /* Carré Magenta Éclatant */
-    --card-magenta-bg: #a21caf;
-    --card-magenta-border: #f472b6;
-    --card-magenta-bar: #ff007f;
-    --card-magenta-title: #ffffff;
-    --card-magenta-meta: #fdf2f8;
+    /* Cartes cours sombres : surfaces #18181b / #1f1f23 bien contrastées */
+    --card-magenta-bg: #211218;
+    --card-magenta-border: rgba(244, 63, 94, 0.35);
+    --card-magenta-bar: #f43f5e;
+    --card-magenta-title: #ffe4e6;
+    --card-magenta-meta: #fda4af;
+    --card-magenta-badge-bg: rgba(244, 63, 94, 0.18);
+    --card-magenta-badge-fg: #fecdd3;
 
-    /* Carré TD */
-    --card-td-bg: #581c87;
-    --card-td-border: #c084fc;
-    --card-td-bar: #ec4899;
+    --card-td-bg: #1c152a;
+    --card-td-border: rgba(168, 85, 247, 0.35);
+    --card-td-bar: #a855f7;
     --card-td-title: #f5d0fe;
-    --card-td-meta: #fae8ff;
+    --card-td-meta: #d8b4fe;
+    --card-td-badge-bg: rgba(168, 85, 247, 0.18);
+    --card-td-badge-fg: #e9d5ff;
 
-    /* Carré CM */
-    --card-cm-bg: #3b0764;
-    --card-cm-border: #a855f7;
-    --card-cm-bar: #d946ef;
-    --card-cm-title: #f0abfc;
-    --card-cm-meta: #e9d5ff;
+    --card-cm-bg: #131b2e;
+    --card-cm-border: rgba(96, 165, 250, 0.35);
+    --card-cm-bar: #3b82f6;
+    --card-cm-title: #dbeafe;
+    --card-cm-meta: #93c5fd;
+    --card-cm-badge-bg: rgba(59, 130, 246, 0.18);
+    --card-cm-badge-fg: #bfdbfe;
 
-    /* Carré Habitude */
-    --card-habit-bg: #1e3a8a;
-    --card-habit-border: #38bdf8;
-    --card-habit-bar: #0ea5e9;
-    --card-habit-title: #bae6fd;
-    --card-habit-meta: #e0f2fe;
+    --card-habit-bg: #10231d;
+    --card-habit-border: rgba(52, 211, 153, 0.35);
+    --card-habit-bar: #10b981;
+    --card-habit-title: #d1fae5;
+    --card-habit-meta: #6ee7b7;
+    --card-habit-badge-bg: rgba(16, 185, 129, 0.18);
+    --card-habit-badge-fg: #a7f3d0;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -661,44 +790,53 @@ import Base from '../../layouts/Base.astro';
       --cal-text: var(--fg);
       --cal-text-muted: var(--muted);
       --cal-hour-line: var(--line);
-      --cal-today-col: color-mix(in srgb, var(--accent) 3%, transparent);
+      --cal-today-col: color-mix(in srgb, var(--accent) 5%, transparent);
 
-      --cal-btn-bg: var(--soft);
-      --cal-btn-hover: var(--line);
+      --cal-btn-bg: var(--surface);
+      --cal-btn-border: var(--line);
+      --cal-btn-hover: var(--soft);
       --cal-btn-fg: var(--fg);
 
-      --cal-pill-bg: color-mix(in srgb, var(--surface) 85%, transparent);
+      --cal-pill-bg: var(--surface);
       --cal-pill-border: var(--line-strong);
       --cal-pill-text: var(--fg);
-      --cal-pill-shadow: var(--shadow-md);
+      --cal-pill-shadow: var(--shadow-sm);
 
       --cal-modal-bg: var(--surface);
-      --cal-modal-border: var(--line);
+      --cal-modal-border: var(--line-strong);
       --cal-modal-text: var(--fg);
 
-      --card-magenta-bg: #a21caf;
-      --card-magenta-border: #f472b6;
-      --card-magenta-bar: #ff007f;
-      --card-magenta-title: #ffffff;
-      --card-magenta-meta: #fdf2f8;
+      --card-magenta-bg: #211218;
+      --card-magenta-border: rgba(244, 63, 94, 0.35);
+      --card-magenta-bar: #f43f5e;
+      --card-magenta-title: #ffe4e6;
+      --card-magenta-meta: #fda4af;
+      --card-magenta-badge-bg: rgba(244, 63, 94, 0.18);
+      --card-magenta-badge-fg: #fecdd3;
 
-      --card-td-bg: #581c87;
-      --card-td-border: #c084fc;
-      --card-td-bar: #ec4899;
+      --card-td-bg: #1c152a;
+      --card-td-border: rgba(168, 85, 247, 0.35);
+      --card-td-bar: #a855f7;
       --card-td-title: #f5d0fe;
-      --card-td-meta: #fae8ff;
+      --card-td-meta: #d8b4fe;
+      --card-td-badge-bg: rgba(168, 85, 247, 0.18);
+      --card-td-badge-fg: #e9d5ff;
 
-      --card-cm-bg: #3b0764;
-      --card-cm-border: #a855f7;
-      --card-cm-bar: #d946ef;
-      --card-cm-title: #f0abfc;
-      --card-cm-meta: #e9d5ff;
+      --card-cm-bg: #131b2e;
+      --card-cm-border: rgba(96, 165, 250, 0.35);
+      --card-cm-bar: #3b82f6;
+      --card-cm-title: #dbeafe;
+      --card-cm-meta: #93c5fd;
+      --card-cm-badge-bg: rgba(59, 130, 246, 0.18);
+      --card-cm-badge-fg: #bfdbfe;
 
-      --card-habit-bg: #1e3a8a;
-      --card-habit-border: #38bdf8;
-      --card-habit-bar: #0ea5e9;
-      --card-habit-title: #bae6fd;
-      --card-habit-meta: #e0f2fe;
+      --card-habit-bg: #10231d;
+      --card-habit-border: rgba(52, 211, 153, 0.35);
+      --card-habit-bar: #10b981;
+      --card-habit-title: #d1fae5;
+      --card-habit-meta: #6ee7b7;
+      --card-habit-badge-bg: rgba(16, 185, 129, 0.18);
+      --card-habit-badge-fg: #a7f3d0;
     }
   }
 
@@ -717,125 +855,192 @@ import Base from '../../layouts/Base.astro';
     transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  /* 1. BARRE SUPERIEURE IOS */
+  /* 1. BARRE SUPERIEURE */
   .cal-top-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.85rem 1.25rem;
+    padding: 0.75rem 1.25rem;
     background: var(--cal-bg);
     border-bottom: 1px solid var(--cal-border);
     transition: background-color 0.2s ease, border-color 0.2s ease;
+    gap: 1rem;
+    flex-wrap: wrap;
   }
   .cal-top-left {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.75rem;
   }
-  .btn-cal-month {
-    background: var(--cal-btn-bg);
+  .cal-nav-group {
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 0.15rem;
+    gap: 0.2rem;
+  }
+  .btn-cal-nav {
+    background: transparent;
     border: none;
-    color: var(--cal-btn-fg);
-    font-size: 1.25rem;
-    line-height: 1;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
+    color: var(--fg);
+    width: 28px;
+    height: 28px;
+    border-radius: calc(var(--radius-sm) - 2px);
     cursor: pointer;
     display: grid;
     place-items: center;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition: background-color 0.15s ease, color 0.15s ease;
   }
-  .btn-cal-month:hover {
-    background: var(--cal-btn-hover);
+  .btn-cal-nav:hover {
+    background: var(--soft);
   }
   .cal-month-title {
     margin: 0;
-    font-family: var(--font-text);
-    font-size: 1.35rem;
+    padding: 0 0.65rem;
+    font-family: var(--font-ui);
+    font-size: 0.95rem;
     font-weight: 600;
-    color: var(--cal-text);
-    letter-spacing: -0.02em;
+    color: var(--fg);
+    letter-spacing: -0.01em;
+    min-width: 130px;
+    text-align: center;
   }
+
   .cal-top-actions {
     display: flex;
     align-items: center;
     gap: 0.5rem;
   }
-  .icon-btn {
-    background: var(--cal-btn-bg);
+  .view-switch-group {
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 0.15rem;
+    gap: 0.15rem;
+  }
+  .view-switch-group .icon-btn {
     border: none;
-    color: var(--cal-btn-fg);
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
+    border-radius: calc(var(--radius-sm) - 2px);
+    height: 28px;
+    padding: 0 0.6rem;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--muted);
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .view-switch-group .icon-btn:hover {
+    color: var(--fg);
+    background: var(--soft);
+  }
+  .view-switch-group .icon-btn.active {
+    background: var(--soft);
+    color: var(--fg);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+  .icon-btn-solo {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
     display: grid;
     place-items: center;
     cursor: pointer;
     text-decoration: none;
     transition: all 0.15s ease;
   }
-  .icon-btn:hover, .icon-btn.active {
-    background: var(--cal-btn-hover);
-    color: var(--cal-text);
+  .icon-btn-solo:hover {
+    background: var(--soft);
+    color: var(--fg);
+    border-color: var(--line-strong);
+  }
+  .btn-label-desktop {
+    display: inline;
+  }
+  @media (max-width: 35rem) {
+    .btn-label-desktop {
+      display: none;
+    }
+    .view-switch-group .icon-btn {
+      padding: 0 0.4rem;
+    }
   }
 
   /* 2. BANDEAU DE SEMAINE HORIZONTAL */
   .cal-week-strip {
     background: var(--cal-bg);
-    padding: 0.5rem 0.5rem 0.65rem;
+    padding: 0.5rem 0.75rem 0.65rem;
     border-bottom: 1px solid var(--cal-border);
     transition: background-color 0.2s ease, border-color 0.2s ease;
   }
   .week-strip-inner {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    max-width: 600px;
+    max-width: 560px;
     margin: 0 auto;
-    gap: 0.25rem;
+    gap: 0.35rem;
   }
   .strip-day-btn {
     background: transparent !important;
-    border: none !important;
+    border: 1px solid transparent !important;
     box-shadow: none !important;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.25rem;
     cursor: pointer;
-    padding: 0.35rem 0;
-    border-radius: 12px;
-    color: var(--cal-text-muted) !important;
-    transition: background 0.15s ease, color 0.15s ease;
+    padding: 0.4rem 0.2rem;
+    border-radius: var(--radius-sm);
+    color: var(--muted) !important;
+    transition: all 0.15s ease;
   }
   .strip-day-btn:hover {
-    background: var(--cal-btn-hover) !important;
+    background: var(--soft) !important;
+    color: var(--fg) !important;
   }
   .strip-letter {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.85;
   }
   .strip-num {
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     font-weight: 600;
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     display: grid;
     place-items: center;
     border-radius: 50%;
-    color: var(--cal-text) !important;
+    color: var(--fg) !important;
     background: transparent !important;
+    transition: all 0.15s ease;
   }
-  /* Aujourd'hui = Cercle rouge vif */
+  /* Aujourd'hui = pastille accent */
   .strip-day-btn.is-today .strip-num {
-    background: var(--ios-red) !important;
+    background: var(--accent) !important;
     color: #ffffff !important;
-    box-shadow: 0 2px 8px rgba(255, 59, 48, 0.5);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+  .strip-day-btn.is-selected:not(.is-today) {
+    background: var(--soft) !important;
+    border-color: var(--line) !important;
   }
   .strip-day-btn.is-selected:not(.is-today) .strip-num {
-    background: var(--cal-btn-hover) !important;
-    color: var(--cal-text) !important;
+    background: var(--line);
+    color: var(--fg) !important;
   }
 
   /* 3. VUE GRILLE SEMAINE */
@@ -867,9 +1072,10 @@ import Base from '../../layouts/Base.astro';
   .col-header-cell {
     padding: 0.65rem 0.5rem;
     text-align: center;
-    font-size: 0.88rem;
-    font-weight: 700;
-    color: var(--cal-text);
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: var(--font-ui);
+    color: var(--fg);
     border-right: 1px solid var(--cal-border);
     letter-spacing: -0.01em;
   }
@@ -877,7 +1083,8 @@ import Base from '../../layouts/Base.astro';
     border-right: none;
   }
   .col-header-cell.header-today {
-    color: var(--ios-red);
+    color: var(--accent);
+    font-weight: 700;
   }
 
   /* Ligne des habitudes toute la journée */
@@ -905,10 +1112,11 @@ import Base from '../../layouts/Base.astro';
     background: var(--card-habit-bg);
     border: 1px solid var(--card-habit-border);
     color: var(--card-habit-title);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     padding: 0.25rem 0.5rem;
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     font-weight: 600;
+    font-family: var(--font-ui);
     display: flex;
     align-items: center;
     gap: 0.4rem;
@@ -918,8 +1126,8 @@ import Base from '../../layouts/Base.astro';
     text-overflow: ellipsis;
   }
   .habit-circle {
-    width: 9px;
-    height: 9px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     border: 2px solid var(--card-habit-bar);
     flex: none;
@@ -948,9 +1156,11 @@ import Base from '../../layouts/Base.astro';
     padding: 0.15rem 0.4rem;
     position: relative;
     z-index: 5;
+    font-family: var(--font-ui);
   }
   .time-label {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
+    font-weight: 500;
     color: var(--cal-text-muted);
     font-variant-numeric: tabular-nums;
     text-align: right;
@@ -964,22 +1174,23 @@ import Base from '../../layouts/Base.astro';
     transform: translateY(-100%);
   }
 
-  /* Badge rouge heure actuelle */
+  /* Badge heure actuelle */
   .current-time-badge {
     position: absolute;
     left: 2px;
     right: 2px;
     transform: translateY(-50%);
-    background: var(--ios-red);
+    background: var(--accent);
     color: #ffffff;
-    border-radius: 999px;
+    border-radius: var(--radius-full, 999px);
     padding: 2px 4px;
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     font-weight: 700;
+    font-family: var(--font-ui);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 2px 6px rgba(255, 59, 48, 0.4);
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 40%, transparent);
     z-index: 10;
   }
 
@@ -1040,81 +1251,125 @@ import Base from '../../layouts/Base.astro';
     background: var(--ios-red);
   }
 
-  /* 5. PETITS CARRÉS DE COULEUR AUTOUR DES ÉVÉNEMENTS */
+  /* 5. CARTES DE COURS MODERNISÉES */
   .course-card {
     position: absolute;
-    left: 4px;
-    right: 4px;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     overflow: hidden;
     cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    transition: transform 0.15s ease, z-index 0.15s ease, filter 0.15s ease;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.15s ease, z-index 0.15s ease, box-shadow 0.15s ease;
     z-index: 2;
+    box-sizing: border-box;
   }
   :root[data-theme='dark'] .course-card {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
   }
   .course-card:hover {
-    transform: scale(1.02);
-    z-index: 15;
-    filter: brightness(1.06);
+    transform: translateY(-1px) scale(1.02);
+    z-index: 20;
+    box-shadow: var(--shadow-md);
+    filter: brightness(1.04);
   }
   .card-inner {
-    padding: 0.4rem 0.55rem;
+    padding: 0.35rem 0.5rem;
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
     overflow: hidden;
+    gap: 0.15rem;
+    box-sizing: border-box;
+  }
+  .card-header-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem;
+    line-height: 1;
+    margin-bottom: 0.1rem;
+  }
+  .card-badge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.12rem 0.32rem;
+    border-radius: 3px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .card-time-pill {
+    font-size: 0.64rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.85;
+    white-space: nowrap;
   }
 
-  /* Carré Magenta Vif Éclatant (Matlab, Algèbre, Programmation) */
+  /* Style par type de cours */
   .card-magenta-vivid {
     background: var(--card-magenta-bg) !important;
-    border: 1.5px solid var(--card-magenta-border) !important;
-    border-left: 5px solid var(--card-magenta-bar) !important;
+    border: 1px solid var(--card-magenta-border) !important;
+    border-left: 3.5px solid var(--card-magenta-bar) !important;
   }
-  .card-magenta-vivid .card-title {
+  .card-magenta-vivid .card-badge {
+    background: var(--card-magenta-badge-bg);
+    color: var(--card-magenta-badge-fg);
+  }
+  .card-magenta-vivid .card-title,
+  .card-magenta-vivid .card-time-pill {
     color: var(--card-magenta-title) !important;
   }
   .card-magenta-vivid .card-meta {
     color: var(--card-magenta-meta) !important;
   }
 
-  /* Carré TD : Violet / Pourpre riche & bordure rose néon */
   .card-td {
     background: var(--card-td-bg) !important;
-    border: 1.5px solid var(--card-td-border) !important;
-    border-left: 5px solid var(--card-td-bar) !important;
+    border: 1px solid var(--card-td-border) !important;
+    border-left: 3.5px solid var(--card-td-bar) !important;
   }
-  .card-td .card-title {
+  .card-td .card-badge {
+    background: var(--card-td-badge-bg);
+    color: var(--card-td-badge-fg);
+  }
+  .card-td .card-title,
+  .card-td .card-time-pill {
     color: var(--card-td-title) !important;
   }
   .card-td .card-meta {
     color: var(--card-td-meta) !important;
   }
 
-  /* Carré CM : Pourpre profond & bordure fuchsia électrique */
   .card-cm {
     background: var(--card-cm-bg) !important;
-    border: 1.5px solid var(--card-cm-border) !important;
-    border-left: 5px solid var(--card-cm-bar) !important;
+    border: 1px solid var(--card-cm-border) !important;
+    border-left: 3.5px solid var(--card-cm-bar) !important;
   }
-  .card-cm .card-title {
+  .card-cm .card-badge {
+    background: var(--card-cm-badge-bg);
+    color: var(--card-cm-badge-fg);
+  }
+  .card-cm .card-title,
+  .card-cm .card-time-pill {
     color: var(--card-cm-title) !important;
   }
   .card-cm .card-meta {
     color: var(--card-cm-meta) !important;
   }
 
-  /* Carré Habitude / Quotidien : Bleu nuit & bordure cyan */
   .card-habit {
     background: var(--card-habit-bg) !important;
-    border: 1.5px solid var(--card-habit-border) !important;
-    border-left: 4.5px solid var(--card-habit-bar) !important;
+    border: 1px solid var(--card-habit-border) !important;
+    border-left: 3.5px solid var(--card-habit-bar) !important;
   }
-  .card-habit .card-title {
+  .card-habit .card-badge {
+    background: var(--card-habit-badge-bg);
+    color: var(--card-habit-badge-fg);
+  }
+  .card-habit .card-title,
+  .card-habit .card-time-pill {
     color: var(--card-habit-title) !important;
   }
   .card-habit .card-meta {
@@ -1122,24 +1377,51 @@ import Base from '../../layouts/Base.astro';
   }
 
   .card-title {
-    margin: 0 0 0.15rem !important;
-    font-size: 0.8rem !important;
-    font-weight: 700 !important;
-    line-height: 1.2 !important;
+    margin: 0 !important;
+    font-family: var(--font-ui) !important;
+    font-size: 0.76rem !important;
+    font-weight: 600 !important;
+    line-height: 1.25 !important;
     letter-spacing: -0.01em;
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+    word-break: break-word;
   }
   .card-meta {
-    font-size: 0.68rem !important;
+    font-family: var(--font-ui) !important;
+    font-size: 0.67rem !important;
     font-weight: 500 !important;
-    line-height: 1.25 !important;
-    opacity: 0.95;
+    line-height: 1.2 !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: auto;
+  }
+  .card-meta svg {
+    flex-shrink: 0;
+    opacity: 0.85;
+  }
+
+  /* Mode condensé (quand 2 cours ou plus se chevauchent) */
+  .course-card.is-condensed .card-inner {
+    padding: 0.25rem 0.35rem;
+    gap: 0.1rem;
+  }
+  .course-card.is-condensed .card-title {
+    font-size: 0.71rem !important;
+    -webkit-line-clamp: 1;
+  }
+  .course-card.is-condensed .card-badge {
+    font-size: 0.58rem;
+    padding: 0.08rem 0.22rem;
+  }
+  .course-card.is-condensed .card-time-pill {
+    display: none;
   }
 
   /* 6. VUE LISTE AGENDA */
@@ -1191,40 +1473,44 @@ import Base from '../../layouts/Base.astro';
     color: var(--cal-text-muted);
   }
 
-  /* 7. BOUTON FLOTTANT "AUJOURD'HUI" TYPE IOS */
+  /* 7. BOUTON FLOTTANT "AUJOURD'HUI" */
   .cal-floating-bar {
     position: fixed;
     bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 50;
+    pointer-events: none;
   }
   .btn-today-pill {
-    background: var(--cal-pill-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--cal-pill-border);
-    color: var(--cal-pill-text);
-    border-radius: 999px;
-    padding: 0.6rem 1.4rem;
-    font-size: 0.95rem;
+    pointer-events: auto;
+    background: var(--surface);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--line-strong);
+    color: var(--fg);
+    border-radius: var(--radius-full, 999px);
+    padding: 0.5rem 1.15rem;
+    font-size: 0.85rem;
     font-weight: 600;
-    display: flex;
+    font-family: var(--font-ui);
+    display: inline-flex;
     align-items: center;
-    gap: 0.55rem;
+    gap: 0.5rem;
     cursor: pointer;
-    box-shadow: var(--cal-pill-shadow);
-    transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+    box-shadow: var(--shadow-md);
+    transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
   }
   .btn-today-pill:hover {
-    transform: scale(1.04);
+    transform: translateY(-2px);
+    background: var(--soft);
   }
   .red-dot {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
-    background: var(--ios-red);
-    box-shadow: 0 0 6px rgba(255, 59, 48, 0.8);
+    background: var(--accent);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 70%, transparent);
   }
 
   /* 8. MODAL DETAILS DU COURS */
