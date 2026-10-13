@@ -1,19 +1,26 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
+import CourseManagerModal from '../../components/CourseManagerModal.astro';
 import { getCourses, formatFileSize } from '../../utils/courses';
 
 const subjects = getCourses();
 const totalCourses = subjects.length;
 const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
 const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
+
+const subjectsList = subjects.map((s) => ({
+  id: s.id,
+  name: s.name,
+  subfolders: s.folder.subfolders.map((f) => f.name),
+}));
 ---
 
 <Base
   title="Mes Cours"
   description="Accès direct et visionneuse de vos cours, TD, travaux pratiques et documents académiques."
 >
-  <div class="container container--wide app-page courses-page" data-courses-root>
+  <div class="container container--wide app-page courses-page" data-courses-root data-subjects={JSON.stringify(subjectsList)}>
     <header class="page-header courses-hero">
       <div class="courses-hero-top">
         <div>
@@ -21,10 +28,16 @@ const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
           <h1 class="courses-title">Mes Cours</h1>
           <p class="courses-motto">Supports de cours, énoncés de TD et fiches de révisions pour le Semestre 5.</p>
         </div>
-        <a href="/configuration/" class="btn btn--sm">
-          <Icon name="settings" size={14} />
-          Configuration
-        </a>
+        <div class="courses-hero-actions">
+          <button type="button" class="btn btn--primary btn--sm" id="btn-open-add-course">
+            <Icon name="folder" size={14} />
+            Ajouter / Classer un cours
+          </button>
+          <a href="/configuration/" class="btn btn--sm">
+            <Icon name="settings" size={14} />
+            Configuration
+          </a>
+        </div>
       </div>
       <div class="meta stats-bar">
         <span>{totalCourses} matières</span>
@@ -35,28 +48,44 @@ const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
       </div>
     </header>
 
+    <!-- Zone de statut / notification d'ajout local -->
+    <div id="course-toast" class="panel course-toast" style="display: none;">
+      <span class="toast-dot"></span>
+      <span id="toast-message">Matière ajoutée avec succès.</span>
+    </div>
+
     <!-- Grille des matières avec DA Marges -->
-    <div class="subjects-grid">
+    <div class="subjects-grid" id="subjects-container">
       {subjects.map((sub) => (
-        <section class="panel subject-card" id={`folder-${sub.id}`}>
+        <section class="panel subject-card" id={`folder-${sub.id}`} data-subject-card={sub.name}>
           <div class="subject-header">
             <div class="subject-title-wrap">
               <span class="subject-initial" aria-hidden="true">{sub.name.charAt(0).toUpperCase()}</span>
               <div>
                 <h2 class="subject-title">{sub.name}</h2>
                 <p class="subject-meta meta">
-                  {sub.stats.totalFiles} fichiers · {sub.stats.pdfCount} PDF
-                  {sub.stats.docCount ? ` · ${sub.stats.docCount} Word` : ''}
-                  {sub.stats.codeCount ? ` · ${sub.stats.codeCount} code` : ''}
+                  <span class="subject-count-label">
+                    {sub.stats.totalFiles} fichiers · {sub.stats.pdfCount} PDF
+                    {sub.stats.docCount ? ` · ${sub.stats.docCount} Word` : ''}
+                    {sub.stats.codeCount ? ` · ${sub.stats.codeCount} code` : ''}
+                  </span>
                 </p>
               </div>
             </div>
+            <button
+              type="button"
+              class="btn btn--sm btn-add-in-subject"
+              data-subject-target={sub.name}
+              title={`Ajouter un document dans ${sub.name}`}
+            >
+              + Ajouter un document
+            </button>
           </div>
 
           <!-- Arborescence des dossiers & fichiers -->
-          <div class="folder-tree">
+          <div class="folder-tree" id={`tree-${sub.id}`}>
             {sub.folder.subfolders.map((td) => (
-              <div class="td-section">
+              <div class="td-section" data-folder-name={td.name}>
                 <div class="td-header">
                   <Icon name="folder" size={16} class="td-folder-icon" />
                   <h3 class="td-title">{td.name}</h3>
@@ -86,7 +115,7 @@ const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
             ))}
 
             {sub.folder.files.length > 0 && (
-              <div class="td-section">
+              <div class="td-section" data-folder-name="Documents racines">
                 <div class="td-header">
                   <Icon name="file" size={16} class="td-folder-icon" />
                   <h3 class="td-title">Documents racines</h3>
@@ -118,8 +147,393 @@ const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
         </section>
       ))}
     </div>
+
+    <!-- Modale de création et de classement de cours -->
+    <CourseManagerModal />
   </div>
 </Base>
+
+<script>
+  interface CustomCourseItem {
+    id: string;
+    name: string;
+    subjectName: string;
+    folderName: string; // "CM", "TD", "Fiches de révisions", or ""
+    size: number;
+    ext: string;
+    type: 'pdf' | 'doc' | 'code' | 'text' | 'other';
+    fileData?: string; // Data URL for local viewing
+    addedAt: number;
+  }
+
+  interface CustomSubjectItem {
+    id: string;
+    name: string;
+    subfolders: string[];
+    createdAt: number;
+  }
+
+  const STORAGE_CUSTOM_SUBJECTS = 'marges_custom_subjects';
+  const STORAGE_CUSTOM_COURSES = 'marges_custom_courses';
+
+  function initCourseManager() {
+    const root = document.querySelector('[data-courses-root]');
+    if (!root) return;
+
+    const modal = document.getElementById('modal-manage-course') as HTMLDialogElement;
+    const btnOpen = document.getElementById('btn-open-add-course');
+    const btnClose = document.getElementById('btn-close-course-modal');
+    const btnCancelSubject = document.getElementById('btn-cancel-subject');
+    const btnCancelFile = document.getElementById('btn-cancel-file');
+
+    const formSubject = document.getElementById('form-create-subject') as HTMLFormElement;
+    const formFile = document.getElementById('form-upload-file') as HTMLFormElement;
+
+    const selectTargetSubject = document.getElementById('select-target-subject') as HTMLSelectElement;
+    const selectTargetFolder = document.getElementById('select-target-folder') as HTMLSelectElement;
+    const groupCustomFolder = document.getElementById('group-custom-folder');
+    const inputCustomFolder = document.getElementById('input-custom-folder') as HTMLInputElement;
+
+    const toast = document.getElementById('course-toast');
+    const toastMsg = document.getElementById('toast-message');
+
+    // 1. Lire les matières initiales
+    const rawSubjects = root.getAttribute('data-subjects');
+    const baseSubjects: Array<{ id: string; name: string; subfolders: string[] }> = rawSubjects ? JSON.parse(rawSubjects) : [];
+
+    function getCustomSubjects(): CustomSubjectItem[] {
+      try {
+        const raw = localStorage.getItem(STORAGE_CUSTOM_SUBJECTS);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveCustomSubjects(items: CustomSubjectItem[]) {
+      try {
+        localStorage.setItem(STORAGE_CUSTOM_SUBJECTS, JSON.stringify(items));
+      } catch {}
+    }
+
+    function getCustomCourses(): CustomCourseItem[] {
+      try {
+        const raw = localStorage.getItem(STORAGE_CUSTOM_COURSES);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveCustomCourses(items: CustomCourseItem[]) {
+      try {
+        localStorage.setItem(STORAGE_CUSTOM_COURSES, JSON.stringify(items));
+      } catch {}
+    }
+
+    function showToast(msg: string) {
+      if (toast && toastMsg) {
+        toastMsg.textContent = msg;
+        toast.style.display = 'flex';
+        setTimeout(() => {
+          toast.style.display = 'none';
+        }, 5000);
+      }
+    }
+
+    // Mise à jour de la liste déroulante des matières
+    function populateSubjectsSelect(selectedName?: string) {
+      if (!selectTargetSubject) return;
+      selectTargetSubject.innerHTML = '<option value="" disabled selected>Sélectionner une matière...</option>';
+
+      const customSubjects = getCustomSubjects();
+      const allNames = Array.from(new Set([...baseSubjects.map((s) => s.name), ...customSubjects.map((s) => s.name)])).sort((a, b) => a.localeCompare(b));
+
+      allNames.forEach((name) => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        if (selectedName && selectedName === name) opt.selected = true;
+        selectTargetSubject.appendChild(opt);
+      });
+    }
+
+    // Gestion des onglets
+    const tabs = document.querySelectorAll<HTMLButtonElement>('.modal-tab');
+    const panels = document.querySelectorAll<HTMLElement>('.modal-tab-panel');
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        const target = tab.getAttribute('data-tab');
+        tabs.forEach((t) => {
+          t.classList.remove('active');
+          t.setAttribute('aria-selected', 'false');
+        });
+        panels.forEach((p) => p.classList.remove('active'));
+
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
+        if (target) {
+          document.querySelector(`[data-panel="${target}"]`)?.classList.add('active');
+        }
+      });
+    });
+
+    // Choix sous-dossier custom
+    selectTargetFolder?.addEventListener('change', () => {
+      if (groupCustomFolder) {
+        groupCustomFolder.style.display = selectTargetFolder.value === '__custom__' ? 'grid' : 'none';
+      }
+    });
+
+    // Ouvrir / Fermer modale
+    function openModal(defaultTab: 'tab-subject' | 'tab-file' = 'tab-subject', presetSubject?: string) {
+      populateSubjectsSelect(presetSubject);
+      tabs.forEach((t) => {
+        const isMatch = t.getAttribute('data-tab') === defaultTab;
+        t.classList.toggle('active', isMatch);
+        t.setAttribute('aria-selected', isMatch ? 'true' : 'false');
+      });
+      panels.forEach((p) => {
+        p.classList.toggle('active', p.getAttribute('data-panel') === defaultTab);
+      });
+
+      if (modal) modal.showModal();
+    }
+
+    btnOpen?.addEventListener('click', () => openModal('tab-subject'));
+    btnClose?.addEventListener('click', () => modal?.close());
+    btnCancelSubject?.addEventListener('click', () => modal?.close());
+    btnCancelFile?.addEventListener('click', () => modal?.close());
+
+    modal?.addEventListener('click', (e) => {
+      if (e.target === modal) modal.close();
+    });
+
+    // Boutons rapides "Ajouter un document" sur chaque carte matière
+    document.querySelectorAll<HTMLButtonElement>('.btn-add-in-subject').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const subName = btn.getAttribute('data-subject-target') || '';
+        openModal('tab-file', subName);
+      });
+    });
+
+    // 2. Traitement formulaire : Créer une nouvelle matière
+    formSubject?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const inputName = document.getElementById('new-subject-name') as HTMLInputElement;
+      const name = inputName.value.trim();
+      if (!name) return;
+
+      const subfolders: string[] = [];
+      if ((document.getElementById('preset-cm') as HTMLInputElement).checked) subfolders.push('CM');
+      if ((document.getElementById('preset-td') as HTMLInputElement).checked) subfolders.push('TD');
+      if ((document.getElementById('preset-revisions') as HTMLInputElement).checked) subfolders.push('Fiches de révisions');
+
+      const slugId = name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+
+      const existing = getCustomSubjects();
+      if (!existing.some((s) => s.name.toLowerCase() === name.toLowerCase())) {
+        existing.push({
+          id: slugId,
+          name,
+          subfolders,
+          createdAt: Date.now(),
+        });
+        saveCustomSubjects(existing);
+      }
+
+      modal?.close();
+      inputName.value = '';
+      showToast(`Matière « ${name} » ajoutée et répertoriée !`);
+      renderDynamicSubjects();
+    });
+
+    // 3. Traitement formulaire : Importer / classer un document
+    formFile?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const targetSubject = selectTargetSubject.value;
+      let targetFolder = selectTargetFolder.value;
+      if (targetFolder === '__custom__') {
+        targetFolder = inputCustomFolder.value.trim() || 'Documents racines';
+      }
+
+      const fileInput = document.getElementById('course-file-input') as HTMLInputElement;
+      if (!fileInput.files || !fileInput.files[0] || !targetSubject) return;
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = (evt) => {
+        const dataUrl = evt.target?.result as string;
+        const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+        let fType: 'pdf' | 'doc' | 'code' | 'text' | 'other' = 'other';
+        if (ext === '.pdf') fType = 'pdf';
+        else if (['.doc', '.docx', '.odt'].includes(ext)) fType = 'doc';
+        else if (['.c', '.h', '.cpp', '.m', '.sci', '.sce', '.py', '.sh'].includes(ext)) fType = 'code';
+        else if (['.txt', '.md'].includes(ext)) fType = 'text';
+
+        const customCourses = getCustomCourses();
+        customCourses.push({
+          id: Math.random().toString(36).substring(2, 9),
+          name: file.name,
+          subjectName: targetSubject,
+          folderName: targetFolder,
+          size: file.size,
+          ext,
+          type: fType,
+          fileData: dataUrl,
+          addedAt: Date.now(),
+        });
+
+        saveCustomCourses(customCourses);
+        modal?.close();
+        fileInput.value = '';
+        if (inputCustomFolder) inputCustomFolder.value = '';
+        showToast(`Document « ${file.name} » classé dans « ${targetSubject}${targetFolder ? ' / ' + targetFolder : ''} » !`);
+        renderDynamicSubjects();
+      };
+
+      reader.readAsDataURL(file);
+    });
+
+    // 4. Rendu interactif des matières et documents ajoutés localement
+    function renderDynamicSubjects() {
+      const container = document.getElementById('subjects-container');
+      if (!container) return;
+
+      const customSubjects = getCustomSubjects();
+      const customCourses = getCustomCourses();
+
+      // Ajouter visuellement les nouvelles matières créées si pas déjà dans le DOM
+      customSubjects.forEach((sub) => {
+        let card = document.getElementById(`folder-${sub.id}`);
+        if (!card) {
+          card = document.createElement('section');
+          card.className = 'panel subject-card';
+          card.id = `folder-${sub.id}`;
+          card.setAttribute('data-subject-card', sub.name);
+
+          const subTreeHtml = sub.subfolders
+            .map(
+              (fName) => `
+            <div class="td-section" data-folder-name="${fName}">
+              <div class="td-header">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="td-folder-icon"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.6l2 2.2h7.4A2.5 2.5 0 0 1 21 9.7v7.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>
+                <h3 class="td-title">${fName}</h3>
+                <span class="meta td-count">0</span>
+              </div>
+              <ul class="file-list" role="list"></ul>
+            </div>
+          `
+            )
+            .join('');
+
+          card.innerHTML = `
+            <div class="subject-header">
+              <div class="subject-title-wrap">
+                <span class="subject-initial" aria-hidden="true">${sub.name.charAt(0).toUpperCase()}</span>
+                <div>
+                  <h2 class="subject-title">${sub.name}</h2>
+                  <p class="subject-meta meta">
+                    <span class="subject-count-label">Matière personnalisée</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                class="btn btn--sm btn-add-in-subject"
+                data-subject-target="${sub.name}"
+                title="Ajouter un document dans ${sub.name}"
+              >
+                + Ajouter un document
+              </button>
+            </div>
+            <div class="folder-tree" id="tree-${sub.id}">
+              ${subTreeHtml}
+            </div>
+          `;
+
+          container.appendChild(card);
+
+          card.querySelector('.btn-add-in-subject')?.addEventListener('click', () => {
+            openModal('tab-file', sub.name);
+          });
+        }
+      });
+
+      // Injecter les fichiers de cours ajoutés
+      customCourses.forEach((item) => {
+        // Retrouver la carte de la matière
+        const card = document.querySelector(`[data-subject-card="${item.subjectName}"]`);
+        if (!card) return;
+
+        const tree = card.querySelector('.folder-tree');
+        if (!tree) return;
+
+        const targetFolderName = item.folderName || 'Documents racines';
+        let tdSection = tree.querySelector(`[data-folder-name="${targetFolderName}"]`);
+
+        // Si le sous-dossier n'existe pas encore dans la carte, le créer
+        if (!tdSection) {
+          tdSection = document.createElement('div');
+          tdSection.className = 'td-section';
+          tdSection.setAttribute('data-folder-name', targetFolderName);
+          tdSection.innerHTML = `
+            <div class="td-header">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="td-folder-icon"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.6l2 2.2h7.4A2.5 2.5 0 0 1 21 9.7v7.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>
+              <h3 class="td-title">${targetFolderName}</h3>
+              <span class="meta td-count">0</span>
+            </div>
+            <ul class="file-list" role="list"></ul>
+          `;
+          tree.appendChild(tdSection);
+        }
+
+        const fileList = tdSection.querySelector('.file-list');
+        if (fileList && !fileList.querySelector(`[data-custom-file-id="${item.id}"]`)) {
+          const li = document.createElement('li');
+          li.className = 'file-item';
+          li.setAttribute('data-custom-file-id', item.id);
+
+          const badgeExt = item.ext.replace('.', '').toUpperCase() || 'BIN';
+          const sizeKb = (item.size / 1024).toFixed(1) + ' Ko';
+
+          li.innerHTML = `
+            <div class="file-info">
+              <span class="file-badge file-badge--${item.type}">
+                ${badgeExt}
+              </span>
+              <a href="${item.fileData || '#'}" download="${item.name}" class="file-name" title="Ouvrir / Télécharger ${item.name}">
+                ${item.name}
+              </a>
+            </div>
+            <div class="file-actions meta">
+              <span>${sizeKb}</span>
+              <a href="${item.fileData || '#'}" download="${item.name}" class="btn-consulter">
+                Télécharger <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </a>
+            </div>
+          `;
+          fileList.appendChild(li);
+
+          // Incrémenter le compteur du sous-dossier
+          const countBadge = tdSection.querySelector('.td-count');
+          if (countBadge) countBadge.textContent = String(fileList.children.length);
+        }
+      });
+    }
+
+    renderDynamicSubjects();
+  }
+
+  document.addEventListener('astro:page-load', initCourseManager);
+</script>
 
 <style>
   .courses-page {
@@ -135,6 +549,12 @@ const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
     justify-content: space-between;
     align-items: flex-start;
     gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .courses-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
     flex-wrap: wrap;
   }
   .courses-title {
@@ -158,6 +578,25 @@ const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
     font-size: .88rem;
   }
 
+  /* Toast notification */
+  .course-toast {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1.5rem;
+    background: var(--surface);
+    border-left: 3px solid var(--success);
+    font-size: 0.92rem;
+    font-weight: 500;
+  }
+  .toast-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+  }
+
   .subjects-grid {
     display: grid;
     gap: 2rem;
@@ -166,9 +605,14 @@ const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
     padding: 1.5rem 1.75rem;
   }
   .subject-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--line);
+    gap: 1rem;
+    flex-wrap: wrap;
   }
   .subject-title-wrap {
     display: flex;

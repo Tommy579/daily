@@ -84,7 +84,7 @@ const shortcuts = [
               <h2 id="matieres-title">Matières</h2>
               <a href="/cours/" class="more">Tout voir <span aria-hidden="true">→</span></a>
             </div>
-            <ul class="subject-list" role="list">
+            <ul class="subject-list" role="list" id="home-subject-list">
               {subjects.map((sub) => (
                 <li>
                   <a href={`/cours/#folder-${sub.id}`} class="subject-row">
@@ -220,6 +220,31 @@ const shortcuts = [
         list.append(renderItem(next, now, true));
       }
     }
+
+    // Matières personnalisées ajoutées par l'utilisateur
+    try {
+      const rawCustom = localStorage.getItem('marges_custom_subjects');
+      const customSubs: Array<{ id: string; name: string }> = rawCustom ? JSON.parse(rawCustom) : [];
+      const subList = document.getElementById('home-subject-list');
+      if (subList && customSubs.length > 0) {
+        customSubs.forEach((sub) => {
+          if (!subList.querySelector(`a[href="/cours/#folder-${sub.id}"]`)) {
+            const li = document.createElement('li');
+            li.innerHTML = `
+              <a href="/cours/#folder-${sub.id}" class="subject-row">
+                <span class="subject-initial" aria-hidden="true">${sub.name.charAt(0).toUpperCase()}</span>
+                <span class="subject-text">
+                  <strong>${sub.name}</strong>
+                  <small>Matière personnalisée</small>
+                </span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="subject-arrow"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </a>
+            `;
+            subList.appendChild(li);
+          }
+        });
+      }
+    } catch {}
   }
 
   document.addEventListener('astro:page-load', initHome);
