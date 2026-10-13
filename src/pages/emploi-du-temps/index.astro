@@ -111,8 +111,8 @@ import Base from '../../layouts/Base.astro';
         </header>
         <h2 class="dialog-title" id="modal-title">Titre du cours</h2>
         <div class="dialog-meta-list">
-          <p class="dialog-meta" id="modal-time">🕒 Horaires</p>
-          <p class="dialog-meta" id="modal-location">📍 Salle</p>
+          <p class="dialog-meta" id="modal-time">Horaires</p>
+          <p class="dialog-meta" id="modal-location">Salle</p>
           <p class="dialog-desc" id="modal-desc"></p>
         </div>
         <div class="dialog-actions">
@@ -364,8 +364,8 @@ import Base from '../../layouts/Base.astro';
             >
               <div class="card-inner">
                 <h3 class="card-title">${ev.title}</h3>
-                ${ev.location ? `<div class="card-meta">📍 ${ev.location}</div>` : ''}
-                <div class="card-meta">🕒 ${formatTime(ev.start)} – ${formatTime(ev.end)}</div>
+                ${ev.location ? `<div class="card-meta">${ev.location}</div>` : ''}
+                <div class="card-meta">${formatTime(ev.start)} – ${formatTime(ev.end)}</div>
               </div>
             </div>
           `;
@@ -444,7 +444,7 @@ import Base from '../../layouts/Base.astro';
           </div>
           <div class="agenda-info">
             <h3 class="agenda-title">${ev.title}</h3>
-            ${ev.location ? `<p class="agenda-loc">📍 ${ev.location}</p>` : ''}
+            ${ev.location ? `<p class="agenda-loc">${ev.location}</p>` : ''}
           </div>
         </li>
       `;
@@ -464,8 +464,8 @@ import Base from '../../layouts/Base.astro';
 
     if (catEl) catEl.textContent = ev.title.toUpperCase().startsWith('TD') ? 'TD' : 'CM';
     if (titleEl) titleEl.textContent = ev.title;
-    if (timeEl) timeEl.textContent = `🕒 ${formatTime(ev.start)} – ${formatTime(ev.end)}`;
-    if (locEl) locEl.textContent = ev.location ? `📍 ${ev.location}` : 'Salle non spécifiée';
+    if (timeEl) timeEl.textContent = `${formatTime(ev.start)} – ${formatTime(ev.end)}`;
+    if (locEl) locEl.textContent = ev.location ? ev.location : 'Salle non spécifiée';
     if (descEl) descEl.textContent = ev.description || '';
 
     modal.showModal();
@@ -545,31 +545,32 @@ import Base from '../../layouts/Base.astro';
 <style>
   /* ==============================================================
      TOKENS CALENDRIER THEMATIQUES (CLAIR / SOMBRE)
+     Harmonisés avec la D.A. globale Marges
      ============================================================== */
 
   /* THÈME CLAIR (par défaut si data-theme="light" ou système clair) */
   :root,
   :root[data-theme='light'] {
-    --cal-bg: #ffffff;
-    --cal-surface: #f4f4f5;
-    --cal-border: #e4e4e7;
-    --cal-text: #09090b;
-    --cal-text-muted: #71717a;
-    --cal-hour-line: rgba(0, 0, 0, 0.06);
-    --cal-today-col: rgba(255, 59, 48, 0.03);
+    --cal-bg: var(--bg);
+    --cal-surface: var(--surface);
+    --cal-border: var(--line);
+    --cal-text: var(--fg);
+    --cal-text-muted: var(--muted);
+    --cal-hour-line: var(--line);
+    --cal-today-col: color-mix(in srgb, var(--accent) 3%, transparent);
 
-    --cal-btn-bg: #f4f4f5;
-    --cal-btn-hover: #e4e4e7;
-    --cal-btn-fg: #18181b;
+    --cal-btn-bg: var(--soft);
+    --cal-btn-hover: var(--line);
+    --cal-btn-fg: var(--fg);
 
-    --cal-pill-bg: rgba(255, 255, 255, 0.92);
-    --cal-pill-border: rgba(0, 0, 0, 0.12);
-    --cal-pill-text: #09090b;
-    --cal-pill-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    --cal-pill-bg: color-mix(in srgb, var(--surface) 85%, transparent);
+    --cal-pill-border: var(--line-strong);
+    --cal-pill-text: var(--fg);
+    --cal-pill-shadow: var(--shadow-md);
 
-    --cal-modal-bg: #ffffff;
-    --cal-modal-border: #e4e4e7;
-    --cal-modal-text: #09090b;
+    --cal-modal-bg: var(--surface);
+    --cal-modal-border: var(--line);
+    --cal-modal-text: var(--fg);
 
     /* Carré Magenta Éclatant (Matlab, Algèbre, Programmation) */
     --card-magenta-bg: #fdf2f8;
@@ -709,7 +710,7 @@ import Base from '../../layouts/Base.astro';
     background: var(--cal-bg);
     color: var(--cal-text);
     min-height: calc(100vh - 120px);
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    font-family: var(--font-ui);
     padding-bottom: 5rem;
     position: relative;
     user-select: none;
@@ -750,8 +751,9 @@ import Base from '../../layouts/Base.astro';
   }
   .cal-month-title {
     margin: 0;
-    font-size: 1.15rem;
-    font-weight: 700;
+    font-family: var(--font-text);
+    font-size: 1.35rem;
+    font-weight: 600;
     color: var(--cal-text);
     letter-spacing: -0.02em;
   }

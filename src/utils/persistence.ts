@@ -12,15 +12,26 @@ export const STORAGE_KEYS = {
   TIMETABLE_URL: 'marges_timetable_url',
   REMINDERS: 'marges_reminders_list',
   REMINDERS_CONFIG: 'marges_reminders_config',
+  NOTIFICATIONS_HISTORY: 'marges_notifications_history',
   THEME: 'theme',
 } as const;
 
 export interface ReminderScheduleConfig {
   enabled: boolean;
   frequency: 'daily' | 'twice_daily' | 'weekly';
-  contentPreference: 'random' | 'philo' | 'cours';
+  contentPreference?: 'random' | 'philo' | 'cours' | 'all';
+  contentType?: 'all' | 'philo' | 'cours';
   times: string[]; // e.g. ["09:00", "19:00"]
   weekDay?: number; // 1 = lundi
+  weekday?: number;
+}
+
+export interface NotificationLogItem {
+  id: string;
+  timestamp: number;
+  title: string;
+  type: 'philo' | 'cours';
+  url: string;
 }
 
 const ONE_YEAR_SEC = 365 * 24 * 60 * 60;

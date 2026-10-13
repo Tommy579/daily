@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
 import { getTextes } from '../../utils/textes';
 import { getCourses } from '../../utils/courses';
 
@@ -25,123 +26,138 @@ const serializedCourses = subjects.map((s) => ({
   description="Suivi de vos alertes programmées pour lire un texte philosophique ou réviser un cours."
 >
   <div
-    class="container reminders-page"
+    class="container container--wide app-page reminders-page"
     data-reminders-root
     data-textes={JSON.stringify(serializedTextes)}
     data-courses={JSON.stringify(serializedCourses)}
   >
-    <header class="page-header">
-      <div class="header-split">
+    <header class="page-header reminders-hero">
+      <div class="reminders-hero-top">
         <div>
-          <p class="label"><a href="/">Accueil</a> / Notifications</p>
-          <h1>Rappels automatiques</h1>
-          <p class="lede">
-            Votre assistant personnel vous invite régulièrement à découvrir un texte philosophique ou à réviser vos cours universitaires.
+          <p class="crumbs"><a href="/">Accueil</a> / Notifications</p>
+          <h1 class="reminders-title">Rappels automatiques</h1>
+          <p class="reminders-motto">
+            Votre assistant personnel pour rythmer vos lectures philosophiques et révisions académiques.
           </p>
         </div>
         <div class="header-action">
-          <a href="/configuration/" class="btn btn-config">
-            ⚙️ Modifier les horaires & réglages
+          <a href="/configuration/" class="btn btn--sm">
+            <Icon name="settings" size={14} />
+            Modifier les réglages
           </a>
         </div>
       </div>
     </header>
 
     <!-- Statut des notifications Web -->
-    <div class="permission-banner" data-permission-banner>
+    <div class="panel permission-banner" data-permission-banner>
       <div class="banner-content">
         <strong id="perm-title">Statut du système d'alerte :</strong>
         <span id="perm-status" class="meta">Vérification...</span>
       </div>
-      <button type="button" class="btn btn-primary" id="btn-request-perm">
+      <button type="button" class="btn btn--primary btn--sm" id="btn-request-perm">
         Activer les notifications
       </button>
     </div>
 
-    <!-- Carte du planning récurrent actif -->
-    <section class="schedule-summary-card">
-      <div class="schedule-header">
-        <div class="status-indicator">
-          <span class="dot-status" id="schedule-dot"></span>
-          <h2 class="label" id="schedule-state-title">Programme de rappels actif</h2>
-        </div>
-        <a href="/configuration/" class="meta config-shortcut">Ajuster dans Configuration →</a>
+    <div class="reminders-grid">
+      <!-- Colonne principale -->
+      <div class="reminders-main">
+        <!-- Carte du planning récurrent actif -->
+        <section class="panel schedule-summary-card">
+          <div class="schedule-header">
+            <div class="status-indicator">
+              <span class="dot-status" id="schedule-dot"></span>
+              <h2 class="label" id="schedule-state-title">Programme de rappels actif</h2>
+            </div>
+            <a href="/configuration/" class="more">Ajuster <span aria-hidden="true">→</span></a>
+          </div>
+
+          <div class="schedule-details">
+            <div class="detail-block">
+              <span class="meta detail-label">Fréquence configurée</span>
+              <strong class="detail-value" id="schedule-freq-text">Quotidienne</strong>
+            </div>
+            <div class="detail-block">
+              <span class="meta detail-label">Heures d'envoi</span>
+              <strong class="detail-value" id="schedule-times-text">09:00</strong>
+            </div>
+            <div class="detail-block">
+              <span class="meta detail-label">Sélection du support</span>
+              <strong class="detail-value" id="schedule-pref-text">Aléatoire (texte philo ou cours)</strong>
+            </div>
+          </div>
+
+          <div class="schedule-footer">
+            <button type="button" class="btn btn--primary btn--sm" id="btn-trigger-now">
+              Déclencher un rappel maintenant (test)
+            </button>
+          </div>
+        </section>
+
+        <!-- Historique des notifications envoyées -->
+        <section class="panel history-section">
+          <div class="list-header">
+            <h2 class="label">Historique des notifications récentes</h2>
+            <span class="meta" id="history-count">0 notification</span>
+          </div>
+
+          <ul class="history-list" id="history-list" role="list">
+            <!-- Rempli en JS -->
+          </ul>
+        </section>
       </div>
 
-      <div class="schedule-details">
-        <div class="detail-block">
-          <span class="meta detail-label">Fréquence configurée</span>
-          <strong class="detail-value" id="schedule-freq-text">Quotidienne</strong>
-        </div>
-        <div class="detail-block">
-          <span class="meta detail-label">Heures d'envoi</span>
-          <strong class="detail-value" id="schedule-times-text">09:00</strong>
-        </div>
-        <div class="detail-block">
-          <span class="meta detail-label">Sélection du support</span>
-          <strong class="detail-value" id="schedule-pref-text">Aléatoire (texte philo ou cours)</strong>
-        </div>
-      </div>
-
-      <div class="schedule-footer">
-        <button type="button" class="btn btn-primary" id="btn-trigger-now">
-          ✨ Déclencher un rappel maintenant (test)
-        </button>
-      </div>
-    </section>
-
-    <!-- Proposition / Aperçu du prochain contenu aléatoire -->
-    <section class="suggestion-section">
-      <h2 class="label section-label">Suggestion actuelle de lecture ou révision</h2>
-      <div class="suggestion-card" id="suggestion-card">
-        <div class="suggestion-type meta" id="sug-type">Philosophie</div>
-        <h3 class="suggestion-title" id="sug-title">Chargement...</h3>
-        <p class="suggestion-desc meta" id="sug-desc">
-          Ce contenu sera automatiquement proposé lors de votre prochaine notification.
-        </p>
-        <div class="suggestion-actions">
-          <a href="#" class="btn btn-primary" id="sug-link">Lire ce contenu maintenant →</a>
-          <button type="button" class="btn-subtle" id="btn-refresh-suggestion">Tirer un autre au sort 🎲</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Historique des notifications envoyées -->
-    <section class="history-section">
-      <div class="list-header">
-        <h2 class="label">Historique des notifications récentes</h2>
-        <span class="meta" id="history-count">0 notification</span>
-      </div>
-
-      <ul class="history-list" id="history-list" role="list">
-        <!-- Rempli en JS -->
-      </ul>
-    </section>
+      <!-- Colonne latérale : Suggestion actuelle -->
+      <aside class="reminders-aside">
+        <section class="panel suggestion-card" id="suggestion-card">
+          <div class="section-head">
+            <h2 class="label">Prochaine suggestion</h2>
+          </div>
+          <div class="suggestion-type meta" id="sug-type">Philosophie</div>
+          <h3 class="suggestion-title" id="sug-title">Chargement...</h3>
+          <p class="suggestion-desc meta" id="sug-desc">
+            Ce contenu sera automatiquement proposé lors de votre prochaine notification.
+          </p>
+          <div class="suggestion-actions">
+            <a href="#" class="btn btn--primary btn--sm" id="sug-link">
+              Consulter <Icon name="arrow-right" size={13} />
+            </a>
+            <button type="button" class="btn btn--sm" id="btn-refresh-suggestion">
+              Tirer au sort
+            </button>
+          </div>
+        </section>
+      </aside>
+    </div>
   </div>
 </Base>
 
 <script>
   import {
     STORAGE_KEYS,
-    loadPersistentJSON,
     savePersistentJSON,
+    loadPersistentJSON,
     type ReminderScheduleConfig,
+    type NotificationLogItem,
   } from '../../utils/persistence';
 
-  interface HistoryItem {
-    id: string;
-    title: string;
+  interface SuggestionItem {
     type: 'philo' | 'cours';
+    typeLabel: string;
+    title: string;
+    desc: string;
     url: string;
-    sentAt: string;
   }
 
   function initRemindersPage() {
-    const root = document.querySelector('[data-reminders-root]') as HTMLElement;
+    const root = document.querySelector('[data-reminders-root]');
     if (!root) return;
 
-    const textes = JSON.parse(root.dataset.textes || '[]');
-    const courses = JSON.parse(root.dataset.courses || '[]');
+    const rawTextes = root.getAttribute('data-textes');
+    const rawCourses = root.getAttribute('data-courses');
+    const textes: Array<{ id: string; title: string; author: string; url: string }> = rawTextes ? JSON.parse(rawTextes) : [];
+    const courses: Array<{ id: string; title: string; url: string }> = rawCourses ? JSON.parse(rawCourses) : [];
 
     const scheduleDot = document.getElementById('schedule-dot');
     const scheduleStateTitle = document.getElementById('schedule-state-title');
@@ -153,60 +169,56 @@ const serializedCourses = subjects.map((s) => ({
     const sugTitle = document.getElementById('sug-title');
     const sugDesc = document.getElementById('sug-desc');
     const sugLink = document.getElementById('sug-link') as HTMLAnchorElement;
-    const btnRefreshSug = document.getElementById('btn-refresh-suggestion');
-    const btnTriggerNow = document.getElementById('btn-trigger-now');
+    const btnRefresh = document.getElementById('btn-refresh-suggestion');
 
     const historyList = document.getElementById('history-list');
     const historyCount = document.getElementById('history-count');
+    const btnTriggerNow = document.getElementById('btn-trigger-now');
 
-    const defaultSchedule: ReminderScheduleConfig = {
+    const statusEl = document.getElementById('perm-status');
+    const btnReq = document.getElementById('btn-request-perm');
+
+    // 1. Charger configuration des rappels
+    const config: ReminderScheduleConfig = loadPersistentJSON(STORAGE_KEYS.REMINDERS_CONFIG, {
       enabled: true,
       frequency: 'daily',
-      contentPreference: 'random',
       times: ['09:00'],
-      weekDay: 1,
-    };
+      weekday: 1,
+      contentType: 'all',
+    });
 
-    const config = loadPersistentJSON<ReminderScheduleConfig>(
-      STORAGE_KEYS.REMINDERS_CONFIG,
-      defaultSchedule
-    );
-
-    let history: HistoryItem[] = loadPersistentJSON<HistoryItem[]>(STORAGE_KEYS.REMINDERS, []);
-
-    // 1. Mise à jour de l'affichage du planning
-    if (config.enabled) {
-      if (scheduleDot) scheduleDot.className = 'dot-status dot-active';
-      if (scheduleStateTitle) scheduleStateTitle.textContent = 'Programme automatique activé';
-    } else {
-      if (scheduleDot) scheduleDot.className = 'dot-status dot-inactive';
-      if (scheduleStateTitle) scheduleStateTitle.textContent = 'Programme automatique en pause';
+    if (scheduleDot && scheduleStateTitle) {
+      if (config.enabled) {
+        scheduleDot.className = 'dot-status dot-active';
+        scheduleStateTitle.textContent = 'Programme de rappels actif';
+      } else {
+        scheduleDot.className = 'dot-status dot-inactive';
+        scheduleStateTitle.textContent = 'Rappels désactivés';
+      }
     }
 
     if (scheduleFreqText) {
-      if (config.frequency === 'twice_daily') scheduleFreqText.textContent = 'Pluri-quotidienne (2x par jour)';
-      else if (config.frequency === 'weekly') scheduleFreqText.textContent = 'Hebdomadaire (1x par semaine)';
-      else scheduleFreqText.textContent = 'Quotidienne (1x par jour)';
+      if (config.frequency === 'daily') scheduleFreqText.textContent = 'Quotidienne (1 fois / jour)';
+      else if (config.frequency === 'twice_daily') scheduleFreqText.textContent = 'Biquotidienne (2 fois / jour)';
+      else if (config.frequency === 'weekly') scheduleFreqText.textContent = 'Hebdomadaire (1 fois / semaine)';
     }
 
     if (scheduleTimesText) {
-      scheduleTimesText.textContent = config.times?.join(' et ') || '09:00';
+      scheduleTimesText.textContent = config.times && config.times.length > 0 ? config.times.join(' & ') : 'Non définies';
     }
 
     if (schedulePrefText) {
-      if (config.contentPreference === 'philo') schedulePrefText.textContent = 'Textes philosophiques uniquement';
-      else if (config.contentPreference === 'cours') schedulePrefText.textContent = 'Supports de cours uniquement';
-      else schedulePrefText.textContent = 'Aléatoire (texte philo ou cours)';
+      if (config.contentType === 'philo') schedulePrefText.textContent = 'Textes philosophiques uniquement';
+      else if (config.contentType === 'cours') schedulePrefText.textContent = 'Fiches et cours de révision';
+      else schedulePrefText.textContent = 'Aléatoire (Textes philo & Cours)';
     }
 
-    // 2. Gestion de la pioche aléatoire de contenu
-    function getRandomContent(preference: 'random' | 'philo' | 'cours' = config.contentPreference) {
+    // 2. Sélectionner une suggestion aléatoire
+    function getRandomContent(): SuggestionItem {
       let pickPhilo = true;
-      if (preference === 'philo') {
-        pickPhilo = true;
-      } else if (preference === 'cours') {
-        pickPhilo = false;
-      } else {
+      if (config.contentType === 'philo') pickPhilo = true;
+      else if (config.contentType === 'cours') pickPhilo = false;
+      else {
         pickPhilo = Math.random() < 0.5;
       }
 
@@ -214,7 +226,7 @@ const serializedCourses = subjects.map((s) => ({
         const item = textes[Math.floor(Math.random() * textes.length)];
         return {
           type: 'philo' as const,
-          typeLabel: '📖 Texte philosophique',
+          typeLabel: 'Texte philosophique',
           title: item.title,
           desc: item.author ? `Auteur : ${item.author}` : 'Article philosophique',
           url: item.url,
@@ -223,7 +235,7 @@ const serializedCourses = subjects.map((s) => ({
         const item = courses[Math.floor(Math.random() * courses.length)];
         return {
           type: 'cours' as const,
-          typeLabel: '📂 Support de cours',
+          typeLabel: 'Support de cours',
           title: item.title,
           desc: 'Matière universitaire & fiches de révision',
           url: item.url,
@@ -231,9 +243,9 @@ const serializedCourses = subjects.map((s) => ({
       } else {
         return {
           type: 'philo' as const,
-          typeLabel: '📖 Espace de travail',
-          title: 'Explorer la bibliothèque',
-          desc: 'Retrouvez vos textes et cours de philosophie',
+          typeLabel: 'Bibliothèque',
+          title: 'Explorer les textes',
+          desc: 'Retrouvez vos lectures et essais',
           url: '/textes/',
         };
       }
@@ -248,95 +260,92 @@ const serializedCourses = subjects.map((s) => ({
       if (sugLink) sugLink.href = currentSuggestion.url;
     }
 
-    renderSuggestion();
-
-    btnRefreshSug?.addEventListener('click', () => {
+    btnRefresh?.addEventListener('click', () => {
       currentSuggestion = getRandomContent();
       renderSuggestion();
     });
 
-    // 3. Déclenchement de notification
-    function triggerNotification(contentItem = getRandomContent()) {
-      if (!('Notification' in window)) {
-        alert("Les notifications ne sont pas supportées par votre navigateur.");
-        return;
-      }
+    renderSuggestion();
 
-      if (Notification.permission !== 'granted') {
-        Notification.requestPermission().then((perm) => {
-          if (perm === 'granted') {
-            sendNotification(contentItem);
-          }
-        });
-      } else {
-        sendNotification(contentItem);
-      }
+    // 3. Historique des notifications
+    function loadHistory(): NotificationLogItem[] {
+      return loadPersistentJSON(STORAGE_KEYS.NOTIFICATIONS_HISTORY, []);
     }
 
-    function sendNotification(contentItem: ReturnType<typeof getRandomContent>) {
-      const notif = new Notification(`Marges — Rappel d'étude`, {
-        body: `C'est le moment : découvrez "${contentItem.title}" (${contentItem.typeLabel})`,
-        icon: '/favicon.svg',
-      });
-
-      notif.onclick = () => {
-        window.focus();
-        window.location.href = contentItem.url;
-      };
-
-      // Sauvegarde dans l'historique
-      const newHistoryItem: HistoryItem = {
-        id: 'hist-' + Date.now(),
-        title: contentItem.title,
-        type: contentItem.type,
-        url: contentItem.url,
-        sentAt: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      history.unshift(newHistoryItem);
-      if (history.length > 20) history.pop();
-      savePersistentJSON(STORAGE_KEYS.REMINDERS, history);
-      renderHistory();
-    }
-
-    btnTriggerNow?.addEventListener('click', () => {
-      triggerNotification(currentSuggestion);
-    });
-
-    // 4. Historique
     function renderHistory() {
-      if (!historyList) return;
-      if (historyCount) historyCount.textContent = `${history.length} notification${history.length > 1 ? 's' : ''}`;
+      const history = loadHistory();
+      if (!historyList || !historyCount) return;
+
+      historyCount.textContent = `${history.length} notification${history.length > 1 ? 's' : ''}`;
 
       if (history.length === 0) {
-        historyList.innerHTML = '<li class="no-history meta">Aucun rappel déclenché récemment. Le système enverra automatiquement le prochain à l\'heure prévue.</li>';
+        historyList.innerHTML = '<li class="no-history meta">Aucun rappel déclenché pour le moment.</li>';
         return;
       }
 
       historyList.innerHTML = history
-        .map(
-          (item) => `
-        <li class="history-item">
-          <div class="history-time meta">${item.sentAt}</div>
-          <div class="history-info">
-            <span class="history-badge ${item.type === 'philo' ? 'badge-philo' : 'badge-cours'}">
-              ${item.type === 'philo' ? 'Texte philo' : 'Cours'}
-            </span>
-            <strong>${item.title}</strong>
-          </div>
-          <a href="${item.url}" class="meta history-link">Consulter →</a>
-        </li>
-      `
-        )
+        .slice(0, 10)
+        .map((item) => {
+          const date = new Date(item.timestamp);
+          const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+          const dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+          const isPhilo = item.type === 'philo';
+
+          return `
+          <li class="history-item">
+            <div class="history-time meta">
+              <strong>${timeStr}</strong>
+              <small>${dateStr}</small>
+            </div>
+            <div class="history-info">
+              <span class="history-badge ${isPhilo ? 'badge-philo' : 'badge-cours'}">
+                ${isPhilo ? 'Philo' : 'Cours'}
+              </span>
+              <a href="${item.url}" class="history-link">${item.title}</a>
+            </div>
+            <a href="${item.url}" class="meta config-shortcut">Consulter →</a>
+          </li>
+        `;
+        })
         .join('');
     }
 
     renderHistory();
 
-    // 5. Statut permissions
+    // 4. Déclencher un rappel maintenant
+    function triggerNotification() {
+      const sug = getRandomContent();
+      const notificationTitle = sug.type === 'philo' ? `Lecture philosophique : ${sug.title}` : `Révision de cours : ${sug.title}`;
+      const notificationBody = sug.desc;
+
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const notif = new Notification(notificationTitle, {
+          body: notificationBody,
+          icon: '/favicon.svg',
+        });
+        notif.onclick = () => {
+          window.open(sug.url, '_blank');
+        };
+      } else {
+        alert(`${notificationTitle}\n\n${notificationBody}\n\nLien : ${window.location.origin}${sug.url}`);
+      }
+
+      const history = loadHistory();
+      history.unshift({
+        id: Math.random().toString(),
+        timestamp: Date.now(),
+        title: sug.title,
+        type: sug.type,
+        url: sug.url,
+      });
+      savePersistentJSON(STORAGE_KEYS.NOTIFICATIONS_HISTORY, history.slice(0, 50));
+      renderHistory();
+    }
+
+    btnTriggerNow?.addEventListener('click', triggerNotification);
+
+    // 5. Autorisations du navigateur
     function updatePermissionUI() {
-      const statusEl = document.getElementById('perm-status');
-      const btnReq = document.getElementById('btn-request-perm');
       if (!('Notification' in window)) {
         if (statusEl) statusEl.textContent = 'Non supporté par ce navigateur.';
         if (btnReq) (btnReq as HTMLButtonElement).disabled = true;
@@ -344,9 +353,9 @@ const serializedCourses = subjects.map((s) => ({
       }
       const perm = Notification.permission;
       if (statusEl) {
-        if (perm === 'granted') statusEl.textContent = 'Autorisées & actives ✅';
-        else if (perm === 'denied') statusEl.textContent = 'Bloquées dans votre navigateur ❌';
-        else statusEl.textContent = 'En attente d’autorisation ⚠️';
+        if (perm === 'granted') statusEl.textContent = 'Autorisées & actives';
+        else if (perm === 'denied') statusEl.textContent = 'Bloquées dans votre navigateur';
+        else statusEl.textContent = 'En attente d’autorisation';
       }
       if (btnReq) {
         btnReq.style.display = perm === 'granted' ? 'none' : 'inline-block';
@@ -361,21 +370,16 @@ const serializedCourses = subjects.map((s) => ({
       }
     });
 
-    // 6. Surveillance en arrière-plan des heures prévues (comparaison HH:MM)
-    let lastCheckedMinute = '';
+    // 6. Surveillance récurrente
     setInterval(() => {
       if (!config.enabled) return;
       const now = new Date();
       const currentHHMM = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-      if (currentHHMM !== lastCheckedMinute) {
-        lastCheckedMinute = currentHHMM;
-
+      if (now.getSeconds() < 15) {
         if (config.frequency === 'weekly') {
-          const currentDay = now.getDay();
-          if (config.weekDay !== undefined && currentDay !== config.weekDay) {
-            return;
-          }
+          const currentDay = now.getDay() === 0 ? 7 : now.getDay();
+          if (currentDay !== config.weekday) return;
         }
 
         if (config.times && config.times.includes(currentHHMM)) {
@@ -392,43 +396,67 @@ const serializedCourses = subjects.map((s) => ({
   .reminders-page {
     padding-bottom: 5rem;
   }
-  .header-split {
+  .reminders-hero {
+    padding-block: clamp(1.5rem, 1rem + 2vw, 3rem) clamp(1rem, 0.75rem + 1vw, 2rem);
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+  .reminders-hero-top {
     display: flex;
     justify-content: space-between;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 1.5rem;
     flex-wrap: wrap;
   }
-  .btn-config {
-    text-decoration: none;
-    font-size: 0.9rem;
+  .reminders-title {
+    font-family: var(--font-text);
+    font-size: clamp(2rem, 1.5rem + 2vw, 3rem);
+    letter-spacing: -.03em;
+    margin: .35rem 0 .35rem;
   }
+  .reminders-motto {
+    font-family: var(--font-text);
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--muted);
+    margin: 0;
+  }
+
   .permission-banner {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: var(--soft);
-    border-radius: var(--radius);
-    padding: 1.25rem 1.5rem;
-    margin-bottom: 2.5rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
     border-left: 3px solid var(--fg);
   }
 
-  /* Carte de planification */
+  .reminders-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 20rem;
+    gap: 2.5rem;
+    align-items: start;
+  }
+  .reminders-main {
+    display: grid;
+    gap: 2rem;
+  }
+  .reminders-aside {
+    position: sticky;
+    top: 5rem;
+  }
+
+  /* Planning actif */
   .schedule-summary-card {
-    background: var(--bg);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 1.75rem;
-    margin-bottom: 3rem;
+    padding: 1.5rem 1.75rem;
   }
   .schedule-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid var(--line);
-    padding-bottom: 1rem;
-    margin-bottom: 1.5rem;
+    padding-bottom: 0.85rem;
+    margin-bottom: 1.25rem;
   }
   .status-indicator {
     display: flex;
@@ -436,41 +464,34 @@ const serializedCourses = subjects.map((s) => ({
     gap: 0.6rem;
   }
   .dot-status {
-    width: 9px;
-    height: 9px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
   }
   .dot-active {
-    background: #10b981;
+    background: var(--success);
   }
   .dot-inactive {
-    background: #9ca3af;
-  }
-  .config-shortcut {
-    color: var(--muted);
-    text-decoration: underline;
-    font-size: 0.85rem;
-  }
-  .config-shortcut:hover {
-    color: var(--fg);
+    background: var(--muted);
   }
   .schedule-details {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 1.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
   }
   .detail-block {
     display: grid;
     gap: 0.25rem;
   }
   .detail-label {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
   }
   .detail-value {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
+    font-weight: 600;
   }
   .schedule-footer {
     display: flex;
@@ -478,141 +499,112 @@ const serializedCourses = subjects.map((s) => ({
     align-items: center;
   }
 
-  /* Carte suggestion */
-  .section-label {
-    margin-bottom: 1rem;
-  }
-  .suggestion-section {
-    margin-bottom: 3.5rem;
-  }
+  /* Suggestion */
   .suggestion-card {
-    background: var(--soft);
-    border-radius: var(--radius);
-    padding: 1.75rem;
-    border: 1px solid var(--line);
+    padding: 1.5rem;
   }
   .suggestion-type {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.5rem;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.4rem;
   }
   .suggestion-title {
     margin: 0 0 0.5rem;
-    font-size: 1.4rem;
+    font-family: var(--font-text);
+    font-size: 1.3rem;
+    line-height: 1.3;
+    letter-spacing: -.02em;
   }
   .suggestion-desc {
-    margin: 0 0 1.5rem;
+    margin: 0 0 1.25rem;
+    font-size: 0.88rem;
+    line-height: 1.5;
   }
   .suggestion-actions {
     display: flex;
-    gap: 1rem;
+    gap: 0.6rem;
     align-items: center;
     flex-wrap: wrap;
   }
 
   /* Historique */
   .history-section {
-    border-top: 1px solid var(--line);
-    padding-top: 2rem;
+    padding: 1.5rem 1.75rem;
   }
   .list-header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin-bottom: 1.25rem;
+    margin-bottom: 1rem;
   }
   .history-list {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
   .history-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem 1.25rem;
+    padding: 0.75rem 0.9rem;
     background: var(--soft);
     border-radius: var(--radius);
     gap: 1rem;
+    border-left: 3px solid var(--line-strong);
   }
   .history-time {
-    width: 60px;
+    display: grid;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8rem;
+    width: 65px;
     flex: none;
+  }
+  .history-time strong {
+    color: var(--fg);
+    font-weight: 600;
   }
   .history-info {
     flex: 1;
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    min-width: 0;
   }
   .history-badge {
-    font-size: 0.75rem;
-    padding: 0.2rem 0.5rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    padding: 0.1rem 0.4rem;
     border-radius: 4px;
-    font-family: var(--font-ui);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    text-transform: uppercase;
   }
-  .badge-philo {
-    background: rgba(59, 130, 246, 0.15);
-    color: #2563eb;
-  }
-  .badge-cours {
-    background: rgba(16, 185, 129, 0.15);
-    color: #059669;
-  }
+  .badge-philo { color: var(--tone-philo); }
+  .badge-cours { color: var(--accent); }
   .history-link {
     color: var(--fg);
+    font-size: 0.92rem;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .history-link:hover {
     text-decoration: underline;
   }
   .no-history {
     font-style: italic;
-    padding: 2rem 0;
+    padding: 1.5rem 0;
     text-align: center;
   }
 
-  /* Boutons */
-  .btn {
-    padding: 0.6rem 1.25rem;
-    border-radius: var(--radius);
-    border: 1px solid var(--line);
-    background: var(--bg);
-    cursor: pointer;
-    font-family: var(--font-ui);
-    font-size: 0.9rem;
-    transition: all 0.15s ease;
-    display: inline-flex;
-    align-items: center;
-  }
-  .btn-primary {
-    background: var(--fg);
-    color: var(--bg);
-    border-color: var(--fg);
-  }
-  .btn-primary:hover {
-    opacity: 0.85;
-  }
-  .btn-subtle {
-    background: var(--bg);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 0.55rem 0.9rem;
-    font-size: 0.85rem;
-    cursor: pointer;
-  }
-  .btn-subtle:hover {
-    border-color: var(--fg);
-  }
-
-  @media (max-width: 40rem) {
-    .header-split {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    .history-item {
-      flex-direction: column;
-      align-items: flex-start;
-    }
+  @media (max-width: 62rem) {
+    .reminders-grid { grid-template-columns: 1fr; }
+    .reminders-aside { position: static; }
   }
 </style>

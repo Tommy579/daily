@@ -170,7 +170,7 @@ const shortcuts = [
       top.append(el('span', 'badge', day.charAt(0).toUpperCase() + day.slice(1)));
     }
     body.append(top, el('p', 'tl-title', label));
-    if (ev.location) body.append(el('p', 'tl-loc', `📍 ${ev.location}`));
+    if (ev.location) body.append(el('p', 'tl-loc', ev.location));
 
     li.append(time, body);
     return li;
