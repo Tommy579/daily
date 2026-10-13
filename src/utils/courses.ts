@@ -1,14 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+export type CourseFileType = 'pdf' | 'doc' | 'code' | 'text' | 'other';
+
 export interface CourseFile {
   name: string;
-  path: string; // relative to COURS_DIR, ex: "matlab/TD3/fibo.m"
+  path: string; // relative to COURS_DIR, ex: "EDO/CM/Cours9.pdf"
   url: string;  // web public url to open/download
   viewerUrl: string;
   size: number;
   ext: string;
-  type: 'pdf' | 'code' | 'text' | 'other';
+  type: CourseFileType;
   modified: string;
 }
 
@@ -27,16 +29,18 @@ export interface CourseSubject {
   stats: {
     totalFiles: number;
     pdfCount: number;
+    docCount: number;
     codeCount: number;
   };
 }
 
 export const COURS_ROOT = '/home/tom/Documents/Cours';
 
-function getFileType(ext: string): 'pdf' | 'code' | 'text' | 'other' {
+function getFileType(ext: string): CourseFileType {
   const e = ext.toLowerCase();
   if (e === '.pdf') return 'pdf';
-  if (['.c', '.h', '.cpp', '.m', '.py', '.js', '.ts', '.sh'].includes(e)) return 'code';
+  if (['.doc', '.docx', '.odt', '.rtf'].includes(e)) return 'doc';
+  if (['.c', '.h', '.cpp', '.m', '.py', '.js', '.ts', '.sh', '.sci', '.sce'].includes(e)) return 'code';
   if (['.txt', '.md'].includes(e)) return 'text';
   return 'other';
 }
@@ -86,19 +90,21 @@ function scanFolder(dirPath: string, relativeBase: string = ''): CourseFolder {
   };
 }
 
-function countFolderStats(folder: CourseFolder): { totalFiles: number; pdfCount: number; codeCount: number } {
+function countFolderStats(folder: CourseFolder): { totalFiles: number; pdfCount: number; docCount: number; codeCount: number } {
   let totalFiles = folder.files.length;
   let pdfCount = folder.files.filter((f) => f.type === 'pdf').length;
+  let docCount = folder.files.filter((f) => f.type === 'doc').length;
   let codeCount = folder.files.filter((f) => f.type === 'code').length;
 
   for (const sub of folder.subfolders) {
     const subStats = countFolderStats(sub);
     totalFiles += subStats.totalFiles;
     pdfCount += subStats.pdfCount;
+    docCount += subStats.docCount;
     codeCount += subStats.codeCount;
   }
 
-  return { totalFiles, pdfCount, codeCount };
+  return { totalFiles, pdfCount, docCount, codeCount };
 }
 
 export function getCourses(): CourseSubject[] {
@@ -114,8 +120,15 @@ export function getCourses(): CourseSubject[] {
       if (fs.statSync(fullPath).isDirectory()) {
         const folder = scanFolder(fullPath, item);
         const stats = countFolderStats(folder);
+        const slugId = item
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+
         subjects.push({
-          id: item.toLowerCase(),
+          id: slugId || item.toLowerCase(),
           name: item,
           folder,
           stats,

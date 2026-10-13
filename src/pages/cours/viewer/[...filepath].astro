@@ -99,6 +99,64 @@ if (file.type === 'code' || file.type === 'text') {
         height: calc(100vh - 46px);
         border: none;
       }
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 80px);
+        padding: 2rem;
+      }
+      .unsupported-card {
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 2.5rem;
+        max-width: 500px;
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      }
+      .file-icon-large {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+      }
+      .unsupported-card h2 {
+        margin: 0 0 0.75rem;
+        font-size: 1.25rem;
+        word-break: break-word;
+      }
+      .unsupported-card p {
+        margin: 0 0 1.5rem;
+        opacity: 0.75;
+        font-size: 0.95rem;
+        line-height: 1.5;
+      }
+      .actions-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      .btn-download {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        background: var(--fg);
+        color: var(--bg);
+        padding: 0.75rem 1.25rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition: opacity 0.15s ease;
+      }
+      .btn-download:hover {
+        opacity: 0.85;
+        text-decoration: none;
+      }
+      .btn-back-link {
+        color: var(--fg);
+        font-size: 0.85rem;
+        opacity: 0.8;
+      }
     </style>
   </head>
   <body>
@@ -107,15 +165,32 @@ if (file.type === 'code' || file.type === 'text') {
         <strong>{file.name}</strong>
         <span style="opacity: 0.6; margin-left: 0.5rem;">({file.path})</span>
       </div>
-      <div>
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <a href={`/cours-files/${encodeURI(file.path)}`} download={file.name}>⬇️ Télécharger</a>
         <a href="/cours/">← Retour aux cours</a>
       </div>
     </header>
 
     {file.type === 'pdf' ? (
-      <iframe src={`/cours-files/${file.path}`} title={file.name}></iframe>
-    ) : (
+      <iframe src={`/cours-files/${encodeURI(file.path)}`} title={file.name}></iframe>
+    ) : (file.type === 'code' || file.type === 'text') ? (
       <pre><code>{content}</code></pre>
+    ) : (
+      <main class="unsupported-view">
+        <div class="unsupported-card">
+          <div class="file-icon-large">📄</div>
+          <h2>{file.name}</h2>
+          <p>
+            Ce format de fichier ({file.ext.toUpperCase() || 'Document'}) ne peut pas être affiché directement dans le navigateur. Vous pouvez l'ouvrir avec l'application appropriée sur votre ordinateur.
+          </p>
+          <div class="actions-group">
+            <a href={`/cours-files/${encodeURI(file.path)}`} download={file.name} class="btn-download">
+              ⬇️ Télécharger le fichier
+            </a>
+            <a href="/cours/" class="btn-back-link">Retour à la liste des cours</a>
+          </div>
+        </div>
+      </main>
     )}
   </body>
 </html>

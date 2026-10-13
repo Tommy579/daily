@@ -51,15 +51,14 @@
     place-items: center;
     width: 2.25rem;
     height: 2.25rem;
-    margin-right: -.5rem;
     background: none;
     border: 0;
-    color: var(--fg);
+    color: var(--muted);
     cursor: pointer;
     border-radius: 50%;
-    transition: background-color .2s ease;
+    transition: background-color .15s ease, color .15s ease;
   }
-  .theme-toggle:hover { background: var(--line); }
+  .theme-toggle:hover { background: var(--soft); color: var(--fg); }
 
   .theme-icon {
     transition: transform .5s var(--ease);

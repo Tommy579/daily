@@ -1,75 +1,133 @@
 ---
 import ThemeToggle from './ThemeToggle.astro';
+import Icon from './Icon.astro';
 import { SITE } from '../consts';
 
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
-const isTextes = path.startsWith('/textes') || path.startsWith('/themes');
-const isCours = path.startsWith('/cours');
-const isEmploi = path.startsWith('/emploi-du-temps');
-const isRappels = path.startsWith('/rappels');
+const links = [
+  { href: '/textes/', label: 'Textes', active: path.startsWith('/textes') || path.startsWith('/themes') },
+  { href: '/emploi-du-temps/', label: 'Emploi du temps', active: path.startsWith('/emploi-du-temps') },
+  { href: '/cours/', label: 'Cours', active: path.startsWith('/cours') },
+  { href: '/rappels/', label: 'Rappels', active: path.startsWith('/rappels') },
+];
 const isConfig = path.startsWith('/configuration');
 ---
 
 <header class="site-header">
-  <div class="container header-inner">
+  <div class="container container--wide header-inner">
     <a class="brand" href="/" aria-label={`${SITE.title} — accueil`} aria-current={path === '/' ? 'page' : undefined}>
       {SITE.title}
     </a>
+
     <nav class="nav" aria-label="Navigation principale">
-      <a href="/textes/" aria-current={isTextes ? 'page' : undefined}>Textes</a>
-      <span class="dot" aria-hidden="true">·</span>
-      <a href="/emploi-du-temps/" aria-current={isEmploi ? 'page' : undefined}>Emploi du temps</a>
-      <span class="dot" aria-hidden="true">·</span>
-      <a href="/cours/" aria-current={isCours ? 'page' : undefined}>Cours</a>
-      <span class="dot" aria-hidden="true">·</span>
-      <a href="/rappels/" aria-current={isRappels ? 'page' : undefined}>Rappels</a>
-      <span class="dot" aria-hidden="true">·</span>
-      <a href="/configuration/" aria-current={isConfig ? 'page' : undefined} title="Paramètres et synchronisation">⚙️ Config</a>
-      <span class="dot" aria-hidden="true">·</span>
-      <ThemeToggle />
+      <ul role="list">
+        {links.map((l) => (
+          <li>
+            <a href={l.href} aria-current={l.active ? 'page' : undefined}>{l.label}</a>
+          </li>
+        ))}
+      </ul>
     </nav>
+
+    <div class="header-actions">
+      <a
+        class="icon-link"
+        href="/configuration/"
+        aria-current={isConfig ? 'page' : undefined}
+        aria-label="Configuration"
+        title="Configuration"
+      >
+        <Icon name="settings" size={18} />
+      </a>
+      <ThemeToggle />
+    </div>
   </div>
 </header>
 
 <style>
   .site-header {
-    padding-block: 1.6rem;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: saturate(1.6) blur(14px);
+    -webkit-backdrop-filter: saturate(1.6) blur(14px);
+    border-bottom: 1px solid var(--line);
   }
   .header-inner {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
+    gap: 1rem 1.5rem;
+    min-height: 3.75rem;
   }
 
   .brand {
     font-family: var(--font-text);
-    font-size: 1.2rem;
+    font-size: 1.25rem;
     font-weight: 650;
-    letter-spacing: -.01em;
+    letter-spacing: -.015em;
     text-decoration: none;
     font-style: italic;
+    flex: none;
   }
   .brand:hover { text-decoration: none; opacity: .7; }
 
-  .nav {
+  .nav { flex: 1; min-width: 0; }
+  .nav ul {
     display: flex;
-    align-items: center;
-    gap: .55rem;
+    gap: .15rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
     font-family: var(--font-ui);
-    font-size: .9rem;
-    flex-wrap: wrap;
+    font-size: .88rem;
   }
   .nav a {
-    text-decoration: underline;
-    text-decoration-color: transparent;
-    text-decoration-thickness: 1px;
+    display: block;
+    padding: .4rem .75rem;
+    border-radius: 999px;
     color: var(--muted);
-    transition: color .15s ease, text-decoration-color .15s ease;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color .15s ease, background-color .15s ease;
   }
-  .nav a:hover { color: var(--fg); text-decoration-color: currentColor; }
-  .nav a[aria-current='page'] { color: var(--fg); text-decoration-color: currentColor; font-weight: 500; }
+  .nav a:hover { color: var(--fg); background: var(--soft); }
+  .nav a[aria-current='page'] { color: var(--fg); background: var(--soft); font-weight: 550; }
 
-  .dot { color: var(--muted); opacity: .6; }
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    flex: none;
+  }
+  .icon-link {
+    display: inline-grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    color: var(--muted);
+    transition: color .15s ease, background-color .15s ease, transform .3s var(--ease);
+  }
+  .icon-link:hover { color: var(--fg); background: var(--soft); }
+  .icon-link:hover :global(svg) { transform: rotate(30deg); transition: transform .4s var(--ease); }
+  .icon-link[aria-current='page'] { color: var(--fg); background: var(--soft); }
+
+  /* Mobile : la navigation passe sur une 2e ligne défilable horizontalement */
+  @media (max-width: 46rem) {
+    .header-inner { flex-wrap: wrap; padding-top: .5rem; gap: .25rem 1rem; }
+    .header-actions { margin-left: auto; }
+    .nav {
+      order: 3;
+      flex-basis: 100%;
+      overflow-x: auto;
+      scrollbar-width: none;
+      margin-inline: calc(-1 * var(--gutter));
+      padding: 0 var(--gutter) .5rem;
+      mask-image: linear-gradient(to right, #000 85%, transparent);
+    }
+    .nav::-webkit-scrollbar { display: none; }
+  }
+
+  @media print { .site-header { position: static; } }
 </style>

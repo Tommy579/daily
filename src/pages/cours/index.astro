@@ -19,12 +19,12 @@ const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
           <p class="label"><a href="/">Accueil</a> / Cours</p>
           <h1>Mes Cours</h1>
         </div>
-        <a href="/configuration/#notebook-settings" class="btn-config meta">
-          ⚙️ Paramètres Notebook & Import
+        <a href="/configuration/" class="btn-config meta">
+          ⚙️ Paramètres & Configuration
         </a>
       </div>
       <p class="lede">
-        Supports de cours, énoncés de TD et codes sources synchronisés depuis votre base de cours.
+        Supports de cours, énoncés de TD et fiches de révisions importés pour le Semestre 5.
       </p>
       <div class="meta stats-bar">
         <span>{totalCourses} matières</span>
@@ -42,7 +42,7 @@ const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
           <div class="subject-header">
             <div>
               <h2 class="subject-title">{sub.name}</h2>
-              <span class="meta">{sub.stats.totalFiles} fichiers ({sub.stats.pdfCount} PDF, {sub.stats.codeCount} code)</span>
+              <span class="meta">{sub.stats.totalFiles} fichiers ({sub.stats.pdfCount} PDF{sub.stats.docCount ? `, ${sub.stats.docCount} Word/doc` : ''}{sub.stats.codeCount ? `, ${sub.stats.codeCount} code` : ''})</span>
             </div>
             <a class="more" href={`#folder-${sub.id}`}>Explorer <span aria-hidden="true">↓</span></a>
           </div>
@@ -219,9 +219,14 @@ const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
     letter-spacing: 0.05em;
   }
   .file-badge--pdf {
-    background: #ff5252;
+    background: #ef4444;
     color: #fff;
-    border-color: #ff5252;
+    border-color: #ef4444;
+  }
+  .file-badge--doc {
+    background: #0284c7;
+    color: #fff;
+    border-color: #0284c7;
   }
   .file-badge--code {
     background: #2563eb;
@@ -232,6 +237,11 @@ const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
     background: #10b981;
     color: #fff;
     border-color: #10b981;
+  }
+  .file-badge--other {
+    background: #64748b;
+    color: #fff;
+    border-color: #64748b;
   }
   .file-actions {
     display: flex;

@@ -12,7 +12,6 @@ export const STORAGE_KEYS = {
   TIMETABLE_URL: 'marges_timetable_url',
   REMINDERS: 'marges_reminders_list',
   REMINDERS_CONFIG: 'marges_reminders_config',
-  NOTEBOOK_CONFIG: 'marges_notebook_config',
   THEME: 'theme',
 } as const;
 
@@ -22,13 +21,6 @@ export interface ReminderScheduleConfig {
   contentPreference: 'random' | 'philo' | 'cours';
   times: string[]; // e.g. ["09:00", "19:00"]
   weekDay?: number; // 1 = lundi
-}
-
-export interface NotebookConfig {
-  notebookUrl: string;
-  autoSync: boolean;
-  lastSync?: string;
-  notesSummary?: string;
 }
 
 const ONE_YEAR_SEC = 365 * 24 * 60 * 60;

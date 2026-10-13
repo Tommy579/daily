@@ -1,62 +1,60 @@
 ---
 import Base from '../../layouts/Base.astro';
+import { getCourses } from '../../utils/courses';
+
+const subjects = getCourses();
+const totalCourses = subjects.length;
+const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
 ---
 
 <Base
-  title="Configuration & Synchronisation"
-  description="Centralisez vos connexions Google Notebook, l'import d'emploi du temps et la planification de vos notifications."
+  title="Configuration & Paramètres"
+  description="Centralisez l'import de votre emploi du temps, vos supports de cours et la planification de vos notifications."
 >
   <div class="container config-page" data-config-root>
     <header class="page-header">
       <p class="label"><a href="/">Accueil</a> / Paramètres</p>
       <h1>Configuration & Paramètres</h1>
       <p class="lede">
-        Paramétrez vos sources distantes, vos synchronisations et vos alertes. Toutes vos préférences sont conservées automatiquement sur votre machine pendant un an.
+        Paramétrez vos fichiers de cours, votre calendrier et vos alertes. Toutes vos préférences sont conservées automatiquement sur votre machine pendant un an.
       </p>
     </header>
 
     <div class="config-grid">
-      <!-- 1. Google Notebook & Base de cours -->
+      <!-- 1. Fichiers de Cours & Révisions -->
       <section class="config-card">
         <div class="card-head">
-          <span class="card-icon">📓</span>
+          <span class="card-icon">📂</span>
           <div>
-            <h2>Google Notebook & Cours distants</h2>
-            <p class="meta">Synchronisation de vos notes et fiches de cours hébergées en ligne</p>
+            <h2>Mes Fichiers de Cours & Révisions</h2>
+            <p class="meta">Gestion des supports académiques et fiches de révisions importés directement par vos soins</p>
           </div>
         </div>
 
-        <form id="form-notebook" class="config-form">
-          <div class="form-group">
-            <label for="notebook-url" class="field-label">URL de partage ou identifiant du Notebook :</label>
-            <input
-              type="url"
-              id="notebook-url"
-              placeholder="https://notebooklm.google.com/notebook/... ou dossier Google Drive"
-            />
-            <span class="help-text">Le script automatisé et le workflow Gemini utilisent ce lien avec votre secret <code>GEMINI_API_KEY</code> pour indexer les nouveaux cours.</span>
-          </div>
-
-          <div class="form-checkbox">
-            <input type="checkbox" id="notebook-autosync" checked />
-            <label for="notebook-autosync">Analyse automatique quotidienne des nouveaux cours et mises à jour</label>
-          </div>
-
-          <div class="status-box" id="notebook-status-box">
-            <div class="status-indicator">
-              <span class="dot-status dot-active"></span>
-              <strong id="notebook-status-title">Dernière synchronisation</strong>
+        <div class="storage-info">
+          <p>
+            Vos supports de cours et fiches de révisions sont importés directement depuis votre dossier <strong>Semestre 5</strong>. Aucune dépendance externe ni compte en ligne n'est nécessaire : tous vos cours sont disponibles instantanément et consultables dans la visionneuse.
+          </p>
+          <div class="storage-status-list meta">
+            <div class="storage-row">
+              <span>Matières répertoriées :</span>
+              <strong>{totalCourses} matières actives</strong>
             </div>
-            <p class="status-desc meta" id="notebook-status-desc">
-              Synchronisé avec les fiches de cours locales et la base distante.
-            </p>
+            <div class="storage-row">
+              <span>Fichiers disponibles :</span>
+              <strong>{totalFiles} documents importés</strong>
+            </div>
+            <div class="storage-row">
+              <span>Source :</span>
+              <code>Semestre 5 (Local)</code>
+            </div>
           </div>
+        </div>
 
-          <div class="card-actions">
-            <button type="submit" class="btn btn-primary">Enregistrer la source</button>
-            <button type="button" class="btn" id="btn-sync-notebook-now">Analyser maintenant</button>
-          </div>
-        </form>
+        <div class="card-actions">
+          <a href="/cours/" class="btn btn-primary">Consulter mes cours</a>
+          <a href="/rappels/?presetType=cours" class="btn">Programmer un rappel de cours</a>
+        </div>
       </section>
 
       <!-- 2. Emploi du temps & Calendrier iCal -->
@@ -180,7 +178,7 @@ import Base from '../../layouts/Base.astro';
 
         <div class="storage-info">
           <p>
-            Toutes vos informations (calendrier personnalisé, préférences de révision, paramètres du notebook) sont sauvegardées sur une durée de <strong>365 jours</strong> dans vos cookies sécurisés et votre stockage navigateur.
+            Toutes vos informations (calendrier personnalisé, préférences de révision et notifications) sont sauvegardées sur une durée de <strong>365 jours</strong> dans vos cookies sécurisés et votre stockage navigateur.
           </p>
           <div class="storage-status-list meta">
             <div class="storage-row">
@@ -212,64 +210,11 @@ import Base from '../../layouts/Base.astro';
     loadPersistentJSON,
     deleteCookie,
     type ReminderScheduleConfig,
-    type NotebookConfig,
   } from '../../utils/persistence';
 
   function initConfigPage() {
     // ----------------------------------------------------
-    // 1. GESTION DU GOOGLE NOTEBOOK
-    // ----------------------------------------------------
-    const notebookForm = document.getElementById('form-notebook') as HTMLFormElement;
-    const notebookUrlInput = document.getElementById('notebook-url') as HTMLInputElement;
-    const notebookAutoSyncInput = document.getElementById('notebook-autosync') as HTMLInputElement;
-    const notebookDesc = document.getElementById('notebook-status-desc');
-    const btnSyncNow = document.getElementById('btn-sync-notebook-now');
-
-    const defaultNotebookConfig: NotebookConfig = {
-      notebookUrl: '',
-      autoSync: true,
-      lastSync: new Date().toLocaleDateString('fr-FR'),
-    };
-
-    const savedNotebook = loadPersistentJSON<NotebookConfig>(STORAGE_KEYS.NOTEBOOK_CONFIG, defaultNotebookConfig);
-    if (notebookUrlInput && savedNotebook.notebookUrl) notebookUrlInput.value = savedNotebook.notebookUrl;
-    if (notebookAutoSyncInput) notebookAutoSyncInput.checked = savedNotebook.autoSync !== false;
-    if (notebookDesc && savedNotebook.lastSync) {
-      notebookDesc.textContent = `Dernière synchronisation : ${savedNotebook.lastSync}. Base à jour.`;
-    }
-
-    notebookForm?.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const config: NotebookConfig = {
-        notebookUrl: notebookUrlInput.value.trim(),
-        autoSync: notebookAutoSyncInput.checked,
-        lastSync: new Date().toLocaleDateString('fr-FR') + ' à ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-      };
-      savePersistentJSON(STORAGE_KEYS.NOTEBOOK_CONFIG, config);
-      if (notebookDesc) {
-        notebookDesc.textContent = `Paramètres enregistrés ! Dernière vérification : ${config.lastSync}`;
-      }
-      alert('Source Google Notebook enregistrée avec succès.');
-    });
-
-    btnSyncNow?.addEventListener('click', () => {
-      if (notebookDesc) notebookDesc.textContent = 'Synchronisation et analyse des cours en cours...';
-      setTimeout(() => {
-        const config: NotebookConfig = {
-          notebookUrl: notebookUrlInput.value.trim(),
-          autoSync: notebookAutoSyncInput.checked,
-          lastSync: new Date().toLocaleDateString('fr-FR') + ' à ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-        };
-        savePersistentJSON(STORAGE_KEYS.NOTEBOOK_CONFIG, config);
-        if (notebookDesc) {
-          notebookDesc.textContent = `Synchronisation réussie le ${config.lastSync}. Fiches de cours et résumés actualisés.`;
-        }
-        alert('Analyse terminée : les cours de philosophie sont synchronisés.');
-      }, 700);
-    });
-
-    // ----------------------------------------------------
-    // 2. GESTION DE L'EMPLOI DU TEMPS
+    // 1. GESTION DE L'EMPLOI DU TEMPS
     // ----------------------------------------------------
     const timetableForm = document.getElementById('form-timetable') as HTMLFormElement;
     const icsFileInput = document.getElementById('ics-file') as HTMLInputElement;

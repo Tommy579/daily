@@ -1,4 +1,4 @@
-name: Quotidien Marges (Article Philo Quotidien & Analyse Notebook)
+name: Quotidien Marges (Article Philo Quotidien)
 
 on:
   workflow_dispatch: # Déclenchement manuel
@@ -41,17 +41,6 @@ jobs:
             node scripts/generate-article.mjs "$RANDOM_THEME" "$RANDOM_FORMAT"
           else
             echo "GEMINI_API_KEY non fournie dans les Secrets GitHub."
-          fi
-
-      - name: 📓 Analyse et synchronisation Google Notebook
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          NOTEBOOK_URL: ${{ secrets.NOTEBOOK_URL }}
-        run: |
-          if [ -n "$NOTEBOOK_URL" ]; then
-            node scripts/sync-notebook.mjs "$NOTEBOOK_URL"
-          else
-            echo "NOTEBOOK_URL non configuré, synchronisation locale uniquement."
           fi
 
       - name: Rebuild du site statique et index Pagefind
