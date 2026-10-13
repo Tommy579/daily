@@ -198,19 +198,23 @@ import Base from '../../layouts/Base.astro';
 
   function loadEventsForCurrentWeek(): CalendarEvent[] {
     const monday = getStartOfWeek(activeDate);
+    const sunday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     // Vérifier si l'utilisateur a importé son fichier .ics dans les cookies/localStorage
     const savedIcs = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
     if (savedIcs && savedIcs.trim().length > 20) {
-      const parsed = parseIcs(savedIcs);
-      if (parsed.length > 0) {
-        isCustomIcsLoaded = true;
-        return parsed;
+      try {
+        const parsed = parseIcs(savedIcs);
+        const thisWeekEvents = parsed.filter((e) => e.start >= monday && e.start <= sunday);
+        if (thisWeekEvents.length > 0) {
+          return parsed;
+        }
+      } catch (err) {
+        console.warn('Erreur lors de la lecture de l’ICS personnalisé:', err);
       }
     }
 
-    // Sinon, générer les cours récurrents du cursus exactement conformes à sa maquette
-    isCustomIcsLoaded = false;
+    // Par défaut : cours récurrents du cursus exactement conformes à sa maquette
     return generateWeekEvents(monday);
   }
 
@@ -464,12 +468,16 @@ import Base from '../../layouts/Base.astro';
 
     // Boutons de navigation semaines
     document.getElementById('cal-prev')?.addEventListener('click', () => {
-      activeDate.setDate(activeDate.getDate() - 7);
+      const prev = new Date(activeDate);
+      prev.setDate(prev.getDate() - 7);
+      activeDate = prev;
       renderCalendar();
     });
 
     document.getElementById('cal-next')?.addEventListener('click', () => {
-      activeDate.setDate(activeDate.getDate() + 7);
+      const next = new Date(activeDate);
+      next.setDate(next.getDate() + 7);
+      activeDate = next;
       renderCalendar();
     });
 
@@ -516,7 +524,14 @@ import Base from '../../layouts/Base.astro';
     setInterval(updateCurrentTimeIndicator, 30000);
   }
 
-  document.addEventListener('astro:page-load', initTimetable);
+  if (typeof window !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initTimetable);
+    } else {
+      initTimetable();
+    }
+    document.addEventListener('astro:page-load', initTimetable);
+  }
 </script>
 
 <style>
