@@ -603,26 +603,26 @@ import Base from '../../layouts/Base.astro';
 
   /* THÈME SOMBRE (forcé par toggle dark ou préférence système sombre) */
   :root[data-theme='dark'] {
-    --cal-bg: #000000;
-    --cal-surface: #121214;
-    --cal-border: #1e1e24;
-    --cal-text: #ffffff;
-    --cal-text-muted: #a1a1aa;
-    --cal-hour-line: rgba(255, 255, 255, 0.05);
-    --cal-today-col: rgba(255, 255, 255, 0.015);
+    --cal-bg: var(--bg);
+    --cal-surface: var(--surface);
+    --cal-border: var(--line);
+    --cal-text: var(--fg);
+    --cal-text-muted: var(--muted);
+    --cal-hour-line: var(--line);
+    --cal-today-col: color-mix(in srgb, var(--accent) 3%, transparent);
 
-    --cal-btn-bg: #1c1c1e;
-    --cal-btn-hover: #2c2c2e;
-    --cal-btn-fg: #e4e4e7;
+    --cal-btn-bg: var(--soft);
+    --cal-btn-hover: var(--line);
+    --cal-btn-fg: var(--fg);
 
-    --cal-pill-bg: rgba(28, 28, 30, 0.85);
-    --cal-pill-border: rgba(255, 255, 255, 0.12);
-    --cal-pill-text: #ffffff;
-    --cal-pill-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    --cal-pill-bg: color-mix(in srgb, var(--surface) 85%, transparent);
+    --cal-pill-border: var(--line-strong);
+    --cal-pill-text: var(--fg);
+    --cal-pill-shadow: var(--shadow-md);
 
-    --cal-modal-bg: #18181b;
-    --cal-modal-border: rgba(255, 255, 255, 0.15);
-    --cal-modal-text: #ffffff;
+    --cal-modal-bg: var(--surface);
+    --cal-modal-border: var(--line);
+    --cal-modal-text: var(--fg);
 
     /* Carré Magenta Éclatant */
     --card-magenta-bg: #a21caf;
@@ -655,26 +655,26 @@ import Base from '../../layouts/Base.astro';
 
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme='light']) {
-      --cal-bg: #000000;
-      --cal-surface: #121214;
-      --cal-border: #1e1e24;
-      --cal-text: #ffffff;
-      --cal-text-muted: #a1a1aa;
-      --cal-hour-line: rgba(255, 255, 255, 0.05);
-      --cal-today-col: rgba(255, 255, 255, 0.015);
+      --cal-bg: var(--bg);
+      --cal-surface: var(--surface);
+      --cal-border: var(--line);
+      --cal-text: var(--fg);
+      --cal-text-muted: var(--muted);
+      --cal-hour-line: var(--line);
+      --cal-today-col: color-mix(in srgb, var(--accent) 3%, transparent);
 
-      --cal-btn-bg: #1c1c1e;
-      --cal-btn-hover: #2c2c2e;
-      --cal-btn-fg: #e4e4e7;
+      --cal-btn-bg: var(--soft);
+      --cal-btn-hover: var(--line);
+      --cal-btn-fg: var(--fg);
 
-      --cal-pill-bg: rgba(28, 28, 30, 0.85);
-      --cal-pill-border: rgba(255, 255, 255, 0.12);
-      --cal-pill-text: #ffffff;
-      --cal-pill-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+      --cal-pill-bg: color-mix(in srgb, var(--surface) 85%, transparent);
+      --cal-pill-border: var(--line-strong);
+      --cal-pill-text: var(--fg);
+      --cal-pill-shadow: var(--shadow-md);
 
-      --cal-modal-bg: #18181b;
-      --cal-modal-border: rgba(255, 255, 255, 0.15);
-      --cal-modal-text: #ffffff;
+      --cal-modal-bg: var(--surface);
+      --cal-modal-border: var(--line);
+      --cal-modal-text: var(--fg);
 
       --card-magenta-bg: #a21caf;
       --card-magenta-border: #f472b6;
