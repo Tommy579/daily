@@ -356,7 +356,7 @@ import Base from '../../layouts/Base.astro';
               <div class="card-inner">
                 <h3 class="card-title">${ev.title}</h3>
                 ${ev.location ? `<div class="card-meta">📍 ${ev.location}</div>` : ''}
-                <div class="card-meta">🕒 ${formatTime(ev.start)}${ev.description ? ' (' + ev.description + ')' : ''}</div>
+                <div class="card-meta">🕒 ${formatTime(ev.start)} – ${formatTime(ev.end)}</div>
               </div>
             </div>
           `;
@@ -436,7 +436,6 @@ import Base from '../../layouts/Base.astro';
           <div class="agenda-info">
             <h3 class="agenda-title">${ev.title}</h3>
             ${ev.location ? `<p class="agenda-loc">📍 ${ev.location}</p>` : ''}
-            ${ev.description ? `<p class="agenda-desc meta">${ev.description}</p>` : ''}
           </div>
         </li>
       `;
@@ -639,8 +638,9 @@ import Base from '../../layouts/Base.astro';
     gap: 0.25rem;
   }
   .strip-day-btn {
-    background: none;
-    border: none;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -648,11 +648,11 @@ import Base from '../../layouts/Base.astro';
     cursor: pointer;
     padding: 0.35rem 0;
     border-radius: 12px;
-    color: #a1a1aa;
+    color: #a1a1aa !important;
     transition: background 0.15s ease;
   }
   .strip-day-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.08) !important;
   }
   .strip-letter {
     font-size: 0.72rem;
@@ -667,17 +667,18 @@ import Base from '../../layouts/Base.astro';
     display: grid;
     place-items: center;
     border-radius: 50%;
-    color: #ffffff;
+    color: #ffffff !important;
+    background: transparent !important;
   }
   /* Aujourd'hui = Cercle rouge vif */
   .strip-day-btn.is-today .strip-num {
-    background: var(--ios-red);
-    color: #ffffff;
-    box-shadow: 0 2px 8px rgba(255, 59, 48, 0.4);
+    background: var(--ios-red) !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(255, 59, 48, 0.5);
   }
   .strip-day-btn.is-selected:not(.is-today) .strip-num {
-    background: #27272a;
-    color: #ffffff;
+    background: #27272a !important;
+    color: #ffffff !important;
   }
 
   /* 3. VUE GRILLE SEMAINE */
@@ -896,44 +897,45 @@ import Base from '../../layouts/Base.astro';
     filter: brightness(1.15);
   }
   .card-inner {
-    padding: 0.45rem 0.55rem;
+    padding: 0.35rem 0.5rem;
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
+    overflow: hidden;
   }
 
   /* CM : Violet foncé & bordure fuchsia */
   .card-cm {
-    background: var(--ios-magenta-cm);
-    border: 1px solid rgba(192, 38, 211, 0.25);
-    border-left: 3.5px solid var(--ios-neon-border-cm);
+    background: #2c0840 !important;
+    border: 1px solid rgba(192, 38, 211, 0.35) !important;
+    border-left: 4px solid #c026d3 !important;
   }
   .card-cm .card-title {
-    color: #f0abfc;
+    color: #f0abfc !important;
   }
   .card-cm .card-meta {
-    color: #e9d5ff;
+    color: #e9d5ff !important;
   }
 
   /* TD : Violet saturé & bordure rose néon */
   .card-td {
-    background: var(--ios-magenta-td);
-    border: 1px solid rgba(225, 29, 72, 0.25);
-    border-left: 3.5px solid var(--ios-neon-border-td);
+    background: #3d0947 !important;
+    border: 1px solid rgba(225, 29, 72, 0.35) !important;
+    border-left: 4px solid #e11d48 !important;
   }
   .card-td .card-title {
-    color: #f472b6;
+    color: #f472b6 !important;
   }
   .card-td .card-meta {
-    color: #fbcfe8;
+    color: #fbcfe8 !important;
   }
 
   .card-title {
-    margin: 0 0 0.2rem;
-    font-size: 0.82rem;
-    font-weight: 700;
-    line-height: 1.25;
+    margin: 0 0 0.15rem !important;
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
     letter-spacing: -0.01em;
     overflow: hidden;
     display: -webkit-box;
@@ -941,10 +943,10 @@ import Base from '../../layouts/Base.astro';
     -webkit-box-orient: vertical;
   }
   .card-meta {
-    font-size: 0.68rem;
-    font-weight: 500;
-    line-height: 1.3;
-    opacity: 0.9;
+    font-size: 0.68rem !important;
+    font-weight: 500 !important;
+    line-height: 1.25 !important;
+    opacity: 0.92;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
