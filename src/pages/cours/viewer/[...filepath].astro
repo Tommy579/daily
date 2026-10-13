@@ -1,0 +1,121 @@
+---
+import fs from 'node:fs';
+import path from 'node:path';
+import { COURS_ROOT, getCourses, type CourseFile, type CourseFolder } from '../../../utils/courses';
+
+export async function getStaticPaths() {
+  const subjects = getCourses();
+  
+  function collectFiles(folder: CourseFolder, subjectId: string): Array<{ file: CourseFile; subjectId: string }> {
+    let result: Array<{ file: CourseFile; subjectId: string }> = [];
+    for (const f of folder.files) {
+      result.push({ file: f, subjectId });
+    }
+    for (const sub of folder.subfolders) {
+      result = result.concat(collectFiles(sub, subjectId));
+    }
+    return result;
+  }
+
+  const allFiles: Array<{ file: CourseFile; subjectId: string }> = [];
+  for (const s of subjects) {
+    allFiles.push(...collectFiles(s.folder, s.id));
+  }
+
+  return allFiles.map((item) => {
+    return {
+      params: { filepath: item.file.path },
+      props: { file: item.file },
+    };
+  });
+}
+
+const { file } = Astro.props;
+const fullPath = path.join(COURS_ROOT, file.path);
+let content = '';
+
+if (file.type === 'code' || file.type === 'text') {
+  try {
+    content = fs.readFileSync(fullPath, 'utf-8');
+  } catch {
+    content = 'Impossible de lire le fichier.';
+  }
+}
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{file.name} — Marges Cours</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #111111;
+        --line: #e8e8e8;
+        --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+        --font-ui: system-ui, -apple-system, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0a0a0a;
+          --fg: #ededed;
+          --line: #232323;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--font-ui);
+      }
+      .header {
+        position: sticky;
+        top: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1.5rem;
+        background: var(--bg);
+        border-bottom: 1px solid var(--line);
+        font-size: 0.9rem;
+      }
+      .header a {
+        color: var(--fg);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      pre {
+        margin: 0;
+        padding: 1.5rem;
+        font-family: var(--font-mono);
+        font-size: 0.95rem;
+        line-height: 1.55;
+        overflow-x: auto;
+      }
+      iframe {
+        width: 100vw;
+        height: calc(100vh - 46px);
+        border: none;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <div>
+        <strong>{file.name}</strong>
+        <span style="opacity: 0.6; margin-left: 0.5rem;">({file.path})</span>
+      </div>
+      <div>
+        <a href="/cours/">← Retour aux cours</a>
+      </div>
+    </header>
+
+    {file.type === 'pdf' ? (
+      <iframe src={`/cours-files/${file.path}`} title={file.name}></iframe>
+    ) : (
+      <pre><code>{content}</code></pre>
+    )}
+  </body>
+</html>

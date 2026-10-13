@@ -1,0 +1,10 @@
+1.a. ok
+b. on obtient bien x=60
+
+2. printf affiche 100
+
+3. int findSum(int n). le mot clé est return
+
+4. ok
+
+5. 

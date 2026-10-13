@@ -3,9 +3,11 @@ import Base from '../layouts/Base.astro';
 import TextCard from '../components/TextCard.astro';
 import { getTextes } from '../utils/textes';
 import { THEMES, type ThemeSlug } from '../data/themes';
+import { getCourses } from '../utils/courses';
 
 const textes = await getTextes();
-const latest = textes.slice(0, 6);
+const latest = textes.slice(0, 4);
+const subjects = getCourses();
 
 const counts = new Map<ThemeSlug, number>();
 textes.forEach((t) => t.data.themes.forEach((th) => counts.set(th, (counts.get(th) ?? 0) + 1)));
@@ -14,18 +16,54 @@ const themes = (Object.keys(THEMES) as ThemeSlug[]).filter((t) => counts.has(t))
 
 <Base>
   <section class="container hero" aria-labelledby="manifeste">
-    <h1 id="manifeste" class="visually-hidden">Marges — manifeste</h1>
+    <h1 id="manifeste" class="visually-hidden">Marges — Espace personnel</h1>
     <p class="manifesto">
       <span class="first">Penser lentement ce que les machines font&nbsp;vite.</span>
-      Des essais, des questions ouvertes, des dialogues et des fragments sur la place de l’intelligence artificielle dans
-      nos vies — le travail, les relations, la création, la conscience, le pouvoir.
+      Votre espace de travail personnel : des essais philosophiques sur l'intelligence artificielle, l'accès direct à vos cours universitaires, votre emploi du temps synchronisé et vos rappels d'étude.
     </p>
-    <p class="manifesto-end">Rien à vendre, rien à suivre&#8239;: seulement des textes à&nbsp;lire.</p>
+    <div class="workspace-quicklinks meta">
+      <a href="/dashboard/" class="quick-pill">✨ Tableau de bord</a>
+      <a href="/emploi-du-temps/" class="quick-pill">📅 Emploi du temps</a>
+      <a href="/cours/" class="quick-pill">📂 Cours ({subjects.length} matières)</a>
+      <a href="/rappels/" class="quick-pill">⏰ Rappels & Alertes</a>
+    </div>
+  </section>
+
+  <!-- Section Espace de travail -->
+  <section class="container workspace-spotlight" aria-labelledby="spotlight-title">
+    <div class="spotlight-grid">
+      <div class="spotlight-box">
+        <span class="meta label">Calendrier</span>
+        <h3>Emploi du temps & Cours</h3>
+        <p class="meta">
+          Importez votre fichier <code>.ics</code> ou connectez votre flux URL pour visualiser vos journées et planifier vos sessions.
+        </p>
+        <a href="/emploi-du-temps/" class="more">Voir mon planning <span>→</span></a>
+      </div>
+
+      <div class="spotlight-box">
+        <span class="meta label">Académique</span>
+        <h3>Supports & Travaux dirigés</h3>
+        <p class="meta">
+          Consultez vos PDF, codes sources et comptes-rendus en C, Matlab et EDO dans une visionneuse épurée.
+        </p>
+        <a href="/cours/" class="more">Accéder aux documents <span>→</span></a>
+      </div>
+
+      <div class="spotlight-box">
+        <span class="meta label">Productivité</span>
+        <h3>Rappels programmés</h3>
+        <p class="meta">
+          Recevez des alertes système pour vous inciter à ouvrir un cours ou lire un texte au moment voulu.
+        </p>
+        <a href="/rappels/" class="more">Programmer un rappel <span>→</span></a>
+      </div>
+    </div>
   </section>
 
   <section class="container latest" aria-labelledby="derniers">
     <div class="section-head">
-      <h2 id="derniers" class="label">Derniers textes</h2>
+      <h2 id="derniers" class="label">Textes philosophiques récents</h2>
       <a class="more" href="/textes/">Tous les textes <span aria-hidden="true">→</span></a>
     </div>
     <ol class="list" role="list">
@@ -42,7 +80,7 @@ const themes = (Object.keys(THEMES) as ThemeSlug[]).filter((t) => counts.has(t))
   {
     themes.length > 0 && (
       <section class="container home-themes" aria-labelledby="themes">
-        <h2 id="themes" class="label">Thèmes</h2>
+        <h2 id="themes" class="label">Thèmes explorés</h2>
         <ul class="theme-cloud" role="list">
           {themes.map((t) => (
             <li>
@@ -60,16 +98,15 @@ const themes = (Object.keys(THEMES) as ThemeSlug[]).filter((t) => counts.has(t))
 
 <style>
   .hero {
-    padding-block: clamp(3rem, 2rem + 7vw, 7.5rem) clamp(2.5rem, 2rem + 3vw, 4.5rem);
+    padding-block: clamp(3rem, 2rem + 6vw, 6.5rem) clamp(2rem, 1.5rem + 2vw, 3.5rem);
   }
   .manifesto {
-    font-size: clamp(1.45rem, 1.1rem + 1.6vw, 2.15rem);
-    line-height: 1.38;
+    font-size: clamp(1.4rem, 1.1rem + 1.4vw, 2rem);
+    line-height: 1.4;
     letter-spacing: -.012em;
-    margin: 0 0 1.4rem;
+    margin: 0 0 1.5rem;
     color: var(--muted);
     text-wrap: pretty;
-    hyphens: manual;
   }
   .manifesto .first {
     display: block;
@@ -79,23 +116,48 @@ const themes = (Object.keys(THEMES) as ThemeSlug[]).filter((t) => counts.has(t))
     margin-bottom: .5rem;
     text-wrap: balance;
   }
-  .manifesto-end {
-    margin: 0;
-    font-style: italic;
+  .workspace-quicklinks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
+  }
+  .quick-pill {
+    padding: 0.4rem 0.8rem;
+    background: var(--soft);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    text-decoration: none;
     color: var(--fg);
-    font-size: clamp(1.1rem, 1rem + .4vw, 1.3rem);
+    font-size: 0.85rem;
+    transition: all 0.15s ease;
+  }
+  .quick-pill:hover {
+    border-color: var(--fg);
   }
 
-  @media (prefers-reduced-motion: no-preference) {
-    .hero > * {
-      animation: rise .9s var(--ease) both;
-    }
-    .hero > :nth-child(3) { animation-delay: .12s; }
-    .latest { animation: rise .9s .2s var(--ease) both; }
+  .workspace-spotlight {
+    margin-bottom: 4rem;
   }
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: none; }
+  .spotlight-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+  .spotlight-box {
+    background: var(--soft);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+  }
+  .spotlight-box h3 {
+    margin: 0.5rem 0 0.5rem;
+    font-size: 1.2rem;
+  }
+  .spotlight-box p {
+    flex: 1;
+    margin-bottom: 1.25rem;
   }
 
   .section-head {
@@ -115,7 +177,7 @@ const themes = (Object.keys(THEMES) as ThemeSlug[]).filter((t) => counts.has(t))
   }
   .list > li + li { border-top: 1px solid var(--line); }
 
-  .home-themes { margin-top: 4.5rem; }
+  .home-themes { margin-top: 4.5rem; margin-bottom: 4rem; }
   .home-themes h2 {
     color: var(--fg);
     padding-bottom: .9rem;
@@ -143,5 +205,11 @@ const themes = (Object.keys(THEMES) as ThemeSlug[]).filter((t) => counts.has(t))
     color: var(--muted);
     margin-left: .15rem;
     font-feature-settings: 'tnum' 1;
+  }
+
+  @media (max-width: 50rem) {
+    .spotlight-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

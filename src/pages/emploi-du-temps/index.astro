@@ -1,0 +1,589 @@
+---
+import Base from '../../layouts/Base.astro';
+---
+
+<Base
+  title="Emploi du temps"
+  description="Emploi du temps universitaire connecté à vos flux iCal (.ics) ou RSS."
+>
+  <div class="container timetable-page" data-timetable-root>
+    <header class="page-header">
+      <p class="label"><a href="/dashboard/">Espace de travail</a> / Calendrier</p>
+      <h1>Emploi du temps</h1>
+      <p class="lede">
+        Synchronisez vos cours en direct via un fichier <kbd>.ics</kbd>, une URL iCal distante ou un flux RSS.
+      </p>
+    </header>
+
+    <!-- Panneau de synchronisation -->
+    <section class="sync-panel" aria-labelledby="sync-title">
+      <div class="sync-header">
+        <h2 id="sync-title" class="label">Source de données</h2>
+        <span class="meta sync-status" data-sync-status>Source locale prête</span>
+      </div>
+
+      <div class="sync-controls">
+        <div class="sync-field">
+          <label for="ical-url" class="meta">URL distante (iCal ou RSS) :</label>
+          <div class="input-group">
+            <input
+              type="url"
+              id="ical-url"
+              placeholder="https://mon-universite.fr/agenda/cours.ics"
+              autocomplete="off"
+            />
+            <button type="button" class="btn btn-primary" id="btn-sync-url">Synchroniser</button>
+          </div>
+        </div>
+
+        <div class="sync-or">
+          <span class="sep">ou</span>
+        </div>
+
+        <div class="sync-file">
+          <label for="ical-file" class="meta">Importer un fichier local (.ics) :</label>
+          <input type="file" id="ical-file" accept=".ics,.ical,text/calendar" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Navigation calendrier (Semaine / Aujourd'hui) -->
+    <div class="calendar-nav">
+      <div class="nav-controls">
+        <button type="button" class="btn" id="cal-prev">← Précédent</button>
+        <button type="button" class="btn" id="cal-today">Aujourd'hui</button>
+        <button type="button" class="btn" id="cal-next">Suivant →</button>
+      </div>
+      <h2 class="current-period-title" data-period-title>Cette semaine</h2>
+      <div class="view-switch meta">
+        <button type="button" class="btn-subtle active" data-view="week">Semaine</button>
+        <span class="sep">·</span>
+        <button type="button" class="btn-subtle" data-view="agenda">Liste</button>
+      </div>
+    </div>
+
+    <!-- Grille de la semaine -->
+    <div class="week-grid" data-week-grid>
+      <!-- Rempli en JS -->
+    </div>
+
+    <!-- Vue liste / agenda -->
+    <div class="agenda-view" data-agenda-view hidden>
+      <ul class="agenda-list" data-agenda-list role="list">
+        <!-- Rempli en JS -->
+      </ul>
+    </div>
+  </div>
+</Base>
+
+<script is:inline src="https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js"></script>
+
+<script>
+  import { SAMPLE_ICS_DATA } from '../../utils/timetable';
+
+  interface EventParsed {
+    id: string;
+    title: string;
+    start: Date;
+    end: Date;
+    location: string;
+    description: string;
+  }
+
+  const STORAGE_KEY = 'marges_timetable_ics';
+  const STORAGE_URL_KEY = 'marges_timetable_url';
+
+  let currentEvents: EventParsed[] = [];
+  let currentDate = new Date();
+  let currentView: 'week' | 'agenda' = 'week';
+
+  function parseIcsText(icsData: string): EventParsed[] {
+    try {
+      // @ts-ignore
+      const jcal = window.ICAL ? window.ICAL.parse(icsData) : null;
+      if (!jcal) return [];
+      // @ts-ignore
+      const comp = new window.ICAL.Component(jcal);
+      const vevents = comp.getAllSubcomponents('vevent');
+      const list: EventParsed[] = [];
+
+      for (const vevent of vevents) {
+        // @ts-ignore
+        const ev = new window.ICAL.Event(vevent);
+        list.push({
+          id: ev.uid || Math.random().toString(),
+          title: ev.summary || 'Cours sans titre',
+          start: ev.startDate.toJSDate(),
+          end: ev.endDate.toJSDate(),
+          location: ev.location || '',
+          description: ev.description || '',
+        });
+      }
+
+      // Tri chronologique
+      return list.sort((a, b) => a.start.getTime() - b.start.getTime());
+    } catch (e) {
+      console.error('Erreur parsing ICS:', e);
+      return [];
+    }
+  }
+
+  function getStartOfWeek(d: Date): Date {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1); // lundi
+    date.setDate(diff);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+
+  function formatTime(d: Date): string {
+    return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function formatDateFr(d: Date): string {
+    return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+
+  function renderWeek() {
+    const grid = document.querySelector('[data-week-grid]');
+    const periodTitle = document.querySelector('[data-period-title]');
+    if (!grid || !periodTitle) return;
+
+    const monday = getStartOfWeek(currentDate);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    periodTitle.textContent = `Semaine du ${monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} au ${sunday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const dayDate = new Date(monday);
+      dayDate.setDate(monday.getDate() + i);
+      days.push(dayDate);
+    }
+
+    let html = '';
+    for (const day of days) {
+      const isToday = day.toDateString() === new Date().toDateString();
+      const dayEvents = currentEvents.filter(
+        (e) => e.start.toDateString() === day.toDateString()
+      );
+
+      html += `
+        <div class="day-column ${isToday ? 'day-today' : ''}">
+          <div class="day-header">
+            <span class="day-name">${day.toLocaleDateString('fr-FR', { weekday: 'short' })}</span>
+            <span class="day-num">${day.getDate()}</span>
+          </div>
+          <div class="day-events">
+            ${
+              dayEvents.length === 0
+                ? '<div class="no-events meta">Aucun cours</div>'
+                : dayEvents
+                    .map(
+                      (e) => `
+              <div class="event-card" title="${e.description}">
+                <div class="event-time meta">${formatTime(e.start)} – ${formatTime(e.end)}</div>
+                <div class="event-title">${e.title}</div>
+                ${e.location ? `<div class="event-loc meta">📍 ${e.location}</div>` : ''}
+                <div class="event-actions">
+                  <button type="button" class="btn-event-reminder" data-title="${encodeURIComponent(e.title)}" data-start="${e.start.toISOString()}">
+                    ⏰ Rappel
+                  </button>
+                </div>
+              </div>
+            `
+                    )
+                    .join('')
+            }
+          </div>
+        </div>
+      `;
+    }
+
+    grid.innerHTML = html;
+    bindEventReminders();
+  }
+
+  function renderAgenda() {
+    const list = document.querySelector('[data-agenda-list]');
+    if (!list) return;
+
+    if (currentEvents.length === 0) {
+      list.innerHTML = '<li class="no-events meta">Aucun cours trouvé dans ce calendrier.</li>';
+      return;
+    }
+
+    list.innerHTML = currentEvents
+      .map(
+        (e) => `
+      <li class="agenda-item">
+        <div class="agenda-date meta">
+          <strong>${formatDateFr(e.start)}</strong>
+          <span>${formatTime(e.start)} – ${formatTime(e.end)}</span>
+        </div>
+        <div class="agenda-content">
+          <h3 class="agenda-title">${e.title}</h3>
+          ${e.location ? `<p class="agenda-loc meta">📍 ${e.location}</p>` : ''}
+          ${e.description ? `<p class="agenda-desc meta">${e.description}</p>` : ''}
+        </div>
+        <div class="agenda-actions">
+          <button type="button" class="btn-event-reminder action-btn" data-title="${encodeURIComponent(e.title)}" data-start="${e.start.toISOString()}">
+            ⏰ Planifier rappel
+          </button>
+        </div>
+      </li>
+    `
+      )
+      .join('');
+
+    bindEventReminders();
+  }
+
+  function bindEventReminders() {
+    document.querySelectorAll('.btn-event-reminder').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const title = decodeURIComponent(btn.getAttribute('data-title') || '');
+        const start = btn.getAttribute('data-start') || '';
+        // rappel 15 min avant le cours
+        let remTime = new Date();
+        if (start) {
+          const courseDate = new Date(start);
+          remTime = new Date(courseDate.getTime() - 15 * 60 * 1000);
+        }
+        const params = new URLSearchParams({
+          presetTitle: `Préparer le cours : ${title}`,
+          presetTarget: `/emploi-du-temps/`,
+          presetType: 'cours',
+          presetTime: remTime.toISOString().slice(0, 16),
+        });
+        window.location.href = `/rappels/?${params.toString()}`;
+      });
+    });
+  }
+
+  function updateView() {
+    const weekGrid = document.querySelector('[data-week-grid]');
+    const agendaView = document.querySelector('[data-agenda-view]');
+    if (!weekGrid || !agendaView) return;
+
+    if (currentView === 'week') {
+      weekGrid.removeAttribute('hidden');
+      agendaView.setAttribute('hidden', '');
+      renderWeek();
+    } else {
+      weekGrid.setAttribute('hidden', '');
+      agendaView.removeAttribute('hidden');
+      renderAgenda();
+    }
+  }
+
+  async function loadData() {
+    const statusEl = document.querySelector('[data-sync-status]');
+    let raw = localStorage.getItem(STORAGE_KEY);
+    const savedUrl = localStorage.getItem(STORAGE_URL_KEY);
+
+    const urlInput = document.getElementById('ical-url') as HTMLInputElement;
+    if (savedUrl && urlInput) {
+      urlInput.value = savedUrl;
+    }
+
+    if (!raw) {
+      raw = SAMPLE_ICS_DATA;
+      localStorage.setItem(STORAGE_KEY, raw);
+    }
+
+    currentEvents = parseIcsText(raw);
+    if (statusEl) {
+      statusEl.textContent = `${currentEvents.length} événements chargés`;
+    }
+    updateView();
+  }
+
+  function initTimetable() {
+    loadData();
+
+    // Boutons de navigation semaine
+    document.getElementById('cal-prev')?.addEventListener('click', () => {
+      currentDate.setDate(currentDate.getDate() - 7);
+      updateView();
+    });
+    document.getElementById('cal-next')?.addEventListener('click', () => {
+      currentDate.setDate(currentDate.getDate() + 7);
+      updateView();
+    });
+    document.getElementById('cal-today')?.addEventListener('click', () => {
+      currentDate = new Date();
+      updateView();
+    });
+
+    // Bascule vue
+    document.querySelectorAll('[data-view]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-view]').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentView = btn.getAttribute('data-view') as 'week' | 'agenda';
+        updateView();
+      });
+    });
+
+    // Import fichier
+    const fileInput = document.getElementById('ical-file') as HTMLInputElement;
+    fileInput?.addEventListener('change', async (e) => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      localStorage.setItem(STORAGE_KEY, text);
+      currentEvents = parseIcsText(text);
+      const statusEl = document.querySelector('[data-sync-status]');
+      if (statusEl) statusEl.textContent = `Fichier "${file.name}" importé (${currentEvents.length} cours)`;
+      updateView();
+    });
+
+    // Synchronisation URL
+    const btnSync = document.getElementById('btn-sync-url');
+    const urlInput = document.getElementById('ical-url') as HTMLInputElement;
+    btnSync?.addEventListener('click', async () => {
+      const targetUrl = urlInput.value.trim();
+      if (!targetUrl) return;
+
+      const statusEl = document.querySelector('[data-sync-status]');
+      if (statusEl) statusEl.textContent = 'Téléchargement du flux en cours...';
+
+      try {
+        const res = await fetch(`/api/calendar/proxy?url=${encodeURIComponent(targetUrl)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const content = await res.text();
+        localStorage.setItem(STORAGE_KEY, content);
+        localStorage.setItem(STORAGE_URL_KEY, targetUrl);
+        currentEvents = parseIcsText(content);
+        if (statusEl) statusEl.textContent = `Synchronisé avec succès (${currentEvents.length} événements)`;
+        updateView();
+      } catch (err: any) {
+        if (statusEl) statusEl.textContent = `Erreur de synchronisation: ${err.message}`;
+      }
+    });
+  }
+
+  document.addEventListener('astro:page-load', initTimetable);
+</script>
+
+<style>
+  .timetable-page {
+    padding-bottom: 5rem;
+  }
+  .sync-panel {
+    background: var(--soft);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+  .sync-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1rem;
+  }
+  .sync-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1.5rem;
+  }
+  .sync-field {
+    flex: 2;
+    min-width: 280px;
+  }
+  .input-group {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+  }
+  .input-group input {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+  }
+  .sync-or {
+    padding-bottom: 0.5rem;
+  }
+  .sync-file {
+    flex: 1;
+    min-width: 220px;
+  }
+  .sync-file input {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+  }
+
+  .btn {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0.5rem 0.85rem;
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn:hover {
+    border-color: var(--fg);
+  }
+  .btn-primary {
+    background: var(--fg);
+    color: var(--bg);
+    border-color: var(--fg);
+  }
+  .btn-primary:hover {
+    opacity: 0.85;
+  }
+
+  .calendar-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-controls {
+    display: flex;
+    gap: 0.35rem;
+  }
+  .current-period-title {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+  .view-switch button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: var(--muted);
+  }
+  .view-switch button.active {
+    color: var(--fg);
+    font-weight: 600;
+  }
+
+  /* Vue semaine en colonnes */
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.75rem;
+    overflow-x: auto;
+  }
+  .day-column {
+    background: var(--soft);
+    border-radius: var(--radius);
+    padding: 0.75rem;
+    min-height: 380px;
+  }
+  .day-today {
+    outline: 2px solid var(--fg);
+  }
+  .day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--font-ui);
+    font-weight: 600;
+  }
+  .day-num {
+    font-size: 1.1rem;
+  }
+  .day-events {
+    display: grid;
+    gap: 0.65rem;
+  }
+  .event-card {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 0.6rem;
+    display: grid;
+    gap: 0.35rem;
+  }
+  .event-time {
+    font-size: 0.75rem;
+  }
+  .event-title {
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  .event-loc {
+    font-size: 0.75rem;
+  }
+  .event-actions {
+    margin-top: 0.25rem;
+  }
+  .btn-event-reminder {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.75rem;
+    font-family: var(--font-ui);
+    color: var(--muted);
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .btn-event-reminder:hover {
+    color: var(--fg);
+  }
+  .no-events {
+    font-style: italic;
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 2rem 0;
+  }
+
+  /* Vue agenda / liste */
+  .agenda-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 1rem;
+  }
+  .agenda-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1.25rem;
+    background: var(--soft);
+    border-radius: var(--radius);
+  }
+  .agenda-date {
+    display: grid;
+    width: 140px;
+    flex: none;
+  }
+  .agenda-content {
+    flex: 1;
+  }
+  .agenda-title {
+    margin: 0 0 0.25rem;
+    font-size: 1.15rem;
+  }
+  .agenda-loc, .agenda-desc {
+    margin: 0;
+  }
+
+  @media (max-width: 50rem) {
+    .week-grid {
+      grid-template-columns: repeat(7, minmax(130px, 1fr));
+    }
+  }
+</style>

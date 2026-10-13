@@ -1,0 +1,224 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getTextes } from '../../utils/textes';
+import { getCourses } from '../../utils/courses';
+
+const textes = await getTextes();
+const subjects = getCourses();
+const latestTextes = textes.slice(0, 3);
+---
+
+<Base
+  title="Espace de travail"
+  description="Tableau de bord de votre espace de travail personnel : lectures philosophiques, cours universitaires et rappels."
+>
+  <div class="container dashboard-page">
+    <header class="page-header">
+      <p class="label">Vue d’ensemble</p>
+      <h1>Mon Espace de Travail</h1>
+      <p class="lede">
+        Votre environnement unifié : conciliez vos cours scientifiques, vos lectures philosophiques et vos sessions d'étude programmées.
+      </p>
+    </header>
+
+    <!-- Raccourcis principaux (3 piliers) -->
+    <div class="pillars-grid">
+      <a href="/emploi-du-temps/" class="pillar-card">
+        <span class="pillar-icon">📅</span>
+        <h2 class="pillar-title">Emploi du temps</h2>
+        <p class="pillar-desc meta">
+          Synchronisation iCal / RSS, vue par semaine et alertes de cours.
+        </p>
+        <span class="pillar-action more">Consulter le planning <span>→</span></span>
+      </a>
+
+      <a href="/cours/" class="pillar-card">
+        <span class="pillar-icon">📂</span>
+        <h2 class="pillar-title">Supports de Cours</h2>
+        <p class="pillar-desc meta">
+          {subjects.length} matières répertoriées (C, Matlab, EDO) avec visualisation directe.
+        </p>
+        <span class="pillar-action more">Ouvrir les cours <span>→</span></span>
+      </a>
+
+      <a href="/rappels/" class="pillar-card">
+        <span class="pillar-icon">⏰</span>
+        <h2 class="pillar-title">Rappels & Notifications</h2>
+        <p class="pillar-desc meta">
+          Planifiez vos sessions de lecture et recevez vos alertes de révision.
+        </p>
+        <span class="pillar-action more">Gérer les alertes <span>→</span></span>
+      </a>
+    </div>
+
+    <!-- Section Cours & Matières rapides -->
+    <section class="dash-section">
+      <div class="dash-section-header">
+        <h2 class="label">Matières actives</h2>
+        <a href="/cours/" class="more">Voir tous les dossiers <span>→</span></a>
+      </div>
+      <div class="subjects-strip">
+        {subjects.map((sub) => (
+          <div class="subject-mini-card">
+            <h3 class="subject-mini-title">{sub.name}</h3>
+            <p class="meta">{sub.stats.totalFiles} fichiers ({sub.stats.pdfCount} PDF)</p>
+            <div class="mini-links meta">
+              <a href={`/cours/#folder-${sub.id}`}>Explorer</a>
+              <span class="sep">·</span>
+              <a href={`/rappels/?presetTitle=${encodeURIComponent(`Réviser cours : ${sub.name}`)}&presetType=cours&presetTarget=${encodeURIComponent(`/cours/#folder-${sub.id}`)}`}>
+                ⏰ Rappel
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- Section Lectures recommandées -->
+    <section class="dash-section">
+      <div class="dash-section-header">
+        <h2 class="label">Lectures philosophiques récentes</h2>
+        <a href="/textes/" class="more">Toutes les publications <span>→</span></a>
+      </div>
+      <div class="readings-list">
+        {latestTextes.map((t) => (
+          <article class="reading-row">
+            <div>
+              <span class="meta">{t.data.type.toUpperCase()}</span>
+              <h3 class="reading-title">
+                <a href={`/textes/${t.id}/`}>{t.data.title}</a>
+              </h3>
+              <p class="reading-summary meta">{t.data.summary}</p>
+            </div>
+            <div class="reading-cta">
+              <a
+                href={`/rappels/?presetTitle=${encodeURIComponent(`Lire : ${t.data.title}`)}&presetType=texte&presetTarget=${encodeURIComponent(`/textes/${t.id}/`)}`}
+                class="btn-subtle"
+              >
+                ⏰ Planifier lecture
+              </a>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .dashboard-page {
+    padding-bottom: 5rem;
+  }
+  .pillars-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 4rem;
+  }
+  .pillar-card {
+    background: var(--soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 2rem 1.75rem;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s var(--ease), border-color 0.2s ease;
+  }
+  .pillar-card:hover {
+    border-color: var(--fg);
+    transform: translateY(-2px);
+  }
+  .pillar-icon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+  .pillar-title {
+    margin: 0 0 0.5rem;
+    font-size: 1.4rem;
+    color: var(--fg);
+  }
+  .pillar-desc {
+    margin: 0 0 1.5rem;
+    flex: 1;
+    line-height: 1.55;
+  }
+  .pillar-action {
+    color: var(--fg);
+  }
+
+  .dash-section {
+    border-top: 1px solid var(--fg);
+    padding-top: 2rem;
+    margin-bottom: 4rem;
+  }
+  .dash-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1.5rem;
+  }
+  .subjects-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+  }
+  .subject-mini-card {
+    background: var(--soft);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+  }
+  .subject-mini-title {
+    margin: 0 0 0.25rem;
+    font-size: 1.25rem;
+  }
+  .mini-links {
+    margin-top: 1rem;
+  }
+
+  .readings-list {
+    display: grid;
+    gap: 1.25rem;
+  }
+  .reading-row {
+    background: var(--soft);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+  }
+  .reading-title {
+    margin: 0.25rem 0 0.35rem;
+    font-size: 1.2rem;
+  }
+  .reading-summary {
+    margin: 0;
+  }
+  .btn-subtle {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0.45rem 0.85rem;
+    font-family: var(--font-ui);
+    font-size: 0.82rem;
+    text-decoration: none;
+    color: var(--fg);
+    white-space: nowrap;
+    transition: border-color 0.15s ease;
+  }
+  .btn-subtle:hover {
+    border-color: var(--fg);
+  }
+
+  @media (max-width: 50rem) {
+    .pillars-grid {
+      grid-template-columns: 1fr;
+    }
+    .reading-row {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>

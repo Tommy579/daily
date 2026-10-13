@@ -1,0 +1,261 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCourses, formatFileSize } from '../../utils/courses';
+
+const subjects = getCourses();
+const totalCourses = subjects.length;
+const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
+const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
+---
+
+<Base
+  title="Mes Cours"
+  description="Accès direct et visionneuse de vos cours, TD, travaux pratiques et documents académiques."
+>
+  <div class="container courses-page">
+    <header class="page-header">
+      <p class="label"><a href="/dashboard/">Espace de travail</a> / Cours</p>
+      <h1>Mes Cours</h1>
+      <p class="lede">
+        Tous vos supports, énoncés de TD et codes sources indexés depuis votre dossier local.
+      </p>
+      <div class="meta stats-bar">
+        <span>{totalCourses} matières</span>
+        <span class="sep">·</span>
+        <span>{totalFiles} fichiers</span>
+        <span class="sep">·</span>
+        <span>{totalPdfs} documents PDF</span>
+      </div>
+    </header>
+
+    <div class="subjects-grid">
+      {subjects.map((sub) => (
+        <section class="subject-card">
+          <div class="subject-header">
+            <div>
+              <h2 class="subject-title">{sub.name}</h2>
+              <span class="meta">{sub.stats.totalFiles} fichiers ({sub.stats.pdfCount} PDF, {sub.stats.codeCount} code)</span>
+            </div>
+            <a class="more" href={`#folder-${sub.id}`}>Explorer <span aria-hidden="true">↓</span></a>
+          </div>
+
+          <!-- Arborescence des fichiers -->
+          <div class="folder-tree" id={`folder-${sub.id}`}>
+            {sub.folder.subfolders.map((td) => (
+              <div class="td-section">
+                <h3 class="td-title">📂 {td.name}</h3>
+                <ul class="file-list" role="list">
+                  {td.files.map((file) => (
+                    <li class="file-item">
+                      <div class="file-info">
+                        <span class={`file-badge file-badge--${file.type}`}>
+                          {file.ext ? file.ext.replace('.', '').toUpperCase() : 'BIN'}
+                        </span>
+                        <a href={file.viewerUrl} class="file-name" title={`Ouvrir ${file.name}`}>
+                          {file.name}
+                        </a>
+                      </div>
+                      <div class="file-actions meta">
+                        <span>{formatFileSize(file.size)}</span>
+                        <span class="sep">·</span>
+                        <a href={file.viewerUrl} class="action-btn">Lire</a>
+                        <span class="sep">·</span>
+                        <button
+                          type="button"
+                          class="action-btn action-notify"
+                          data-plan-target={file.viewerUrl}
+                          data-plan-title={`${sub.name} — ${file.name}`}
+                          data-plan-type="cours"
+                        >
+                          ⏰ Rappel
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+
+            {sub.folder.files.length > 0 && (
+              <div class="td-section">
+                <h3 class="td-title">📄 Documents racines</h3>
+                <ul class="file-list" role="list">
+                  {sub.folder.files.map((file) => (
+                    <li class="file-item">
+                      <div class="file-info">
+                        <span class={`file-badge file-badge--${file.type}`}>
+                          {file.ext ? file.ext.replace('.', '').toUpperCase() : 'BIN'}
+                        </span>
+                        <a href={file.viewerUrl} class="file-name">
+                          {file.name}
+                        </a>
+                      </div>
+                      <div class="file-actions meta">
+                        <span>{formatFileSize(file.size)}</span>
+                        <span class="sep">·</span>
+                        <a href={file.viewerUrl} class="action-btn">Lire</a>
+                        <span class="sep">·</span>
+                        <button
+                          type="button"
+                          class="action-btn action-notify"
+                          data-plan-target={file.viewerUrl}
+                          data-plan-title={`${sub.name} — ${file.name}`}
+                          data-plan-type="cours"
+                        >
+                          ⏰ Rappel
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </section>
+      ))}
+    </div>
+  </div>
+</Base>
+
+<script>
+  document.querySelectorAll('.action-notify').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const target = btn.getAttribute('data-plan-target');
+      const title = btn.getAttribute('data-plan-title');
+      const type = btn.getAttribute('data-plan-type');
+      const params = new URLSearchParams({
+        presetTarget: target || '',
+        presetTitle: title || '',
+        presetType: type || '',
+      });
+      window.location.href = `/rappels/?${params.toString()}`;
+    });
+  });
+</script>
+
+<style>
+  .courses-page {
+    padding-bottom: 5rem;
+  }
+  .stats-bar {
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+  }
+  .subjects-grid {
+    display: grid;
+    gap: 3.5rem;
+    margin-top: 2.5rem;
+  }
+  .subject-card {
+    border-top: 1px solid var(--fg);
+    padding-top: 1.5rem;
+  }
+  .subject-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1.5rem;
+  }
+  .subject-title {
+    margin: 0 0 0.25rem;
+    font-size: 1.75rem;
+  }
+  .folder-tree {
+    display: grid;
+    gap: 1.75rem;
+  }
+  .td-section {
+    background: var(--soft);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+  }
+  .td-title {
+    margin: 0 0 1rem;
+    font-size: 1.05rem;
+    font-family: var(--font-ui);
+    font-weight: 600;
+  }
+  .file-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.65rem;
+  }
+  .file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .file-item:last-child {
+    border-bottom: none;
+  }
+  .file-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+  .file-name {
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .file-name:hover {
+    text-decoration-color: currentColor;
+  }
+  .file-badge {
+    font-family: var(--font-ui);
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .file-badge--pdf {
+    background: #ff5252;
+    color: #fff;
+    border-color: #ff5252;
+  }
+  .file-badge--code {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+  }
+  .file-badge--text {
+    background: #10b981;
+    color: #fff;
+    border-color: #10b981;
+  }
+  .file-actions {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+  }
+  .action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: var(--fg);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+  }
+  .action-btn:hover {
+    color: var(--fg);
+    opacity: 0.7;
+  }
+</style>

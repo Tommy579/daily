@@ -1,0 +1,307 @@
+EXERCICE 1 : MANIPULATION DE FICHIERS
+
+1. Création de l'arborescence (répertoire courant = ~) :
+a) Créer deux répertoires Unix et Python dans votre répertoire personnel :
+   $ mkdir Unix Python
+
+b) Créer deux répertoires TP1 et TP2 dans le répertoire Unix :
+   $ mkdir Unix/TP1 Unix/TP2
+
+c) Copier les deux répertoires TP1 et TP2 dans le répertoire Python :
+   $ cp -r Unix/TP1 Unix/TP2 Python/
+
+d) Créer deux répertoires seance1 et seance2 dans le répertoire TP1 de Unix :
+   $ mkdir Unix/TP1/seance1 Unix/TP1/seance2
+
+e) Créer deux fichiers exo1 et exo2 dans le répertoire seance1 :
+   $ touch Unix/TP1/seance1/exo1 Unix/TP1/seance1/exo2
+
+f) Copier les deux fichiers exo1 et exo2 dans le répertoire TP2 de Python :
+   $ cp Unix/TP1/seance1/exo1 Unix/TP1/seance1/exo2 Python/TP2/
+
+
+2. Déplacements relatifs et absolus :
+- Se placer dans Python/TP1 et vérifier :
+   $ cd ~/Python/TP1
+   $ pwd
+   # Affiche : /home/<login>/Python/TP1
+
+- Se placer dans Unix/TP2 en utilisant un chemin relatif (en une commande) :
+   $ cd ../../Unix/TP2
+
+- Retourner dans Python/TP1 en utilisant le chemin absolu :
+   $ cd /home/$USER/Python/TP1
+
+- Revenir à la racine du répertoire personnel :
+   $ cd ~
+   (ou simplement : $ cd)
+
+
+3. Suppression de Python/TP1 avec rmdir :
+Commande :
+   $ rmdir ~/Python/TP1
+Explication :
+   L'opération réussit immédiatement sans erreur car le répertoire Python/TP1 est vide.
+
+
+4. Suppression de Python/TP2 avec rmdir :
+Commande tentée :
+   $ rmdir ~/Python/TP2
+Pourquoi la commande a échoué :
+   `rmdir` échoue avec l'erreur "rmdir: failed to remove 'Python/TP2': Directory not empty".
+   En effet, Python/TP2 contient les fichiers exo1 et exo2 copiés à la question 1.f.
+
+Suppression en une commande de Python/TP2 :
+   $ rm -r ~/Python/TP2
+
+
+5. Déplacement et nettoyage de seance1 / seance2 :
+(Depuis le répertoire personnel ~)
+- Déplacer le fichier exo1 dans le répertoire TP1 :
+   $ mv Unix/TP1/seance1/exo1 Unix/TP1/
+- Supprimer seance1 (qui contient encore exo2) et seance2 (qui est vide) :
+   $ rm -r Unix/TP1/seance1 Unix/TP1/seance2
+
+
+6. Renommage des fichiers exo1 et exo2 :
+- Renommer Unix/TP1/exo1 en exercice1 :
+   $ mv ~/Unix/TP1/exo1 ~/Unix/TP1/exercice1
+(Note : si un fichier exo2 subsiste, ex: dans Unix/TP1/seance1 avant suppression ou dans une copie : $ mv exo2 exercice2)
+
+
+7. Arborescence théorique et vérification :
+Arborescence théorique résultante sous ~ :
+~
+├── Python
+└── Unix
+    ├── TP1
+    │   └── exercice1
+    └── TP2
+
+Commande de vérification :
+   $ tree ~
+(ou à défaut : $ ls -R ~)
+
+
+EXERCICE 2 : MÉTACARACTÈRES (GLOBBING)
+Prérequis : répertoire courant = ~/Unix/TP2
+
+1. Création des fichiers en une seule commande :
+   $ touch 3bananes 3poires 45pommes aride banane paname panorama Paris parti parties pomme programmer
+
+2. Création et déplacement dans Dictionnaire :
+   $ mkdir Dictionnaire
+   $ mv 3bananes 3poires 45pommes aride banane paname panorama Paris parti parties pomme programmer Dictionnaire/
+   $ cd Dictionnaire
+
+3. Commandes de filtrage avec globbing (depuis Dictionnaire) :
+a) Se terminant par 'e' :
+   $ ls *e
+
+b) Commençant par 'pa' :
+   $ ls pa*
+
+c) Contenant la chaîne 'ar' :
+   $ ls *ar*
+
+d) Commençant par un chiffre et ayant ensuite exactement quatre lettres minuscules :
+   $ ls [0-9][a-z][a-z][a-z][a-z]
+   (Résultat attendu : aucun fichier ne correspond, "3poires" en a 6, "45pommes" a 2 chiffres puis 6 lettres).
+
+e) Commençant par un chiffre et contenant au moins trois lettres minuscules consécutives dont la troisième est une voyelle :
+   $ ls [0-9]*[a-z][a-z][aeiouy]*
+   (Correspondance : 3bananes, 3poires, 45pommes)
+
+f) Commençant par un chiffre et contenant au moins trois lettres minuscules consécutives dont la troisième n'est pas une voyelle :
+   $ ls [0-9]*[a-z][a-z][!aeiouy]*
+   (Correspondance : 45pommes car 'pom' a 'm' comme 3e consécutive)
+
+g) Contenant la chaîne 'ar', celle-ci n'étant pas suivie d'un 'i' :
+   Pour Bash, avec extglob :
+   $ shopt -s extglob
+   $ ls *(ar!(i))*
+   (Sans extglob : $ ls *ar[!i]* )
+   (Correspondance : programmer, panorama, etc. Exclut aride et Paris).
+
+h) Commençant par 'p' ou 'P' :
+   $ ls [pP]*
+
+i) Commençant par 'p' ou 'P', ou finissant par un 's' :
+   $ ls {[pP]*,*s}
+   (ou avec extglob : $ ls @([pP]*|*s))
+
+j) Ne commençant ni par 'p', ni par 'P' :
+   $ ls [!pP]*
+
+k) Ne terminant ni par 'e', ni par 's' :
+   $ ls *[!es]
+
+l) Dont l'avant-dernier caractère est un 'm' OU le dernier est un 'e' :
+   $ ls {*m?,*e}
+   (ou avec extglob : $ ls @(*m?|*e))
+
+m) Dont le troisième caractère est une voyelle :
+   $ ls ??[aeiouy]*
+
+n) Ne terminant pas par 'me' :
+   $ shopt -s extglob
+   $ ls !(*me)
+
+o) Ne terminant pas par 'mes' :
+   $ shopt -s extglob
+   $ ls !(*mes)
+
+p) Ne terminant ni par 'mes', ni par 'me' :
+   $ shopt -s extglob
+   $ ls !(*me|*mes)
+
+
+EXERCICE 3 : DROITS DES FICHIERS
+Prérequis : répertoire courant = ~/Unix/TP2
+
+1. Création et droits par défaut de 'essai_droit' :
+   $ mkdir essai_droit
+   $ ls -ld essai_droit
+   - Droits par défaut : drwxr-xr-x (755) ou drwxrwxr-x (775) selon le umask (typiquement 022 ou 002).
+
+Commandes en notations symbolique et octale :
+- Commande 1 :
+  Propriétaire: rwx (4+2+1=7) | Groupe: r-x (4+0+1=5) | Autres: --x (0+0+1=1)
+  -> Symbolique : $ chmod u=rwx,g=rx,o=x essai_droit
+  -> Octale     : $ chmod 751 essai_droit
+
+- Commande 2 :
+  Propriétaire: r-x (4+0+1=5) | Groupe: -w- (0+2+0=2) | Autres: -w- (0+2+0=2)
+  -> Symbolique : $ chmod u=rx,g=w,o=w essai_droit
+  -> Octale     : $ chmod 522 essai_droit
+
+- Commande 3 :
+  Propriétaire: -w- (0+2+0=2) | Groupe: --x (0+0+1=1) | Autres: r-- (4+0+0=4)
+  -> Symbolique : $ chmod u=w,g=x,o=r essai_droit
+  -> Octale     : $ chmod 214 essai_droit
+
+- Commande 4 :
+  Propriétaire: --x (0+0+1=1) | Groupe: rwx (4+2+1=7) | Autres: --x (0+0+1=1)
+  -> Symbolique : $ chmod u=x,g=rwx,o=x essai_droit
+  -> Octale     : $ chmod 171 essai_droit
+
+2. Tests et observations :
+Création du fichier 'droit' dans 'essai_droit' :
+   $ touch essai_droit/droit
+   $ ls -l essai_droit/droit
+   - Droits par défaut d'un fichier : -rw-r--r-- (644) ou -rw-rw-r-- (664).
+
+Pour chaque état (en tant que propriétaire) :
+- État 1 (751 - u=rwx) :
+  * cd essai_droit : Réussit (le droit 'x' sur le répertoire permet d'entrer).
+  * ls essai_droit : Réussit (le droit 'r' permet de lister le contenu).
+  * Édition de droit : Réussit (accès en écriture/lecture au fichier).
+
+- État 2 (522 - u=rx) :
+  * cd essai_droit : Réussit (droit 'x').
+  * ls essai_droit : Réussit (droit 'r').
+  * Édition de droit : Réussit si on modifie le contenu sans recréer le fichier (l'écriture dans le fichier dépend des droits du fichier lui-même, mais la création/suppression dans le répertoire est impossible car pas de 'w' sur le répertoire).
+
+- État 3 (214 - u=w) :
+  * cd essai_droit : Échoue ("Permission denied" car pas de droit 'x' pour le propriétaire).
+  * ls essai_droit : Échoue ("Permission denied" car pas de droit 'r').
+  * Édition de droit : Échoue (impossible de traverser le répertoire sans 'x').
+
+- État 4 (171 - u=x) :
+  * cd essai_droit : Réussit (droit 'x' présent).
+  * ls essai_droit : Échoue ("Permission denied" car pas de droit 'r' sur le répertoire).
+  * Édition de droit : Réussit si on connaît le nom exact du fichier (ex: nano essai_droit/droit), car 'x' permet la traversée.
+
+
+EXERCICE 4 : CHANGEMENT DE PROPRIÉTAIRE ET DE GROUPE
+
+1. Création de 'experience' et du fichier 'dArtagnan' :
+   $ mkdir experience
+   $ echo "Un pour tous," > experience/dArtagnan
+
+2. Droits d'exécution du groupe pour la traversée + droits de modification :
+   - Autoriser le groupe en exécution sur l'ensemble des répertoires parents :
+     $ chmod g+x ~ ~/Unix ~/Unix/TP2 ~/Unix/TP2/experience
+   - Autoriser le groupe en lecture et écriture sur dArtagnan :
+     $ chmod g+rw ~/Unix/TP2/experience/dArtagnan
+
+3. Déplacement vers le homedir du voisin :
+   $ cd /home
+   $ cd <login_voisin>
+
+4. Modification du fichier du voisin :
+   $ echo "tous pour un." >> Unix/TP2/experience/dArtagnan
+
+5. Retour dans son homedir et vérification :
+   $ cd ~
+   $ cat Unix/TP2/experience/dArtagnan
+   # Contenu affiché :
+   # Un pour tous,
+   # tous pour un.
+
+6. Retirer les droits de modification au groupe :
+   $ chmod g-w ~/Unix/TP2/experience/dArtagnan
+
+7. Retirer "tous pour un." du fichier dArtagnan :
+   $ echo "Un pour tous," > ~/Unix/TP2/experience/dArtagnan
+
+
+EXERCICE 5 : ADMINISTRATION SYSTÈME
+(Commandes exécutées en mode administrateur / super-utilisateur via sudo)
+
+1. Créer les groupes mi3a, mi3b, mi3c et etudiant :
+   $ sudo groupadd mi3a
+   $ sudo groupadd mi3b
+   $ sudo groupadd mi3c
+   $ sudo groupadd etudiant
+
+2. Créer les utilisateurs :
+   $ sudo useradd -m -g mi3a -G etudiant hamdi
+   $ sudo useradd -m -g mi3a -G etudiant moez
+   $ sudo useradd -m -g mi3b walid
+   $ sudo useradd -m -g mi3c -G etudiant sami
+   $ sudo useradd -m -d /home/mhamdi -u 1000 -g etudiant tarik
+
+3. Ajouter walid au groupe etudiant :
+   $ sudo usermod -aG etudiant walid
+
+4. Modifications pour tarik :
+   a. Rendre tarik appartenant aux groupes mi3c et etudiant (en une commande) :
+      $ sudo usermod -G mi3c,etudiant tarik
+
+   b. Changer son répertoire personnel pour /home/tarik (et déplacer les données existantes) :
+      $ sudo usermod -d /home/tarik -m tarik
+
+5. Copie de linux.pdf depuis le répertoire personnel de root vers hamdi :
+   $ sudo cp /root/linux.pdf /home/hamdi/
+   $ sudo chown hamdi:mi3a /home/hamdi/linux.pdf
+   $ sudo chmod 644 /home/hamdi/linux.pdf
+   (Il est indispensable de changer le propriétaire car une copie par root appartient à root:root, ce qui empêcherait hamdi de le modifier).
+
+6. Gestion des fichiers de moez :
+   a. Rendre bd.pdf visible par tous les utilisateurs du groupe mi3a :
+      $ chown moez:mi3a bd.pdf
+      $ chmod 640 bd.pdf   # ou 440 pour lecture seule
+
+   b. Rendre prog.java visible uniquement par moez :
+      $ chmod 600 prog.java   # ou 700 si exécutable
+
+   c. Rendre le répertoire docs visible par tous les membres du groupe etudiant :
+      $ chgrp etudiant docs
+      $ chmod 750 docs   # rwxr-x--- (nécessite 'r' pour lister et 'x' pour traverser)
+
+7. Supprimer l'utilisateur tarik sans supprimer son répertoire personnel :
+   $ sudo userdel tarik
+
+8. Supprimer l'utilisateur walid en supprimant son répertoire personnel :
+   $ sudo userdel -r walid
+
+Nettoyage final (effacer toutes les traces de travail) :
+   $ sudo userdel -r hamdi
+   $ sudo userdel -r moez
+   $ sudo userdel -r sami
+   $ sudo rm -rf /home/tarik
+   $ sudo groupdel mi3a
+   $ sudo groupdel mi3b
+   $ sudo groupdel mi3c
+   $ sudo groupdel etudiant

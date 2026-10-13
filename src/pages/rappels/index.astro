@@ -1,0 +1,594 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getTextes } from '../../utils/textes';
+import { getCourses } from '../../utils/courses';
+
+const textes = await getTextes();
+const subjects = getCourses();
+---
+
+<Base
+  title="Rappels & Notifications"
+  description="Planifiez des alertes et notifications système pour vous rappeler de lire un cours ou un texte philosophique."
+>
+  <div class="container reminders-page" data-reminders-root>
+    <header class="page-header">
+      <p class="label"><a href="/dashboard/">Espace de travail</a> / Notifications</p>
+      <h1>Rappels & Notifications</h1>
+      <p class="lede">
+        Planifiez des sessions de lecture ou d'étude. Le site vous envoie une notification navigateur et système à l'heure choisie.
+      </p>
+    </header>
+
+    <!-- Statut des notifications Web -->
+    <div class="permission-banner" data-permission-banner>
+      <div class="banner-content">
+        <strong id="perm-title">Autorisation des notifications :</strong>
+        <span id="perm-status" class="meta">Vérification...</span>
+      </div>
+      <button type="button" class="btn btn-primary" id="btn-request-perm">
+        Activer les notifications
+      </button>
+    </div>
+
+    <!-- Formulaire de création de rappel -->
+    <section class="reminder-form-section">
+      <h2 class="label form-label">Nouveau rappel</h2>
+      <form id="reminder-form" class="reminder-form">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label for="reminder-title" class="meta">Intitulé du rappel :</label>
+            <input
+              type="text"
+              id="reminder-title"
+              placeholder="Ex : Relire l'essai sur la chambre chinoise de Searle"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="reminder-type" class="meta">Catégorie :</label>
+            <select id="reminder-type">
+              <option value="texte">📖 Texte philosophique</option>
+              <option value="cours">📂 Support de cours</option>
+              <option value="custom">✏️ Rappel libre</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="reminder-target" class="meta">Lien rapide d'ouverture :</label>
+            <select id="reminder-target">
+              <optgroup label="Textes philosophiques">
+                {textes.map((t) => (
+                  <option value={`/textes/${t.id}/`}>[Texte] {t.data.title}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Matières de cours">
+                {subjects.map((s) => (
+                  <option value={`/cours/#folder-${s.id}`}>[Cours] {s.name}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Emploi du temps">
+                <option value="/emploi-du-temps/">[Calendrier] Mon emploi du temps</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="reminder-datetime" class="meta">Date et heure du rappel :</label>
+            <input type="datetime-local" id="reminder-datetime" required />
+          </div>
+
+          <div class="form-group">
+            <label class="meta">Délais rapides :</label>
+            <div class="quick-times">
+              <button type="button" class="btn-subtle" data-add-min="1">+1 min (test)</button>
+              <button type="button" class="btn-subtle" data-add-min="15">+15 min</button>
+              <button type="button" class="btn-subtle" data-add-min="60">+1 heure</button>
+              <button type="button" class="btn-subtle" data-add-min="1440">Demain</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Planifier la notification</button>
+          <button type="button" class="btn" id="btn-test-now">Tester une notification immédiate</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Liste des rappels -->
+    <section class="reminders-list-section">
+      <div class="list-header">
+        <h2 class="label">Rappels programmés</h2>
+        <span class="meta" data-reminders-count>0 rappel actif</span>
+      </div>
+
+      <div class="reminders-tabs meta">
+        <button type="button" class="tab-btn active" data-filter="pending">À venir</button>
+        <span class="sep">·</span>
+        <button type="button" class="tab-btn" data-filter="all">Tous l'historique</button>
+      </div>
+
+      <ul class="reminders-list" id="reminders-list" role="list">
+        <!-- Rempli en JS -->
+      </ul>
+    </section>
+  </div>
+</Base>
+
+<script>
+  import type { ReminderItem } from '../../utils/timetable';
+
+  const STORAGE_KEY = 'marges_reminders_list';
+  let reminders: ReminderItem[] = [];
+  let activeFilter: 'pending' | 'all' = 'pending';
+
+  function loadReminders(): ReminderItem[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveReminders() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
+    renderReminders();
+  }
+
+  function updatePermissionUI() {
+    const statusEl = document.getElementById('perm-status');
+    const btnReq = document.getElementById('btn-request-perm');
+    if (!('Notification' in window)) {
+      if (statusEl) statusEl.textContent = 'Non supporté par ce navigateur.';
+      if (btnReq) (btnReq as HTMLButtonElement).disabled = true;
+      return;
+    }
+    const perm = Notification.permission;
+    if (statusEl) {
+      if (perm === 'granted') statusEl.textContent = '✅ Activées et opérationnelles';
+      else if (perm === 'denied') statusEl.textContent = '❌ Bloquées dans le navigateur';
+      else statusEl.textContent = '⚠️ En attente d’autorisation';
+    }
+    if (btnReq) {
+      btnReq.style.display = perm === 'granted' ? 'none' : 'inline-block';
+    }
+  }
+
+  function fireNotification(item: ReminderItem) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+    const notif = new Notification(`⏰ Marges — ${item.title}`, {
+      body: `C'est le moment d'étudier ou de lire : ${item.targetTitle}`,
+      icon: '/favicon.svg',
+      tag: item.id,
+    });
+
+    notif.onclick = () => {
+      window.focus();
+      if (item.targetUrl) {
+        window.location.href = item.targetUrl;
+      }
+    };
+  }
+
+  function checkPendingReminders() {
+    const now = new Date().getTime();
+    let changed = false;
+
+    for (const item of reminders) {
+      if (item.status === 'pending') {
+        const trigger = new Date(item.triggerTime).getTime();
+        if (trigger <= now) {
+          item.status = 'triggered';
+          changed = true;
+          fireNotification(item);
+        }
+      }
+    }
+
+    if (changed) {
+      saveReminders();
+    }
+  }
+
+  function renderReminders() {
+    const listEl = document.getElementById('reminders-list');
+    const countEl = document.querySelector('[data-reminders-count]');
+    if (!listEl) return;
+
+    const now = new Date().getTime();
+    const pendingList = reminders.filter((r) => r.status === 'pending');
+    if (countEl) {
+      countEl.textContent = `${pendingList.length} rappel${pendingList.length > 1 ? 's' : ''} à venir`;
+    }
+
+    const displayed = activeFilter === 'pending' ? pendingList : reminders;
+
+    if (displayed.length === 0) {
+      listEl.innerHTML = '<li class="no-reminders meta">Aucun rappel pour le moment.</li>';
+      return;
+    }
+
+    // Tri : plus proches d'abord
+    const sorted = [...displayed].sort(
+      (a, b) => new Date(a.triggerTime).getTime() - new Date(b.triggerTime).getTime()
+    );
+
+    listEl.innerHTML = sorted
+      .map((item) => {
+        const d = new Date(item.triggerTime);
+        const isPast = d.getTime() <= now;
+        return `
+        <li class="reminder-card ${item.status === 'triggered' ? 'reminder-done' : ''}">
+          <div class="reminder-time meta">
+            <strong>${d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</strong>
+            <span>${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+            <span class="status-badge status-badge--${item.status}">
+              ${item.status === 'pending' ? (isPast ? 'À déclencher' : 'Prévu') : 'Envoyé'}
+            </span>
+          </div>
+          <div class="reminder-info">
+            <h3 class="reminder-title-text">${item.title}</h3>
+            ${
+              item.targetUrl
+                ? `<a href="${item.targetUrl}" class="meta target-link">Ouvrir le support lié →</a>`
+                : ''
+            }
+          </div>
+          <div class="reminder-actions">
+            <button type="button" class="btn-delete" data-del-id="${item.id}" title="Supprimer ce rappel">
+              ✕
+            </button>
+          </div>
+        </li>
+      `;
+      })
+      .join('');
+
+    listEl.querySelectorAll('[data-del-id]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-del-id');
+        reminders = reminders.filter((r) => r.id !== id);
+        saveReminders();
+      });
+    });
+  }
+
+  function initReminders() {
+    reminders = loadReminders();
+    updatePermissionUI();
+    renderReminders();
+
+    // Remplissage automatique via paramètres URL (depuis la page cours ou emploi du temps)
+    const params = new URLSearchParams(window.location.search);
+    const presetTitle = params.get('presetTitle');
+    const presetTarget = params.get('presetTarget');
+    const presetType = params.get('presetType');
+    const presetTime = params.get('presetTime');
+
+    const titleInput = document.getElementById('reminder-title') as HTMLInputElement;
+    const targetSelect = document.getElementById('reminder-target') as HTMLSelectElement;
+    const typeSelect = document.getElementById('reminder-type') as HTMLSelectElement;
+    const timeInput = document.getElementById('reminder-datetime') as HTMLInputElement;
+
+    if (presetTitle && titleInput) titleInput.value = presetTitle;
+    if (presetType && typeSelect) typeSelect.value = presetType;
+    if (presetTarget && targetSelect) {
+      // Si l'option n'existe pas déjà, l'ajouter
+      let exists = false;
+      for (const opt of targetSelect.options) {
+        if (opt.value === presetTarget) exists = true;
+      }
+      if (!exists) {
+        const opt = document.createElement('option');
+        opt.value = presetTarget;
+        opt.textContent = `[Personnalisé] ${presetTitle || presetTarget}`;
+        opt.selected = true;
+        targetSelect.appendChild(opt);
+      } else {
+        targetSelect.value = presetTarget;
+      }
+    }
+
+    // Heure par défaut : dans 15 minutes
+    if (timeInput) {
+      if (presetTime) {
+        timeInput.value = presetTime;
+      } else {
+        const defaultTime = new Date(Date.now() + 15 * 60 * 1000);
+        timeInput.value = new Date(defaultTime.getTime() - defaultTime.getTimezoneOffset() * 60000)
+          .toISOString()
+          .slice(0, 16);
+      }
+    }
+
+    // Demande de permission
+    document.getElementById('btn-request-perm')?.addEventListener('click', async () => {
+      if ('Notification' in window) {
+        await Notification.requestPermission();
+        updatePermissionUI();
+      }
+    });
+
+    // Boutons de délais rapides
+    document.querySelectorAll('[data-add-min]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const min = parseInt(btn.getAttribute('data-add-min') || '15', 10);
+        const t = new Date(Date.now() + min * 60 * 1000);
+        if (timeInput) {
+          timeInput.value = new Date(t.getTime() - t.getTimezoneOffset() * 60000)
+            .toISOString()
+            .slice(0, 16);
+        }
+      });
+    });
+
+    // Test immédiat
+    document.getElementById('btn-test-now')?.addEventListener('click', () => {
+      if (Notification.permission !== 'granted') {
+        Notification.requestPermission().then((p) => {
+          if (p === 'granted') {
+            fireNotification({
+              id: 'test',
+              title: 'Test de notification immédiat',
+              type: 'custom',
+              targetUrl: '/textes/',
+              targetTitle: 'Accueil des textes',
+              triggerTime: new Date().toISOString(),
+              createdTime: new Date().toISOString(),
+              status: 'triggered',
+            });
+          }
+        });
+      } else {
+        fireNotification({
+          id: 'test',
+          title: 'Test de notification immédiat',
+          type: 'custom',
+          targetUrl: '/textes/',
+          targetTitle: 'Accueil des textes',
+          triggerTime: new Date().toISOString(),
+          createdTime: new Date().toISOString(),
+          status: 'triggered',
+        });
+      }
+    });
+
+    // Soumission du formulaire
+    document.getElementById('reminder-form')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!timeInput.value) return;
+
+      const newReminder: ReminderItem = {
+        id: 'rem-' + Date.now(),
+        title: titleInput.value.trim(),
+        type: (typeSelect?.value as any) || 'custom',
+        targetUrl: targetSelect?.value || '',
+        targetTitle: targetSelect?.selectedOptions[0]?.textContent || '',
+        triggerTime: new Date(timeInput.value).toISOString(),
+        createdTime: new Date().toISOString(),
+        status: 'pending',
+      };
+
+      reminders.push(newReminder);
+      saveReminders();
+
+      // Reset
+      titleInput.value = '';
+      const defaultTime = new Date(Date.now() + 15 * 60 * 1000);
+      timeInput.value = new Date(defaultTime.getTime() - defaultTime.getTimezoneOffset() * 60000)
+        .toISOString()
+        .slice(0, 16);
+
+      // Si permission pas accordée, proposer
+      if (Notification.permission !== 'granted') {
+        Notification.requestPermission().then(updatePermissionUI);
+      }
+    });
+
+    // Bascule filtre
+    document.querySelectorAll('[data-filter]').forEach((tab) => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('[data-filter]').forEach((t) => t.classList.remove('active'));
+        tab.classList.add('active');
+        activeFilter = tab.getAttribute('data-filter') as 'pending' | 'all';
+        renderReminders();
+      });
+    });
+
+    // Surveillance régulière des alertes
+    setInterval(checkPendingReminders, 5000);
+  }
+
+  document.addEventListener('astro:page-load', initReminders);
+</script>
+
+<style>
+  .reminders-page {
+    padding-bottom: 5rem;
+  }
+  .permission-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--soft);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2.5rem;
+    border-left: 3px solid var(--fg);
+  }
+  .reminder-form-section {
+    border-top: 1px solid var(--fg);
+    padding-top: 1.5rem;
+    margin-bottom: 3.5rem;
+  }
+  .form-label {
+    margin-bottom: 1.25rem;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+  .full-width {
+    grid-column: 1 / -1;
+  }
+  .form-group {
+    display: grid;
+    gap: 0.35rem;
+  }
+  .form-group input,
+  .form-group select {
+    padding: 0.6rem 0.8rem;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    color: var(--fg);
+    font-family: inherit;
+  }
+  .quick-times {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .btn-subtle {
+    background: var(--soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0.35rem 0.65rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .btn-subtle:hover {
+    border-color: var(--fg);
+  }
+  .form-actions {
+    margin-top: 1.75rem;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .btn {
+    padding: 0.6rem 1.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--bg);
+    cursor: pointer;
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
+    transition: all 0.15s ease;
+  }
+  .btn-primary {
+    background: var(--fg);
+    color: var(--bg);
+    border-color: var(--fg);
+  }
+  .btn-primary:hover {
+    opacity: 0.85;
+  }
+
+  .reminders-list-section {
+    border-top: 1px solid var(--line);
+    padding-top: 2rem;
+  }
+  .list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1rem;
+  }
+  .reminders-tabs {
+    margin-bottom: 1.25rem;
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .tab-btn.active {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .reminders-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.75rem;
+  }
+  .reminder-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem;
+    background: var(--soft);
+    border-radius: var(--radius);
+    gap: 1.5rem;
+  }
+  .reminder-done {
+    opacity: 0.6;
+  }
+  .reminder-time {
+    display: grid;
+    width: 140px;
+    flex: none;
+  }
+  .reminder-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .reminder-title-text {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+  }
+  .target-link {
+    color: var(--fg);
+    text-decoration: underline;
+    font-size: 0.85rem;
+  }
+  .status-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-top: 0.25rem;
+    display: inline-block;
+  }
+  .status-badge--pending {
+    color: #2563eb;
+  }
+  .status-badge--triggered {
+    color: #10b981;
+  }
+  .btn-delete {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+  }
+  .btn-delete:hover {
+    color: var(--fg);
+  }
+  .no-reminders {
+    font-style: italic;
+    padding: 2rem 0;
+    text-align: center;
+  }
+
+  @media (max-width: 40rem) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+    .reminder-card {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+  }
+</style>

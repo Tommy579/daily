@@ -102,6 +102,14 @@ const jsonLd = {
               </>
             )
           }
+          <span class="sep" aria-hidden="true">·</span>
+          <a
+            href={`/rappels/?presetTitle=${encodeURIComponent(`Lire : ${title}`)}&presetType=texte&presetTarget=${encodeURIComponent(textUrl(entry))}`}
+            class="article-reminder-link"
+            title="Programmer une alerte pour lire ce texte"
+          >
+            ⏰ Rappel
+          </a>
         </p>
       </header>
 
