@@ -133,9 +133,8 @@ import Base from '../../layouts/Base.astro';
   </div>
 </Base>
 
-<script is:inline src="https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js"></script>
-
 <script>
+  import ICAL from 'ical.js';
   import { generateWeekEvents } from '../../utils/timetable';
   import { STORAGE_KEYS, loadPersistent } from '../../utils/persistence';
 
@@ -172,17 +171,16 @@ import Base from '../../layouts/Base.astro';
 
   function parseIcs(rawIcs: string): CalendarEvent[] {
     try {
-      // @ts-ignore
-      const jcal = window.ICAL ? window.ICAL.parse(rawIcs) : null;
+      const icalLib = (ICAL as any).default || ICAL;
+      if (!icalLib || !icalLib.parse) return [];
+      const jcal = icalLib.parse(rawIcs);
       if (!jcal) return [];
-      // @ts-ignore
-      const comp = new window.ICAL.Component(jcal);
+      const comp = new icalLib.Component(jcal);
       const vevents = comp.getAllSubcomponents('vevent');
       const list: CalendarEvent[] = [];
 
       for (const vevent of vevents) {
-        // @ts-ignore
-        const ev = new window.ICAL.Event(vevent);
+        const ev = new icalLib.Event(vevent);
         const title = ev.summary || 'Cours sans titre';
         let category: 'cm' | 'td' | 'tp' | 'habit' | 'other' = 'cm';
         if (title.toUpperCase().includes('TD')) category = 'td';
@@ -1141,7 +1139,7 @@ import Base from '../../layouts/Base.astro';
   .cal-grid-body {
     display: grid;
     grid-template-columns: 58px 1fr;
-    height: 750px;
+    height: 900px;
     position: relative;
     background: var(--cal-bg);
     transition: background-color 0.2s ease;
@@ -1272,46 +1270,47 @@ import Base from '../../layouts/Base.astro';
     filter: brightness(1.04);
   }
   .card-inner {
-    padding: 0.35rem 0.5rem;
+    padding: 0.25rem 0.35rem;
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
     overflow: hidden;
-    gap: 0.15rem;
+    gap: 0.12rem;
     box-sizing: border-box;
   }
   .card-header-line {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.25rem;
+    gap: 0.2rem;
     line-height: 1;
-    margin-bottom: 0.1rem;
+    margin-bottom: 0.05rem;
   }
   .card-badge {
-    font-size: 0.62rem;
+    font-size: 0.52rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    padding: 0.12rem 0.32rem;
+    letter-spacing: 0.03em;
+    padding: 0.08rem 0.25rem;
     border-radius: 3px;
     line-height: 1;
     flex-shrink: 0;
   }
   .card-time-pill {
-    font-size: 0.64rem;
+    font-size: 0.56rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     opacity: 0.85;
     white-space: nowrap;
+    line-height: 1;
   }
 
   /* Style par type de cours */
   .card-magenta-vivid {
     background: var(--card-magenta-bg) !important;
     border: 1px solid var(--card-magenta-border) !important;
-    border-left: 3.5px solid var(--card-magenta-bar) !important;
+    border-left: 3px solid var(--card-magenta-bar) !important;
   }
   .card-magenta-vivid .card-badge {
     background: var(--card-magenta-badge-bg);
@@ -1328,7 +1327,7 @@ import Base from '../../layouts/Base.astro';
   .card-td {
     background: var(--card-td-bg) !important;
     border: 1px solid var(--card-td-border) !important;
-    border-left: 3.5px solid var(--card-td-bar) !important;
+    border-left: 3px solid var(--card-td-bar) !important;
   }
   .card-td .card-badge {
     background: var(--card-td-badge-bg);
@@ -1345,7 +1344,7 @@ import Base from '../../layouts/Base.astro';
   .card-cm {
     background: var(--card-cm-bg) !important;
     border: 1px solid var(--card-cm-border) !important;
-    border-left: 3.5px solid var(--card-cm-bar) !important;
+    border-left: 3px solid var(--card-cm-bar) !important;
   }
   .card-cm .card-badge {
     background: var(--card-cm-badge-bg);
@@ -1362,7 +1361,7 @@ import Base from '../../layouts/Base.astro';
   .card-habit {
     background: var(--card-habit-bg) !important;
     border: 1px solid var(--card-habit-border) !important;
-    border-left: 3.5px solid var(--card-habit-bar) !important;
+    border-left: 3px solid var(--card-habit-bar) !important;
   }
   .card-habit .card-badge {
     background: var(--card-habit-badge-bg);
@@ -1379,9 +1378,9 @@ import Base from '../../layouts/Base.astro';
   .card-title {
     margin: 0 !important;
     font-family: var(--font-ui) !important;
-    font-size: 0.76rem !important;
+    font-size: 0.65rem !important;
     font-weight: 600 !important;
-    line-height: 1.25 !important;
+    line-height: 1.15 !important;
     letter-spacing: -0.01em;
     overflow: hidden;
     display: -webkit-box;
@@ -1391,37 +1390,44 @@ import Base from '../../layouts/Base.astro';
   }
   .card-meta {
     font-family: var(--font-ui) !important;
-    font-size: 0.67rem !important;
+    font-size: 0.56rem !important;
     font-weight: 500 !important;
-    line-height: 1.2 !important;
+    line-height: 1.1 !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.2rem;
     margin-top: auto;
+    opacity: 0.85;
   }
   .card-meta svg {
+    width: 9px;
+    height: 9px;
     flex-shrink: 0;
     opacity: 0.85;
   }
 
   /* Mode condensé (quand 2 cours ou plus se chevauchent) */
   .course-card.is-condensed .card-inner {
-    padding: 0.25rem 0.35rem;
-    gap: 0.1rem;
+    padding: 0.18rem 0.25rem;
+    gap: 0.08rem;
   }
   .course-card.is-condensed .card-title {
-    font-size: 0.71rem !important;
-    -webkit-line-clamp: 1;
+    font-size: 0.60rem !important;
+    line-height: 1.12 !important;
+    -webkit-line-clamp: 2;
   }
   .course-card.is-condensed .card-badge {
-    font-size: 0.58rem;
-    padding: 0.08rem 0.22rem;
+    font-size: 0.50rem;
+    padding: 0.06rem 0.18rem;
   }
   .course-card.is-condensed .card-time-pill {
     display: none;
+  }
+  .course-card.is-condensed .card-meta {
+    font-size: 0.52rem !important;
   }
 
   /* 6. VUE LISTE AGENDA */
