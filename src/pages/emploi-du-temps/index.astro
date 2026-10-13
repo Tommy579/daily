@@ -4,70 +4,75 @@ import Base from '../../layouts/Base.astro';
 
 <Base
   title="Emploi du temps"
-  description="Emploi du temps universitaire connecté à vos flux iCal (.ics) ou RSS."
+  description="Emploi du temps universitaire moderne, épuré et synchronisé."
 >
   <div class="container timetable-page" data-timetable-root>
     <header class="page-header">
-      <p class="label"><a href="/dashboard/">Espace de travail</a> / Calendrier</p>
-      <h1>Emploi du temps</h1>
+      <div class="header-top">
+        <div>
+          <p class="label"><a href="/dashboard/">Espace de travail</a> / Calendrier</p>
+          <h1>Emploi du temps</h1>
+        </div>
+        <a href="/configuration/#calendar-settings" class="btn-config meta">
+          ⚙️ Paramètres du calendrier
+        </a>
+      </div>
       <p class="lede">
-        Synchronisez vos cours en direct via un fichier <kbd>.ics</kbd>, une URL iCal distante ou un flux RSS.
+        Vos créneaux de cours synchronisés et organisés dans une grille horaire claire.
       </p>
     </header>
 
-    <!-- Panneau de synchronisation -->
-    <section class="sync-panel" aria-labelledby="sync-title">
-      <div class="sync-header">
-        <h2 id="sync-title" class="label">Source de données</h2>
-        <span class="meta sync-status" data-sync-status>Source locale prête</span>
+    <!-- En-tête de navigation du calendrier -->
+    <div class="calendar-toolbar">
+      <div class="nav-cluster">
+        <button type="button" class="btn-nav" id="cal-prev" title="Semaine précédente">‹</button>
+        <button type="button" class="btn-today" id="cal-today">Aujourd'hui</button>
+        <button type="button" class="btn-nav" id="cal-next" title="Semaine suivante">›</button>
+        <h2 class="current-period-title" data-period-title>Semaine en cours</h2>
       </div>
 
-      <div class="sync-controls">
-        <div class="sync-field">
-          <label for="ical-url" class="meta">URL distante (iCal ou RSS) :</label>
-          <div class="input-group">
-            <input
-              type="url"
-              id="ical-url"
-              placeholder="https://mon-universite.fr/agenda/cours.ics"
-              autocomplete="off"
-            />
-            <button type="button" class="btn btn-primary" id="btn-sync-url">Synchroniser</button>
+      <div class="view-switch meta">
+        <button type="button" class="btn-switch active" data-view="week">Grille</button>
+        <span class="sep">·</span>
+        <button type="button" class="btn-switch" data-view="agenda">Agenda</button>
+      </div>
+    </div>
+
+    <!-- Vue Grille Moderne avec heures -->
+    <div class="modern-calendar-wrapper" data-week-grid>
+      <div class="grid-table">
+        <!-- En-tête des jours -->
+        <div class="grid-days-header" data-days-header>
+          <!-- Rempli en JS -->
+        </div>
+
+        <!-- Corps de la grille avec colonnes de jours et créneaux horaires -->
+        <div class="grid-body-container">
+          <!-- Axe des heures (08:00 - 19:00) -->
+          <div class="time-axis" aria-hidden="true">
+            <div class="time-slot-label">08:00</div>
+            <div class="time-slot-label">09:00</div>
+            <div class="time-slot-label">10:00</div>
+            <div class="time-slot-label">11:00</div>
+            <div class="time-slot-label">12:00</div>
+            <div class="time-slot-label">13:00</div>
+            <div class="time-slot-label">14:00</div>
+            <div class="time-slot-label">15:00</div>
+            <div class="time-slot-label">16:00</div>
+            <div class="time-slot-label">17:00</div>
+            <div class="time-slot-label">18:00</div>
+            <div class="time-slot-label">19:00</div>
+          </div>
+
+          <!-- Les 7 colonnes de jours -->
+          <div class="grid-columns" data-grid-columns>
+            <!-- Rempli en JS -->
           </div>
         </div>
-
-        <div class="sync-or">
-          <span class="sep">ou</span>
-        </div>
-
-        <div class="sync-file">
-          <label for="ical-file" class="meta">Importer un fichier local (.ics) :</label>
-          <input type="file" id="ical-file" accept=".ics,.ical,text/calendar" />
-        </div>
-      </div>
-    </section>
-
-    <!-- Navigation calendrier (Semaine / Aujourd'hui) -->
-    <div class="calendar-nav">
-      <div class="nav-controls">
-        <button type="button" class="btn" id="cal-prev">← Précédent</button>
-        <button type="button" class="btn" id="cal-today">Aujourd'hui</button>
-        <button type="button" class="btn" id="cal-next">Suivant →</button>
-      </div>
-      <h2 class="current-period-title" data-period-title>Cette semaine</h2>
-      <div class="view-switch meta">
-        <button type="button" class="btn-subtle active" data-view="week">Semaine</button>
-        <span class="sep">·</span>
-        <button type="button" class="btn-subtle" data-view="agenda">Liste</button>
       </div>
     </div>
 
-    <!-- Grille de la semaine -->
-    <div class="week-grid" data-week-grid>
-      <!-- Rempli en JS -->
-    </div>
-
-    <!-- Vue liste / agenda -->
+    <!-- Vue Liste / Agenda -->
     <div class="agenda-view" data-agenda-view hidden>
       <ul class="agenda-list" data-agenda-list role="list">
         <!-- Rempli en JS -->
@@ -92,7 +97,9 @@ import Base from '../../layouts/Base.astro';
   }
 
   const STORAGE_KEY = STORAGE_KEYS.TIMETABLE_ICS;
-  const STORAGE_URL_KEY = STORAGE_KEYS.TIMETABLE_URL;
+  const START_HOUR = 8;
+  const END_HOUR = 20;
+  const TOTAL_HOURS = END_HOUR - START_HOUR; // 12 heures
 
   let currentEvents: EventParsed[] = [];
   let currentDate = new Date();
@@ -121,7 +128,6 @@ import Base from '../../layouts/Base.astro';
         });
       }
 
-      // Tri chronologique
       return list.sort((a, b) => a.start.getTime() - b.start.getTime());
     } catch (e) {
       console.error('Erreur parsing ICS:', e);
@@ -132,7 +138,7 @@ import Base from '../../layouts/Base.astro';
   function getStartOfWeek(d: Date): Date {
     const date = new Date(d);
     const day = date.getDay();
-    const diff = date.getDate() - day + (day === 0 ? -6 : 1); // lundi
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
     date.setDate(diff);
     date.setHours(0, 0, 0, 0);
     return date;
@@ -146,16 +152,26 @@ import Base from '../../layouts/Base.astro';
     return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
   }
 
-  function renderWeek() {
-    const grid = document.querySelector('[data-week-grid]');
+  // Couleurs sobres adaptatives pour les matières
+  function getCourseColorClass(title: string): string {
+    const lower = title.toLowerCase();
+    if (lower.includes('philo') || lower.includes('éthique')) return 'event-theme-philo';
+    if (lower.includes('c ') || lower.includes('info') || lower.includes('algo')) return 'event-theme-code';
+    if (lower.includes('matlab') || lower.includes('math') || lower.includes('edo')) return 'event-theme-math';
+    return 'event-theme-default';
+  }
+
+  function renderModernWeek() {
+    const headerEl = document.querySelector('[data-days-header]');
+    const columnsEl = document.querySelector('[data-grid-columns]');
     const periodTitle = document.querySelector('[data-period-title]');
-    if (!grid || !periodTitle) return;
+    if (!headerEl || !columnsEl || !periodTitle) return;
 
     const monday = getStartOfWeek(currentDate);
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
 
-    periodTitle.textContent = `Semaine du ${monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} au ${sunday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+    periodTitle.textContent = `${monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} – ${sunday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
     const days = [];
     for (let i = 0; i < 7; i++) {
@@ -164,47 +180,72 @@ import Base from '../../layouts/Base.astro';
       days.push(dayDate);
     }
 
-    let html = '';
+    // Rendu en-tête des jours
+    let headerHtml = '<div class="header-corner"></div>';
+    for (const day of days) {
+      const isToday = day.toDateString() === new Date().toDateString();
+      headerHtml += `
+        <div class="day-header-cell ${isToday ? 'is-today' : ''}">
+          <span class="day-header-name">${day.toLocaleDateString('fr-FR', { weekday: 'short' })}</span>
+          <span class="day-header-number">${day.getDate()}</span>
+        </div>
+      `;
+    }
+    headerEl.innerHTML = headerHtml;
+
+    // Rendu des colonnes de jours
+    let colsHtml = '';
     for (const day of days) {
       const isToday = day.toDateString() === new Date().toDateString();
       const dayEvents = currentEvents.filter(
         (e) => e.start.toDateString() === day.toDateString()
       );
 
-      html += `
-        <div class="day-column ${isToday ? 'day-today' : ''}">
-          <div class="day-header">
-            <span class="day-name">${day.toLocaleDateString('fr-FR', { weekday: 'short' })}</span>
-            <span class="day-num">${day.getDate()}</span>
+      // Lignes horizontales d'heures (arborescence d'arrière plan)
+      let hourLines = '';
+      for (let h = 0; h < TOTAL_HOURS; h++) {
+        hourLines += `<div class="grid-hour-line" style="top: ${(h / TOTAL_HOURS) * 100}%;"></div>`;
+      }
+
+      // Calcul des cartes positionnées absolument
+      let eventsHtml = '';
+      for (const ev of dayEvents) {
+        const startH = ev.start.getHours() + ev.start.getMinutes() / 60;
+        const endH = ev.end.getHours() + ev.end.getMinutes() / 60;
+
+        // Limites affichées
+        const clampedStart = Math.max(START_HOUR, Math.min(END_HOUR, startH));
+        const clampedEnd = Math.max(START_HOUR, Math.min(END_HOUR, endH));
+        const duration = Math.max(0.5, clampedEnd - clampedStart);
+
+        const topPercent = ((clampedStart - START_HOUR) / TOTAL_HOURS) * 100;
+        const heightPercent = (duration / TOTAL_HOURS) * 100;
+
+        const colorClass = getCourseColorClass(ev.title);
+
+        eventsHtml += `
+          <div
+            class="event-block ${colorClass}"
+            style="top: ${topPercent}%; height: ${heightPercent}%;"
+            title="${ev.title}${ev.location ? ' — ' + ev.location : ''}"
+          >
+            <div class="event-block-time">${formatTime(ev.start)} – ${formatTime(ev.end)}</div>
+            <div class="event-block-title">${ev.title}</div>
+            ${ev.location ? `<div class="event-block-loc">📍 ${ev.location}</div>` : ''}
           </div>
-          <div class="day-events">
-            ${
-              dayEvents.length === 0
-                ? '<div class="no-events meta">Aucun cours</div>'
-                : dayEvents
-                    .map(
-                      (e) => `
-              <div class="event-card" title="${e.description}">
-                <div class="event-time meta">${formatTime(e.start)} – ${formatTime(e.end)}</div>
-                <div class="event-title">${e.title}</div>
-                ${e.location ? `<div class="event-loc meta">📍 ${e.location}</div>` : ''}
-                <div class="event-actions">
-                  <button type="button" class="btn-event-reminder" data-title="${encodeURIComponent(e.title)}" data-start="${e.start.toISOString()}">
-                    ⏰ Rappel
-                  </button>
-                </div>
-              </div>
-            `
-                    )
-                    .join('')
-            }
+        `;
+      }
+
+      colsHtml += `
+        <div class="day-column ${isToday ? 'is-today-column' : ''}">
+          ${hourLines}
+          <div class="events-container">
+            ${eventsHtml}
           </div>
         </div>
       `;
     }
-
-    grid.innerHTML = html;
-    bindEventReminders();
+    columnsEl.innerHTML = colsHtml;
   }
 
   function renderAgenda() {
@@ -212,7 +253,7 @@ import Base from '../../layouts/Base.astro';
     if (!list) return;
 
     if (currentEvents.length === 0) {
-      list.innerHTML = '<li class="no-events meta">Aucun cours trouvé dans ce calendrier.</li>';
+      list.innerHTML = '<li class="no-events meta">Aucun cours trouvé dans ce calendrier. Rendez-vous dans la page Configuration pour en importer un.</li>';
       return;
     }
 
@@ -229,39 +270,10 @@ import Base from '../../layouts/Base.astro';
           ${e.location ? `<p class="agenda-loc meta">📍 ${e.location}</p>` : ''}
           ${e.description ? `<p class="agenda-desc meta">${e.description}</p>` : ''}
         </div>
-        <div class="agenda-actions">
-          <button type="button" class="btn-event-reminder action-btn" data-title="${encodeURIComponent(e.title)}" data-start="${e.start.toISOString()}">
-            ⏰ Planifier rappel
-          </button>
-        </div>
       </li>
     `
       )
       .join('');
-
-    bindEventReminders();
-  }
-
-  function bindEventReminders() {
-    document.querySelectorAll('.btn-event-reminder').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const title = decodeURIComponent(btn.getAttribute('data-title') || '');
-        const start = btn.getAttribute('data-start') || '';
-        // rappel 15 min avant le cours
-        let remTime = new Date();
-        if (start) {
-          const courseDate = new Date(start);
-          remTime = new Date(courseDate.getTime() - 15 * 60 * 1000);
-        }
-        const params = new URLSearchParams({
-          presetTitle: `Préparer le cours : ${title}`,
-          presetTarget: `/emploi-du-temps/`,
-          presetType: 'cours',
-          presetTime: remTime.toISOString().slice(0, 16),
-        });
-        window.location.href = `/rappels/?${params.toString()}`;
-      });
-    });
   }
 
   function updateView() {
@@ -272,7 +284,7 @@ import Base from '../../layouts/Base.astro';
     if (currentView === 'week') {
       weekGrid.removeAttribute('hidden');
       agendaView.setAttribute('hidden', '');
-      renderWeek();
+      renderModernWeek();
     } else {
       weekGrid.setAttribute('hidden', '');
       agendaView.removeAttribute('hidden');
@@ -280,32 +292,19 @@ import Base from '../../layouts/Base.astro';
     }
   }
 
-  async function loadData() {
-    const statusEl = document.querySelector('[data-sync-status]');
+  function loadData() {
     let raw = loadPersistent(STORAGE_KEY);
-    const savedUrl = loadPersistent(STORAGE_URL_KEY);
-
-    const urlInput = document.getElementById('ical-url') as HTMLInputElement;
-    if (savedUrl && urlInput) {
-      urlInput.value = savedUrl;
-    }
-
     if (!raw) {
       raw = SAMPLE_ICS_DATA;
       savePersistent(STORAGE_KEY, raw);
     }
-
     currentEvents = parseIcsText(raw);
-    if (statusEl) {
-      statusEl.textContent = `${currentEvents.length} événements chargés`;
-    }
     updateView();
   }
 
   function initTimetable() {
     loadData();
 
-    // Boutons de navigation semaine
     document.getElementById('cal-prev')?.addEventListener('click', () => {
       currentDate.setDate(currentDate.getDate() - 7);
       updateView();
@@ -319,7 +318,6 @@ import Base from '../../layouts/Base.astro';
       updateView();
     });
 
-    // Bascule vue
     document.querySelectorAll('[data-view]').forEach((btn) => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('[data-view]').forEach((b) => b.classList.remove('active'));
@@ -327,43 +325,6 @@ import Base from '../../layouts/Base.astro';
         currentView = btn.getAttribute('data-view') as 'week' | 'agenda';
         updateView();
       });
-    });
-
-    // Import fichier
-    const fileInput = document.getElementById('ical-file') as HTMLInputElement;
-    fileInput?.addEventListener('change', async (e) => {
-      const file = fileInput.files?.[0];
-      if (!file) return;
-      const text = await file.text();
-      savePersistent(STORAGE_KEY, text);
-      currentEvents = parseIcsText(text);
-      const statusEl = document.querySelector('[data-sync-status]');
-      if (statusEl) statusEl.textContent = `Fichier "${file.name}" importé (${currentEvents.length} cours)`;
-      updateView();
-    });
-
-    // Synchronisation URL
-    const btnSync = document.getElementById('btn-sync-url');
-    const urlInput = document.getElementById('ical-url') as HTMLInputElement;
-    btnSync?.addEventListener('click', async () => {
-      const targetUrl = urlInput.value.trim();
-      if (!targetUrl) return;
-
-      const statusEl = document.querySelector('[data-sync-status]');
-      if (statusEl) statusEl.textContent = 'Téléchargement du flux en cours...';
-
-      try {
-        const res = await fetch(`/api/calendar/proxy?url=${encodeURIComponent(targetUrl)}`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const content = await res.text();
-        savePersistent(STORAGE_KEY, content);
-        savePersistent(STORAGE_URL_KEY, targetUrl);
-        currentEvents = parseIcsText(content);
-        if (statusEl) statusEl.textContent = `Synchronisé avec succès (${currentEvents.length} événements)`;
-        updateView();
-      } catch (err: any) {
-        if (statusEl) statusEl.textContent = `Erreur de synchronisation: ${err.message}`;
-      }
     });
   }
 
@@ -374,182 +335,285 @@ import Base from '../../layouts/Base.astro';
   .timetable-page {
     padding-bottom: 5rem;
   }
-  .sync-panel {
-    background: var(--soft);
-    border-radius: var(--radius);
-    padding: 1.5rem;
-    margin-bottom: 2.5rem;
-  }
-  .sync-header {
+  .header-top {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin-bottom: 1rem;
-  }
-  .sync-controls {
-    display: flex;
     flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 1.5rem;
+    gap: 1rem;
   }
-  .sync-field {
-    flex: 2;
-    min-width: 280px;
-  }
-  .input-group {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 0.35rem;
-  }
-  .input-group input {
-    flex: 1;
-    padding: 0.5rem 0.75rem;
-    background: var(--bg);
+  .btn-config {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    background: var(--soft);
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    font-size: 0.9rem;
+    color: var(--fg);
+    text-decoration: none;
+    transition: border-color 0.15s ease;
   }
-  .sync-or {
-    padding-bottom: 0.5rem;
-  }
-  .sync-file {
-    flex: 1;
-    min-width: 220px;
-  }
-  .sync-file input {
-    display: block;
-    margin-top: 0.35rem;
-    font-size: 0.85rem;
-  }
-
-  .btn {
-    background: var(--bg);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 0.5rem 0.85rem;
-    font-family: var(--font-ui);
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-  .btn:hover {
+  .btn-config:hover {
     border-color: var(--fg);
   }
-  .btn-primary {
-    background: var(--fg);
-    color: var(--bg);
-    border-color: var(--fg);
-  }
-  .btn-primary:hover {
-    opacity: 0.85;
-  }
 
-  .calendar-nav {
+  /* Barre d'outils calendrier */
+  .calendar-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
     gap: 1rem;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--line);
+    margin-top: 1.5rem;
+    margin-bottom: 1.25rem;
   }
-  .nav-controls {
+  .nav-cluster {
     display: flex;
-    gap: 0.35rem;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .btn-nav {
+    width: 2rem;
+    height: 2rem;
+    display: grid;
+    place-items: center;
+    background: var(--soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: var(--fg);
+  }
+  .btn-nav:hover {
+    border-color: var(--fg);
+  }
+  .btn-today {
+    padding: 0.35rem 0.8rem;
+    background: var(--soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    color: var(--fg);
+  }
+  .btn-today:hover {
+    border-color: var(--fg);
   }
   .current-period-title {
-    margin: 0;
-    font-size: 1.25rem;
+    margin: 0 0 0 0.5rem;
+    font-size: 1.2rem;
+    font-weight: 600;
   }
-  .view-switch button {
+  .view-switch {
+    display: flex;
+    align-items: center;
+  }
+  .btn-switch {
     background: none;
     border: none;
     cursor: pointer;
-    padding: 0;
     color: var(--muted);
+    font-size: 0.9rem;
+    padding: 0 0.25rem;
   }
-  .view-switch button.active {
+  .btn-switch.active {
     color: var(--fg);
     font-weight: 600;
   }
 
-  /* Vue semaine en colonnes */
-  .week-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 0.75rem;
+  /* Grille moderne */
+  .modern-calendar-wrapper {
+    background: var(--soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .grid-table {
+    display: flex;
+    flex-direction: column;
+    min-width: 650px;
     overflow-x: auto;
   }
-  .day-column {
-    background: var(--soft);
-    border-radius: var(--radius);
-    padding: 0.75rem;
-    min-height: 380px;
-  }
-  .day-today {
-    outline: 2px solid var(--fg);
-  }
-  .day-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    padding-bottom: 0.5rem;
-    margin-bottom: 0.75rem;
-    border-bottom: 1px solid var(--line);
-    font-family: var(--font-ui);
-    font-weight: 600;
-  }
-  .day-num {
-    font-size: 1.1rem;
-  }
-  .day-events {
+  .grid-days-header {
     display: grid;
-    gap: 0.65rem;
-  }
-  .event-card {
+    grid-template-columns: 55px repeat(7, 1fr);
     background: var(--bg);
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    padding: 0.6rem;
-    display: grid;
-    gap: 0.35rem;
+    border-bottom: 1px solid var(--line);
   }
-  .event-time {
-    font-size: 0.75rem;
+  .header-corner {
+    border-right: 1px solid var(--line);
   }
-  .event-title {
-    font-size: 0.88rem;
-    font-weight: 600;
-    line-height: 1.25;
-  }
-  .event-loc {
-    font-size: 0.75rem;
-  }
-  .event-actions {
-    margin-top: 0.25rem;
-  }
-  .btn-event-reminder {
-    background: none;
-    border: none;
-    padding: 0;
-    font-size: 0.75rem;
-    font-family: var(--font-ui);
-    color: var(--muted);
-    cursor: pointer;
-    text-decoration: underline;
-  }
-  .btn-event-reminder:hover {
-    color: var(--fg);
-  }
-  .no-events {
-    font-style: italic;
-    font-size: 0.8rem;
+  .day-header-cell {
+    padding: 0.75rem 0.5rem;
     text-align: center;
-    padding: 2rem 0;
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .day-header-cell:last-child {
+    border-right: none;
+  }
+  .day-header-cell.is-today {
+    background: color-mix(in srgb, var(--fg) 5%, transparent);
+  }
+  .day-header-name {
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+  }
+  .day-header-number {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+  .is-today .day-header-number {
+    color: var(--fg);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
   }
 
-  /* Vue agenda / liste */
+  /* Corps de grille */
+  .grid-body-container {
+    display: grid;
+    grid-template-columns: 55px 1fr;
+    height: 640px;
+    position: relative;
+    background: var(--bg);
+  }
+  .time-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-right: 1px solid var(--line);
+    padding: 0.25rem 0.4rem;
+    user-select: none;
+  }
+  .time-slot-label {
+    font-family: var(--font-ui);
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-feature-settings: 'tnum' 1;
+  }
+  .grid-columns {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    position: relative;
+    height: 100%;
+  }
+  .day-column {
+    position: relative;
+    height: 100%;
+    border-right: 1px solid var(--line);
+  }
+  .day-column:last-child {
+    border-right: none;
+  }
+  .is-today-column {
+    background: color-mix(in srgb, var(--fg) 3%, transparent);
+  }
+  .grid-hour-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px dashed var(--line);
+    pointer-events: none;
+  }
+  .events-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Cartes d'événements positionnées */
+  .event-block {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    padding: 0.45rem 0.55rem;
+    border-radius: 6px;
+    overflow: hidden;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    transition: transform 0.15s ease, z-index 0.15s ease;
+    z-index: 1;
+  }
+  .event-block:hover {
+    transform: scale(1.02);
+    z-index: 10;
+  }
+  .event-block-time {
+    font-size: 0.68rem;
+    font-weight: 600;
+    opacity: 0.85;
+    margin-bottom: 0.15rem;
+  }
+  .event-block-title {
+    font-size: 0.8rem;
+    font-weight: 650;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .event-block-loc {
+    font-size: 0.68rem;
+    margin-top: 0.2rem;
+    opacity: 0.8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Thèmes de couleurs épurés */
+  .event-theme-philo {
+    background: #1e1b4b;
+    color: #e0e7ff;
+    border-left: 3px solid #6366f1;
+  }
+  .event-theme-code {
+    background: #064e3b;
+    color: #d1fae5;
+    border-left: 3px solid #10b981;
+  }
+  .event-theme-math {
+    background: #431407;
+    color: #ffedd5;
+    border-left: 3px solid #f97316;
+  }
+  .event-theme-default {
+    background: #1f2937;
+    color: #f3f4f6;
+    border-left: 3px solid #9ca3af;
+  }
+
+  /* Mode clair : ajustement du contraste */
+  :global(:root[data-theme='light']) .event-theme-philo {
+    background: #eef2ff;
+    color: #312e81;
+    border-left: 3px solid #4f46e5;
+  }
+  :global(:root[data-theme='light']) .event-theme-code {
+    background: #ecfdf5;
+    color: #064e3b;
+    border-left: 3px solid #059669;
+  }
+  :global(:root[data-theme='light']) .event-theme-math {
+    background: #fff7ed;
+    color: #7c2d12;
+    border-left: 3px solid #ea580c;
+  }
+  :global(:root[data-theme='light']) .event-theme-default {
+    background: #f3f4f6;
+    color: #111827;
+    border-left: 3px solid #4b5563;
+  }
+
+  /* Vue agenda */
   .agenda-list {
     list-style: none;
     margin: 0;
@@ -578,13 +642,9 @@ import Base from '../../layouts/Base.astro';
     margin: 0 0 0.25rem;
     font-size: 1.15rem;
   }
-  .agenda-loc, .agenda-desc {
-    margin: 0;
-  }
-
-  @media (max-width: 50rem) {
-    .week-grid {
-      grid-template-columns: repeat(7, minmax(130px, 1fr));
-    }
+  .no-events {
+    padding: 3rem 0;
+    text-align: center;
+    font-style: italic;
   }
 </style>

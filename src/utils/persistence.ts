@@ -11,9 +11,25 @@ export const STORAGE_KEYS = {
   TIMETABLE_ICS: 'marges_timetable_ics',
   TIMETABLE_URL: 'marges_timetable_url',
   REMINDERS: 'marges_reminders_list',
-  CUSTOM_COURSES: 'marges_custom_courses',
+  REMINDERS_CONFIG: 'marges_reminders_config',
+  NOTEBOOK_CONFIG: 'marges_notebook_config',
   THEME: 'theme',
 } as const;
+
+export interface ReminderScheduleConfig {
+  enabled: boolean;
+  frequency: 'daily' | 'twice_daily' | 'weekly';
+  contentPreference: 'random' | 'philo' | 'cours';
+  times: string[]; // e.g. ["09:00", "19:00"]
+  weekDay?: number; // 1 = lundi
+}
+
+export interface NotebookConfig {
+  notebookUrl: string;
+  autoSync: boolean;
+  lastSync?: string;
+  notesSummary?: string;
+}
 
 const ONE_YEAR_SEC = 365 * 24 * 60 * 60;
 
@@ -49,9 +65,6 @@ export function deleteCookie(name: string): void {
 
 /**
  * Sauvegarde une donnée avec persistance double (Cookie + LocalStorage).
- * Si la chaîne est courte (< 3500 caractères), elle est dupliquée dans le cookie.
- * Si elle est volumineuse (ex: gros fichier ICS), un pointeur/hash ou métadonnée est mis dans le cookie,
- * et le contenu complet est préservé dans LocalStorage.
  */
 export function savePersistent(key: string, value: string): void {
   if (typeof window === 'undefined') return;
@@ -63,12 +76,11 @@ export function savePersistent(key: string, value: string): void {
     console.warn(`[Persistence] localStorage plein ou indisponible pour ${key}:`, err);
   }
 
-  // 2. Sauvegarde Cookie (limite standard ~4 Ko par cookie)
+  // 2. Sauvegarde Cookie
   try {
     if (value.length < 3500) {
       setCookie(key, value);
     } else {
-      // Pour les gros contenus (ex: très long fichier iCal), on stocke dans le cookie un résumé horodaté
       setCookie(`${key}_meta`, JSON.stringify({ size: value.length, updated: Date.now() }));
     }
   } catch (err) {
@@ -86,7 +98,6 @@ export function loadPersistent(key: string): string | null {
   try {
     const local = localStorage.getItem(key);
     if (local) {
-      // Synchronise le cookie si absent
       if (local.length < 3500 && !getCookie(key)) {
         setCookie(key, local);
       }
@@ -97,7 +108,6 @@ export function loadPersistent(key: string): string | null {
   // 2. Repli Cookie
   const fromCookie = getCookie(key);
   if (fromCookie) {
-    // Restaure dans le LocalStorage
     try {
       localStorage.setItem(key, fromCookie);
     } catch {}

@@ -45,9 +45,18 @@ const latestTextes = textes.slice(0, 3);
         <span class="pillar-icon">⏰</span>
         <h2 class="pillar-title">Rappels & Notifications</h2>
         <p class="pillar-desc meta">
-          Planifiez vos sessions de lecture et recevez vos alertes de révision.
+          Planification automatique (quotidienne, hebdomadaire) de lectures et révisions.
         </p>
         <span class="pillar-action more">Gérer les alertes <span>→</span></span>
+      </a>
+
+      <a href="/configuration/" class="pillar-card">
+        <span class="pillar-icon">⚙️</span>
+        <h2 class="pillar-title">Configuration & Sync</h2>
+        <p class="pillar-desc meta">
+          Synchronisation Google Notebook, import iCal et réglages des alertes.
+        </p>
+        <span class="pillar-action more">Paramètres <span>→</span></span>
       </a>
     </div>
 
@@ -111,7 +120,7 @@ const latestTextes = textes.slice(0, 3);
   }
   .pillars-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 1.5rem;
     margin-bottom: 4rem;
   }
