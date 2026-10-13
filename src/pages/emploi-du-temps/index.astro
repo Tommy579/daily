@@ -218,6 +218,16 @@ import Base from '../../layouts/Base.astro';
     return generateWeekEvents(monday);
   }
 
+  function getEventColorClass(ev: CalendarEvent): string {
+    const t = ev.title.toUpperCase();
+    if (t.includes('POMPE') || ev.category === 'habit') return 'card-habit';
+    if (t.includes('MATLAB') || t.includes('ALGÈBRE') || t.includes('ALGEBRE') || t.includes('PROGRAMMATION')) {
+      return 'card-magenta-vivid';
+    }
+    if (t.startsWith('TD') || ev.category === 'td') return 'card-td';
+    return 'card-cm';
+  }
+
   function renderCalendar() {
     const monday = getStartOfWeek(activeDate);
     currentEvents = loadEventsForCurrentWeek();
@@ -344,8 +354,7 @@ import Base from '../../layouts/Base.astro';
           const topPercent = ((clampedStart - START_HOUR) / TOTAL_HOURS) * 100;
           const heightPercent = (duration / TOTAL_HOURS) * 100;
 
-          const isTD = ev.title.toUpperCase().startsWith('TD') || ev.category === 'td';
-          const cardTypeClass = isTD ? 'card-td' : 'card-cm';
+          const cardTypeClass = getEventColorClass(ev);
 
           eventsHtml += `
             <div
@@ -426,9 +435,9 @@ import Base from '../../layouts/Base.astro';
 
     listEl.innerHTML = sorted
       .map((ev) => {
-        const isTD = ev.title.toUpperCase().startsWith('TD') || ev.category === 'td';
+        const colorClass = getEventColorClass(ev);
         return `
-        <li class="agenda-item card-${isTD ? 'td' : 'cm'}">
+        <li class="agenda-item ${colorClass}">
           <div class="agenda-date">
             <strong>${ev.start.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</strong>
             <span>${formatTime(ev.start)} – ${formatTime(ev.end)}</span>
@@ -879,15 +888,15 @@ import Base from '../../layouts/Base.astro';
     background: var(--ios-red);
   }
 
-  /* 5. CARTES DE COURS EXACTES DU SCREENSHOT */
+  /* 5. PETITS CARRÉS DE COULEUR AUTOUR DES ÉVÉNEMENTS */
   .course-card {
     position: absolute;
-    left: 3px;
-    right: 3px;
-    border-radius: 6px;
+    left: 4px;
+    right: 4px;
+    border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
     transition: transform 0.15s ease, z-index 0.15s ease, filter 0.15s ease;
     z-index: 2;
   }
@@ -897,7 +906,7 @@ import Base from '../../layouts/Base.astro';
     filter: brightness(1.15);
   }
   .card-inner {
-    padding: 0.35rem 0.5rem;
+    padding: 0.4rem 0.55rem;
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -905,11 +914,38 @@ import Base from '../../layouts/Base.astro';
     overflow: hidden;
   }
 
-  /* CM : Violet foncé & bordure fuchsia */
+  /* Carré Magenta Vif Éclatant (Matlab, Algèbre, Programmation) */
+  .card-magenta-vivid {
+    background: #a21caf !important;
+    border: 1.5px solid #f472b6 !important;
+    border-left: 5px solid #ff007f !important;
+  }
+  .card-magenta-vivid .card-title {
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+  .card-magenta-vivid .card-meta {
+    color: #fdf2f8 !important;
+  }
+
+  /* Carré TD : Violet / Pourpre riche & bordure rose néon */
+  .card-td {
+    background: #581c87 !important;
+    border: 1.5px solid #c084fc !important;
+    border-left: 5px solid #ec4899 !important;
+  }
+  .card-td .card-title {
+    color: #f5d0fe !important;
+  }
+  .card-td .card-meta {
+    color: #fae8ff !important;
+  }
+
+  /* Carré CM : Pourpre profond & bordure fuchsia électrique */
   .card-cm {
-    background: #2c0840 !important;
-    border: 1px solid rgba(192, 38, 211, 0.35) !important;
-    border-left: 4px solid #c026d3 !important;
+    background: #3b0764 !important;
+    border: 1.5px solid #a855f7 !important;
+    border-left: 5px solid #d946ef !important;
   }
   .card-cm .card-title {
     color: #f0abfc !important;
@@ -918,17 +954,17 @@ import Base from '../../layouts/Base.astro';
     color: #e9d5ff !important;
   }
 
-  /* TD : Violet saturé & bordure rose néon */
-  .card-td {
-    background: #3d0947 !important;
-    border: 1px solid rgba(225, 29, 72, 0.35) !important;
-    border-left: 4px solid #e11d48 !important;
+  /* Carré Habitude / Quotidien : Bleu nuit & bordure cyan */
+  .card-habit {
+    background: #1e3a8a !important;
+    border: 1.5px solid #38bdf8 !important;
+    border-left: 4.5px solid #0ea5e9 !important;
   }
-  .card-td .card-title {
-    color: #f472b6 !important;
+  .card-habit .card-title {
+    color: #bae6fd !important;
   }
-  .card-td .card-meta {
-    color: #fbcfe8 !important;
+  .card-habit .card-meta {
+    color: #e0f2fe !important;
   }
 
   .card-title {
@@ -946,7 +982,7 @@ import Base from '../../layouts/Base.astro';
     font-size: 0.68rem !important;
     font-weight: 500 !important;
     line-height: 1.25 !important;
-    opacity: 0.92;
+    opacity: 0.95;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
