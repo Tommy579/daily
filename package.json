@@ -9,6 +9,9 @@
     "build": "astro build && pagefind --site dist",
     "preview": "astro preview",
     "check": "astro check",
+    "sync-cours": "node scripts/sync-cours.mjs",
+    "sync-cours:push": "node scripts/sync-cours.mjs --commit --push",
+    "generate-article": "node scripts/generate-article.mjs",
     "astro": "astro"
   },
   "dependencies": {
@@ -18,6 +21,7 @@
     "@astrojs/sitemap": "^3.7.4",
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/source-serif-4": "^5.3.1",
+    "@google/genai": "^2.29.1",
     "astro": "^7.3.8",
     "ical.js": "^2.2.1"
   },
