@@ -15,55 +15,86 @@ const themes = (Object.keys(THEMES) as ThemeSlug[]).filter((t) => counts.has(t))
 ---
 
 <Base>
+  <!-- Hero / En-tête de l'espace personnel -->
   <section class="container hero" aria-labelledby="manifeste">
-    <h1 id="manifeste" class="visually-hidden">Marges — Espace personnel</h1>
+    <h1 id="manifeste" class="visually-hidden">Marges — Espace personnel de travail</h1>
     <p class="manifesto">
       <span class="first">Penser lentement ce que les machines font&nbsp;vite.</span>
-      Votre espace de travail personnel : des essais philosophiques sur l'intelligence artificielle, l'accès direct à vos cours universitaires, votre emploi du temps synchronisé et vos rappels d'étude.
+      Votre espace de travail personnel : vos cours universitaires, votre emploi du temps et des lectures philosophiques quotidiennes.
     </p>
-    <div class="workspace-quicklinks meta">
-      <a href="/dashboard/" class="quick-pill">✨ Tableau de bord</a>
-      <a href="/emploi-du-temps/" class="quick-pill">📅 Emploi du temps</a>
-      <a href="/cours/" class="quick-pill">📂 Cours ({subjects.length} matières)</a>
-      <a href="/rappels/" class="quick-pill">⏰ Rappels & Alertes</a>
+  </section>
+
+  <!-- Piliers principaux de travail -->
+  <section class="container pillars-section" aria-labelledby="piliers-title">
+    <h2 id="piliers-title" class="visually-hidden">Modules de l'espace</h2>
+    <div class="pillars-grid">
+      <a href="/emploi-du-temps/" class="pillar-card">
+        <span class="pillar-icon">📅</span>
+        <h3 class="pillar-title">Emploi du temps</h3>
+        <p class="pillar-desc meta">
+          Planning de la semaine, synchronisation du calendrier et alertes de cours.
+        </p>
+        <span class="pillar-action more">Consulter le planning <span aria-hidden="true">→</span></span>
+      </a>
+
+      <a href="/cours/" class="pillar-card">
+        <span class="pillar-icon">📂</span>
+        <h3 class="pillar-title">Supports de Cours</h3>
+        <p class="pillar-desc meta">
+          {subjects.length} matières (C, Matlab, EDO) et documents synchronisés avec votre notebook.
+        </p>
+        <span class="pillar-action more">Ouvrir les cours <span aria-hidden="true">→</span></span>
+      </a>
+
+      <a href="/rappels/" class="pillar-card">
+        <span class="pillar-icon">⏰</span>
+        <h3 class="pillar-title">Rappels & Notifications</h3>
+        <p class="pillar-desc meta">
+          Alertes automatiques (quotidiennes ou hebdomadaires) pour cours et lectures.
+        </p>
+        <span class="pillar-action more">Gérer les alertes <span aria-hidden="true">→</span></span>
+      </a>
+
+      <a href="/configuration/" class="pillar-card">
+        <span class="pillar-icon">⚙️</span>
+        <h3 class="pillar-title">Configuration & Sync</h3>
+        <p class="pillar-desc meta">
+          Google Notebook, import calendrier et réglages généraux.
+        </p>
+        <span class="pillar-action more">Paramètres <span aria-hidden="true">→</span></span>
+      </a>
     </div>
   </section>
 
-  <!-- Section Espace de travail -->
-  <section class="container workspace-spotlight" aria-labelledby="spotlight-title">
-    <div class="spotlight-grid">
-      <div class="spotlight-box">
-        <span class="meta label">Calendrier</span>
-        <h3>Emploi du temps & Cours</h3>
-        <p class="meta">
-          Importez votre fichier <code>.ics</code> ou connectez votre flux URL pour visualiser vos journées et planifier vos sessions.
-        </p>
-        <a href="/emploi-du-temps/" class="more">Voir mon planning <span>→</span></a>
+  <!-- Section Matières actives -->
+  {subjects.length > 0 && (
+    <section class="container dash-section" aria-labelledby="matieres-title">
+      <div class="section-head">
+        <h2 id="matieres-title" class="label">Matières actives</h2>
+        <a href="/cours/" class="more">Tous les cours <span aria-hidden="true">→</span></a>
       </div>
-
-      <div class="spotlight-box">
-        <span class="meta label">Académique</span>
-        <h3>Supports & Travaux dirigés</h3>
-        <p class="meta">
-          Consultez vos PDF, codes sources et comptes-rendus en C, Matlab et EDO dans une visionneuse épurée.
-        </p>
-        <a href="/cours/" class="more">Accéder aux documents <span>→</span></a>
+      <div class="subjects-strip">
+        {subjects.map((sub) => (
+          <div class="subject-mini-card">
+            <h3 class="subject-mini-title">{sub.name}</h3>
+            <p class="meta">{sub.stats.totalFiles} fichiers ({sub.stats.pdfCount} PDF)</p>
+            <div class="mini-links meta">
+              <a href={`/cours/#folder-${sub.id}`}>Explorer</a>
+              <span class="sep">·</span>
+              <a href={`/rappels/?presetTitle=${encodeURIComponent(`Réviser cours : ${sub.name}`)}&presetType=cours&presetTarget=${encodeURIComponent(`/cours/#folder-${sub.id}`)}`}>
+                ⏰ Rappel
+              </a>
+            </div>
+          </div>
+        ))}
       </div>
+    </section>
+  )}
 
-      <div class="spotlight-box">
-        <span class="meta label">Productivité</span>
-        <h3>Rappels programmés</h3>
-        <p class="meta">
-          Recevez des alertes système pour vous inciter à ouvrir un cours ou lire un texte au moment voulu.
-        </p>
-        <a href="/rappels/" class="more">Programmer un rappel <span>→</span></a>
-      </div>
-    </div>
-  </section>
-
-  <section class="container latest" aria-labelledby="derniers">
+  <!-- Section Lectures philosophiques récentes -->
+  <section class="container dash-section" aria-labelledby="derniers">
     <div class="section-head">
-      <h2 id="derniers" class="label">Textes philosophiques récents</h2>
+      <h2 id="derniers" class="label">Lectures philosophiques récentes</h2>
       <a class="more" href="/textes/">Tous les textes <span aria-hidden="true">→</span></a>
     </div>
     <ol class="list" role="list">
@@ -77,6 +108,7 @@ const themes = (Object.keys(THEMES) as ThemeSlug[]).filter((t) => counts.has(t))
     </ol>
   </section>
 
+  <!-- Section Thèmes explorés -->
   {
     themes.length > 0 && (
       <section class="container home-themes" aria-labelledby="themes">
@@ -98,13 +130,13 @@ const themes = (Object.keys(THEMES) as ThemeSlug[]).filter((t) => counts.has(t))
 
 <style>
   .hero {
-    padding-block: clamp(3rem, 2rem + 6vw, 6.5rem) clamp(2rem, 1.5rem + 2vw, 3.5rem);
+    padding-block: clamp(2.5rem, 1.8rem + 4vw, 5rem) clamp(1.5rem, 1rem + 2vw, 2.5rem);
   }
   .manifesto {
-    font-size: clamp(1.4rem, 1.1rem + 1.4vw, 2rem);
+    font-size: clamp(1.35rem, 1.1rem + 1.2vw, 1.85rem);
     line-height: 1.4;
     letter-spacing: -.012em;
-    margin: 0 0 1.5rem;
+    margin: 0;
     color: var(--muted);
     text-wrap: pretty;
   }
@@ -113,53 +145,58 @@ const themes = (Object.keys(THEMES) as ThemeSlug[]).filter((t) => counts.has(t))
     color: var(--fg);
     font-weight: 600;
     letter-spacing: -.025em;
-    margin-bottom: .5rem;
+    margin-bottom: .45rem;
     text-wrap: balance;
   }
-  .workspace-quicklinks {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-    margin-top: 1.25rem;
-  }
-  .quick-pill {
-    padding: 0.4rem 0.8rem;
-    background: var(--soft);
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    text-decoration: none;
-    color: var(--fg);
-    font-size: 0.85rem;
-    transition: all 0.15s ease;
-  }
-  .quick-pill:hover {
-    border-color: var(--fg);
-  }
 
-  .workspace-spotlight {
-    margin-bottom: 4rem;
+  /* Piliers */
+  .pillars-section {
+    margin-bottom: 3.5rem;
   }
-  .spotlight-grid {
+  .pillars-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 1.25rem;
   }
-  .spotlight-box {
+  .pillar-card {
     background: var(--soft);
+    border: 1px solid var(--line);
     border-radius: var(--radius);
-    padding: 1.5rem;
+    padding: 1.75rem 1.5rem;
+    text-decoration: none;
     display: flex;
     flex-direction: column;
+    transition: transform 0.2s var(--ease), border-color 0.2s ease, box-shadow 0.2s ease;
   }
-  .spotlight-box h3 {
-    margin: 0.5rem 0 0.5rem;
-    font-size: 1.2rem;
+  .pillar-card:hover {
+    border-color: var(--fg);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
   }
-  .spotlight-box p {
+  .pillar-icon {
+    font-size: 1.8rem;
+    margin-bottom: 0.75rem;
+  }
+  .pillar-title {
+    margin: 0 0 0.4rem;
+    font-size: 1.25rem;
+    color: var(--fg);
+  }
+  .pillar-desc {
+    margin: 0 0 1.25rem;
     flex: 1;
-    margin-bottom: 1.25rem;
+    line-height: 1.5;
+    font-size: 0.88rem;
+  }
+  .pillar-action {
+    color: var(--fg);
+    font-size: 0.88rem;
   }
 
+  /* Sections */
+  .dash-section {
+    margin-bottom: 3.5rem;
+  }
   .section-head {
     display: flex;
     align-items: baseline;
@@ -167,9 +204,50 @@ const themes = (Object.keys(THEMES) as ThemeSlug[]).filter((t) => counts.has(t))
     gap: 1rem;
     padding-bottom: .9rem;
     border-bottom: 1px solid var(--fg);
+    margin-bottom: 1.5rem;
   }
   .section-head h2 { color: var(--fg); }
 
+  /* Matières */
+  .subjects-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+  }
+  .subject-mini-card {
+    background: var(--soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.4rem;
+    transition: border-color 0.15s ease;
+  }
+  .subject-mini-card:hover {
+    border-color: var(--fg);
+  }
+  .subject-mini-title {
+    margin: 0 0 0.25rem;
+    font-size: 1.15rem;
+  }
+  .mini-links {
+    margin-top: 0.85rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .mini-links a {
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    color: var(--fg);
+    transition: text-decoration-color 0.15s ease;
+  }
+  .mini-links a:hover {
+    text-decoration-color: currentColor;
+  }
+  .mini-links .sep {
+    color: var(--muted);
+  }
+
+  /* Liste textes */
   .list {
     list-style: none;
     margin: 0;
@@ -177,7 +255,11 @@ const themes = (Object.keys(THEMES) as ThemeSlug[]).filter((t) => counts.has(t))
   }
   .list > li + li { border-top: 1px solid var(--line); }
 
-  .home-themes { margin-top: 4.5rem; margin-bottom: 4rem; }
+  /* Thèmes */
+  .home-themes {
+    margin-top: 3.5rem;
+    margin-bottom: 4rem;
+  }
   .home-themes h2 {
     color: var(--fg);
     padding-bottom: .9rem;
@@ -208,7 +290,7 @@ const themes = (Object.keys(THEMES) as ThemeSlug[]).filter((t) => counts.has(t))
   }
 
   @media (max-width: 50rem) {
-    .spotlight-grid {
+    .pillars-grid {
       grid-template-columns: 1fr;
     }
   }

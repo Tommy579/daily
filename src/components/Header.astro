@@ -7,7 +7,6 @@ const isTextes = path.startsWith('/textes') || path.startsWith('/themes');
 const isCours = path.startsWith('/cours');
 const isEmploi = path.startsWith('/emploi-du-temps');
 const isRappels = path.startsWith('/rappels');
-const isDashboard = path.startsWith('/dashboard');
 const isConfig = path.startsWith('/configuration');
 ---
 
@@ -17,8 +16,6 @@ const isConfig = path.startsWith('/configuration');
       {SITE.title}
     </a>
     <nav class="nav" aria-label="Navigation principale">
-      <a href="/dashboard/" aria-current={isDashboard ? 'page' : undefined}>Espace</a>
-      <span class="dot" aria-hidden="true">·</span>
       <a href="/textes/" aria-current={isTextes ? 'page' : undefined}>Textes</a>
       <span class="dot" aria-hidden="true">·</span>
       <a href="/emploi-du-temps/" aria-current={isEmploi ? 'page' : undefined}>Emploi du temps</a>
