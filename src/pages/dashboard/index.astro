@@ -1,17 +1,18 @@
 ---
+import { url } from '../../utils/url';
 ---
 <!doctype html>
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
     <title>Redirection...</title>
-    <meta http-equiv="refresh" content="0;url=/" />
+    <meta http-equiv="refresh" content={`0;url=${url('/')}`} />
     <meta name="robots" content="noindex" />
-    <script>
-      window.location.replace('/');
+    <script define:vars={{ homeUrl: url('/') }}>
+      window.location.replace(homeUrl);
     </script>
   </head>
   <body>
-    <p>Redirection vers <a href="/">l'accueil</a>...</p>
+    <p>Redirection vers <a href={url('/')}>l'accueil</a>...</p>
   </body>
 </html>

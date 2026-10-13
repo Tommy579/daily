@@ -3,6 +3,7 @@ import { ClientRouter } from 'astro:transitions';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { SITE } from '../consts';
+import { url } from '../utils/url';
 import '../styles/global.css';
 
 interface Props {
@@ -20,7 +21,7 @@ interface Props {
 const {
   title,
   description = SITE.description,
-  image = '/og-default.png',
+  image = url('/og-default.png'),
   type = 'website',
   publishedTime,
   modifiedTime,
@@ -76,9 +77,9 @@ const websiteLd = {
     <link rel="canonical" href={canonical} />
     {noindex && <meta name="robots" content="noindex" />}
 
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href={url('/favicon.svg')} type="image/svg+xml" />
     <link rel="alternate" type="application/rss+xml" title={`${SITE.title} — flux RSS`} href={new URL('rss.xml', Astro.site)} />
-    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="sitemap" href={url('/sitemap-index.xml')} />
 
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />

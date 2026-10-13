@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import { getTextes, plural } from '../../utils/textes';
 import { THEMES, THEME_SLUGS } from '../../data/themes';
+import { url } from '../../utils/url';
 
 const textes = await getTextes();
 const themes = THEME_SLUGS.map((slug) => ({
@@ -22,7 +23,7 @@ const themes = THEME_SLUGS.map((slug) => ({
       {
         themes.map((t, i) => (
           <li>
-            <a href={`/themes/${t.slug}/`} class="theme">
+            <a href={url(`/themes/${t.slug}/`)} class="theme">
               <span class="num meta">{String(i + 1).padStart(2, '0')}</span>
               <span class="body">
                 <span class="name">{t.label}</span>

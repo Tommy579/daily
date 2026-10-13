@@ -5,6 +5,7 @@ import Icon from '../components/Icon.astro';
 import { getTextes } from '../utils/textes';
 import { THEMES, type ThemeSlug } from '../data/themes';
 import { getCourses } from '../utils/courses';
+import { url } from '../utils/url';
 
 const textes = await getTextes();
 const latest = textes.slice(0, 3);
@@ -15,10 +16,10 @@ textes.forEach((t) => t.data.themes.forEach((th) => counts.set(th, (counts.get(t
 const themes = (Object.keys(THEMES) as ThemeSlug[]).filter((t) => counts.has(t));
 
 const shortcuts = [
-  { href: '/emploi-du-temps/', icon: 'calendar', title: 'Emploi du temps', desc: 'Semaine en cours' },
-  { href: '/cours/', icon: 'folder', title: 'Cours', desc: `${subjects.length} matières` },
-  { href: '/rappels/', icon: 'bell', title: 'Rappels', desc: 'Lecture & révision' },
-  { href: '/textes/', icon: 'book', title: 'Textes', desc: `${textes.length} publications` },
+  { href: url('/emploi-du-temps/'), icon: 'calendar', title: 'Emploi du temps', desc: 'Semaine en cours' },
+  { href: url('/cours/'), icon: 'folder', title: 'Cours', desc: `${subjects.length} matières` },
+  { href: url('/rappels/'), icon: 'bell', title: 'Rappels', desc: 'Lecture & révision' },
+  { href: url('/textes/'), icon: 'book', title: 'Textes', desc: `${textes.length} publications` },
 ] as const;
 ---
 
@@ -41,7 +42,7 @@ const shortcuts = [
               <h2 id="today-title" class="today-title">Aujourd'hui</h2>
               <p class="today-sub" data-today-summary>Chargement de votre journée…</p>
             </div>
-            <a href="/emploi-du-temps/" class="btn btn--sm">
+            <a href={url('/emploi-du-temps/')} class="btn btn--sm">
               Semaine <Icon name="arrow-right" size={14} />
             </a>
           </div>
@@ -66,7 +67,7 @@ const shortcuts = [
         <section class="section" aria-labelledby="derniers">
           <div class="section-head">
             <h2 id="derniers">Lectures récentes</h2>
-            <a class="more" href="/textes/">Tous les textes <span aria-hidden="true">→</span></a>
+            <a class="more" href={url('/textes/')}>Tous les textes <span aria-hidden="true">→</span></a>
           </div>
           <ol class="text-list" role="list">
             {latest.map((entry) => (
@@ -82,12 +83,12 @@ const shortcuts = [
           <section aria-labelledby="matieres-title">
             <div class="section-head">
               <h2 id="matieres-title">Matières</h2>
-              <a href="/cours/" class="more">Tout voir <span aria-hidden="true">→</span></a>
+              <a href={url('/cours/')} class="more">Tout voir <span aria-hidden="true">→</span></a>
             </div>
             <ul class="subject-list" role="list" id="home-subject-list">
               {subjects.map((sub) => (
                 <li>
-                  <a href={`/cours/#folder-${sub.id}`} class="subject-row">
+                  <a href={url(`/cours/#folder-${sub.id}`)} class="subject-row">
                     <span class="subject-initial" aria-hidden="true">{sub.name.charAt(0).toUpperCase()}</span>
                     <span class="subject-text">
                       <strong>{sub.name}</strong>
@@ -109,7 +110,7 @@ const shortcuts = [
             <ul class="theme-chips" role="list">
               {themes.map((t) => (
                 <li>
-                  <a href={`/themes/${t}/`}>
+                  <a href={url(`/themes/${t}/`)}>
                     {THEMES[t].label}
                     <span class="count">{counts.get(t)}</span>
                   </a>
@@ -223,15 +224,17 @@ const shortcuts = [
 
     // Matières personnalisées ajoutées par l'utilisateur
     try {
+      const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
       const rawCustom = localStorage.getItem('marges_custom_subjects');
       const customSubs: Array<{ id: string; name: string }> = rawCustom ? JSON.parse(rawCustom) : [];
       const subList = document.getElementById('home-subject-list');
       if (subList && customSubs.length > 0) {
         customSubs.forEach((sub) => {
-          if (!subList.querySelector(`a[href="/cours/#folder-${sub.id}"]`)) {
+          const targetHref = `${basePath}/cours/#folder-${sub.id}`;
+          if (!subList.querySelector(`a[href="${targetHref}"]`)) {
             const li = document.createElement('li');
             li.innerHTML = `
-              <a href="/cours/#folder-${sub.id}" class="subject-row">
+              <a href="${targetHref}" class="subject-row">
                 <span class="subject-initial" aria-hidden="true">${sub.name.charAt(0).toUpperCase()}</span>
                 <span class="subject-text">
                   <strong>${sub.name}</strong>

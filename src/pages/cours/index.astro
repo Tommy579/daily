@@ -3,6 +3,7 @@ import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
 import CourseManagerModal from '../../components/CourseManagerModal.astro';
 import { getCourses, formatFileSize } from '../../utils/courses';
+import { url } from '../../utils/url';
 
 const subjects = getCourses();
 const totalCourses = subjects.length;
@@ -24,7 +25,7 @@ const subjectsList = subjects.map((s) => ({
     <header class="page-header courses-hero">
       <div class="courses-hero-top">
         <div>
-          <p class="crumbs"><a href="/">Accueil</a> / Cours</p>
+          <p class="crumbs"><a href={url('/')}>Accueil</a> / Cours</p>
           <h1 class="courses-title">Mes Cours</h1>
           <p class="courses-motto">Supports de cours, énoncés de TD et fiches de révisions pour le Semestre 5.</p>
         </div>
@@ -33,7 +34,7 @@ const subjectsList = subjects.map((s) => ({
             <Icon name="folder" size={14} />
             Ajouter / Classer un cours
           </button>
-          <a href="/configuration/" class="btn btn--sm">
+          <a href={url('/configuration/')} class="btn btn--sm">
             <Icon name="settings" size={14} />
             Configuration
           </a>

@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import { url } from '../utils/url';
 ---
 
 <Base title="Page introuvable" description="Cette page n'existe pas." noindex>
@@ -12,8 +13,8 @@ import Base from '../layouts/Base.astro';
       <p>— Albert Camus</p>
     </blockquote>
     <p class="links">
-      <a class="more" href="/"><span aria-hidden="true">←</span> Retour à l’accueil</a>
-      <a class="more" href="/textes/">Parcourir les textes <span aria-hidden="true">→</span></a>
+      <a class="more" href={url('/')}><span aria-hidden="true">←</span> Retour à l’accueil</a>
+      <a class="more" href={url('/textes/')}><span aria-hidden="true">→</span> Parcourir les textes</a>
     </p>
   </div>
 </Base>
