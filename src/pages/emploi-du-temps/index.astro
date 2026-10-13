@@ -4,140 +4,152 @@ import Base from '../../layouts/Base.astro';
 
 <Base
   title="Emploi du temps"
-  description="Emploi du temps universitaire moderne, épuré et synchronisé."
+  description="Emploi du temps universitaire hebdomadaire au design moderne et épuré."
 >
-  <div class="container timetable-page" data-timetable-root>
-    <header class="page-header">
-      <div class="header-top">
-        <div>
-          <p class="label"><a href="/dashboard/">Espace de travail</a> / Calendrier</p>
-          <h1>Emploi du temps</h1>
-        </div>
-        <a href="/configuration/#calendar-settings" class="btn-config meta">
-          ⚙️ Paramètres du calendrier
+  <div class="calendar-app-root" data-timetable-root>
+    <!-- Barre de contrôle supérieure type iOS Calendar -->
+    <header class="cal-top-bar">
+      <div class="cal-top-left">
+        <button type="button" class="btn-cal-month" id="cal-prev" title="Semaine précédente">‹</button>
+        <h1 class="cal-month-title" id="cal-month-display">Octobre 2026</h1>
+        <button type="button" class="btn-cal-month" id="cal-next" title="Semaine suivante">›</button>
+      </div>
+
+      <div class="cal-top-actions">
+        <button type="button" class="icon-btn active" id="btn-view-week" title="Vue Semaine">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+        </button>
+        <button type="button" class="icon-btn" id="btn-view-agenda" title="Vue Liste">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        </button>
+        <a href="/configuration/#calendar-settings" class="icon-btn" title="Paramètres & Import">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </a>
       </div>
-      <p class="lede">
-        Vos créneaux de cours synchronisés et organisés dans une grille horaire claire.
-      </p>
     </header>
 
-    <!-- En-tête de navigation du calendrier -->
-    <div class="calendar-toolbar">
-      <div class="nav-cluster">
-        <button type="button" class="btn-nav" id="cal-prev" title="Semaine précédente">‹</button>
-        <button type="button" class="btn-today" id="cal-today">Aujourd'hui</button>
-        <button type="button" class="btn-nav" id="cal-next" title="Semaine suivante">›</button>
-        <h2 class="current-period-title" data-period-title>Semaine en cours</h2>
+    <!-- Bandeau sélecteur de la semaine (L, M, M, J, V, S, D + pastille rouge Aujourd'hui) -->
+    <nav class="cal-week-strip" aria-label="Jours de la semaine">
+      <div class="week-strip-inner" id="week-strip-container">
+        <!-- Rempli dynamiquement en JS -->
       </div>
+    </nav>
 
-      <div class="view-switch meta">
-        <button type="button" class="btn-switch active" data-view="week">Grille</button>
-        <span class="sep">·</span>
-        <button type="button" class="btn-switch" data-view="agenda">Agenda</button>
-      </div>
-    </div>
-
-    <!-- Vue Grille Moderne avec heures -->
-    <div class="modern-calendar-wrapper" data-week-grid>
-      <div class="grid-table">
-        <!-- En-tête des jours -->
-        <div class="grid-days-header" data-days-header>
+    <!-- Vue Grille Calendrier Hebdomadaire (7 jours) -->
+    <div class="calendar-scroll-viewport" data-week-view>
+      <div class="cal-grid-frame">
+        <!-- En-têtes de colonnes des 7 jours (ex: mar. - 13 oct.) -->
+        <div class="cal-columns-header" id="cal-columns-header">
           <!-- Rempli en JS -->
         </div>
 
-        <!-- Corps de la grille avec colonnes de jours et créneaux horaires -->
-        <div class="grid-body-container">
-          <!-- Axe des heures (08:00 - 19:00) -->
-          <div class="time-axis" aria-hidden="true">
-            <div class="time-slot-label">08:00</div>
-            <div class="time-slot-label">09:00</div>
-            <div class="time-slot-label">10:00</div>
-            <div class="time-slot-label">11:00</div>
-            <div class="time-slot-label">12:00</div>
-            <div class="time-slot-label">13:00</div>
-            <div class="time-slot-label">14:00</div>
-            <div class="time-slot-label">15:00</div>
-            <div class="time-slot-label">16:00</div>
-            <div class="time-slot-label">17:00</div>
-            <div class="time-slot-label">18:00</div>
-            <div class="time-slot-label">19:00</div>
+        <!-- Section des tâches / habitudes toute la journée (ex: 20 pompes mini) -->
+        <div class="cal-allday-row" id="cal-allday-row">
+          <!-- Rempli en JS -->
+        </div>
+
+        <!-- Corps principal avec axe des heures et les 7 colonnes -->
+        <div class="cal-grid-body">
+          <!-- Axe vertical des heures (08:00 à 20:00) -->
+          <div class="cal-time-axis" aria-hidden="true">
+            <div class="time-label">08:00</div>
+            <div class="time-label">09:00</div>
+            <div class="time-label">10:00</div>
+            <div class="time-label">11:00</div>
+            <div class="time-label">12:00</div>
+            <div class="time-label">13:00</div>
+            <div class="time-label">14:00</div>
+            <div class="time-label">15:00</div>
+            <div class="time-label">16:00</div>
+            <div class="time-label">17:00</div>
+            <div class="time-label">18:00</div>
+            <div class="time-label">19:00</div>
+            <div class="time-label">20:00</div>
+
+            <!-- Pastille de l'heure courante (ex: 19:06) -->
+            <div class="current-time-badge" id="current-time-badge" style="display: none;">
+              <span id="current-time-text">19:06</span>
+            </div>
           </div>
 
-          <!-- Les 7 colonnes de jours -->
-          <div class="grid-columns" data-grid-columns>
+          <!-- Lignes horizontales séparatrices d'heures -->
+          <div class="cal-hour-lines" aria-hidden="true" id="cal-hour-lines">
+            <!-- Rempli en JS -->
+          </div>
+
+          <!-- Les 7 colonnes de jours pour les cours -->
+          <div class="cal-day-columns" id="cal-day-columns">
             <!-- Rempli en JS -->
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Vue Liste / Agenda -->
-    <div class="agenda-view" data-agenda-view hidden>
-      <ul class="agenda-list" data-agenda-list role="list">
-        <!-- Rempli en JS -->
-      </ul>
+    <!-- Vue Liste / Agenda alternatif -->
+    <div class="agenda-view-wrapper" data-agenda-view hidden>
+      <div class="container">
+        <ul class="agenda-card-list" id="agenda-card-list" role="list">
+          <!-- Rempli en JS -->
+        </ul>
+      </div>
     </div>
+
+    <!-- Barre d'action inférieure flottante type iOS ("Aujourd'hui") -->
+    <aside class="cal-floating-bar" aria-label="Raccourcis calendrier">
+      <button type="button" class="btn-today-pill" id="btn-today-pill">
+        <span class="red-dot"></span>
+        <span>Aujourd’hui</span>
+      </button>
+    </aside>
+
+    <!-- Modal d'inspection détaillée d'un cours au clic -->
+    <dialog class="cal-event-dialog" id="event-modal">
+      <div class="dialog-content">
+        <header class="dialog-header">
+          <span class="dialog-badge" id="modal-category">COURS</span>
+          <button type="button" class="btn-close-modal" id="modal-close" aria-label="Fermer">✕</button>
+        </header>
+        <h2 class="dialog-title" id="modal-title">Titre du cours</h2>
+        <div class="dialog-meta-list">
+          <p class="dialog-meta" id="modal-time">🕒 Horaires</p>
+          <p class="dialog-meta" id="modal-location">📍 Salle</p>
+          <p class="dialog-desc" id="modal-desc"></p>
+        </div>
+        <div class="dialog-actions">
+          <a href="/cours/" class="btn-modal-action" id="modal-link-course">Consulter les supports de cours →</a>
+        </div>
+      </div>
+    </dialog>
   </div>
 </Base>
 
 <script is:inline src="https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js"></script>
 
 <script>
-  import { SAMPLE_ICS_DATA } from '../../utils/timetable';
-  import { STORAGE_KEYS, savePersistent, loadPersistent } from '../../utils/persistence';
+  import { generateWeekEvents } from '../../utils/timetable';
+  import { STORAGE_KEYS, loadPersistent } from '../../utils/persistence';
 
-  interface EventParsed {
+  interface CalendarEvent {
     id: string;
     title: string;
     start: Date;
     end: Date;
-    location: string;
-    description: string;
+    location?: string;
+    description?: string;
+    category?: 'cm' | 'td' | 'tp' | 'habit' | 'other';
   }
 
-  const STORAGE_KEY = STORAGE_KEYS.TIMETABLE_ICS;
   const START_HOUR = 8;
   const END_HOUR = 20;
   const TOTAL_HOURS = END_HOUR - START_HOUR; // 12 heures
 
-  let currentEvents: EventParsed[] = [];
-  let currentDate = new Date();
-  let currentView: 'week' | 'agenda' = 'week';
-
-  function parseIcsText(icsData: string): EventParsed[] {
-    try {
-      // @ts-ignore
-      const jcal = window.ICAL ? window.ICAL.parse(icsData) : null;
-      if (!jcal) return [];
-      // @ts-ignore
-      const comp = new window.ICAL.Component(jcal);
-      const vevents = comp.getAllSubcomponents('vevent');
-      const list: EventParsed[] = [];
-
-      for (const vevent of vevents) {
-        // @ts-ignore
-        const ev = new window.ICAL.Event(vevent);
-        list.push({
-          id: ev.uid || Math.random().toString(),
-          title: ev.summary || 'Cours sans titre',
-          start: ev.startDate.toJSDate(),
-          end: ev.endDate.toJSDate(),
-          location: ev.location || '',
-          description: ev.description || '',
-        });
-      }
-
-      return list.sort((a, b) => a.start.getTime() - b.start.getTime());
-    } catch (e) {
-      console.error('Erreur parsing ICS:', e);
-      return [];
-    }
-  }
+  let activeDate = new Date();
+  let currentEvents: CalendarEvent[] = [];
 
   function getStartOfWeek(d: Date): Date {
     const date = new Date(d);
     const day = date.getDay();
+    // Lundi comme 1er jour de semaine (0 = Dimanche -> recul de 6j)
     const diff = date.getDate() - day + (day === 0 ? -6 : 1);
     date.setDate(diff);
     date.setHours(0, 0, 0, 0);
@@ -148,503 +160,945 @@ import Base from '../../layouts/Base.astro';
     return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   }
 
-  function formatDateFr(d: Date): string {
-    return d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
-  }
+  function parseIcs(rawIcs: string): CalendarEvent[] {
+    try {
+      // @ts-ignore
+      const jcal = window.ICAL ? window.ICAL.parse(rawIcs) : null;
+      if (!jcal) return [];
+      // @ts-ignore
+      const comp = new window.ICAL.Component(jcal);
+      const vevents = comp.getAllSubcomponents('vevent');
+      const list: CalendarEvent[] = [];
 
-  // Couleurs sobres adaptatives pour les matières
-  function getCourseColorClass(title: string): string {
-    const lower = title.toLowerCase();
-    if (lower.includes('philo') || lower.includes('éthique')) return 'event-theme-philo';
-    if (lower.includes('c ') || lower.includes('info') || lower.includes('algo')) return 'event-theme-code';
-    if (lower.includes('matlab') || lower.includes('math') || lower.includes('edo')) return 'event-theme-math';
-    return 'event-theme-default';
-  }
+      for (const vevent of vevents) {
+        // @ts-ignore
+        const ev = new window.ICAL.Event(vevent);
+        const title = ev.summary || 'Cours sans titre';
+        let category: 'cm' | 'td' | 'tp' | 'habit' | 'other' = 'cm';
+        if (title.toUpperCase().includes('TD')) category = 'td';
+        else if (title.toUpperCase().includes('TP')) category = 'tp';
+        else if (title.toUpperCase().includes('POMPE') || title.toUpperCase().includes('HABIT')) category = 'habit';
 
-  function renderModernWeek() {
-    const headerEl = document.querySelector('[data-days-header]');
-    const columnsEl = document.querySelector('[data-grid-columns]');
-    const periodTitle = document.querySelector('[data-period-title]');
-    if (!headerEl || !columnsEl || !periodTitle) return;
-
-    const monday = getStartOfWeek(currentDate);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-
-    periodTitle.textContent = `${monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} – ${sunday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`;
-
-    const days = [];
-    for (let i = 0; i < 7; i++) {
-      const dayDate = new Date(monday);
-      dayDate.setDate(monday.getDate() + i);
-      days.push(dayDate);
-    }
-
-    // Rendu en-tête des jours
-    let headerHtml = '<div class="header-corner"></div>';
-    for (const day of days) {
-      const isToday = day.toDateString() === new Date().toDateString();
-      headerHtml += `
-        <div class="day-header-cell ${isToday ? 'is-today' : ''}">
-          <span class="day-header-name">${day.toLocaleDateString('fr-FR', { weekday: 'short' })}</span>
-          <span class="day-header-number">${day.getDate()}</span>
-        </div>
-      `;
-    }
-    headerEl.innerHTML = headerHtml;
-
-    // Rendu des colonnes de jours
-    let colsHtml = '';
-    for (const day of days) {
-      const isToday = day.toDateString() === new Date().toDateString();
-      const dayEvents = currentEvents.filter(
-        (e) => e.start.toDateString() === day.toDateString()
-      );
-
-      // Lignes horizontales d'heures (arborescence d'arrière plan)
-      let hourLines = '';
-      for (let h = 0; h < TOTAL_HOURS; h++) {
-        hourLines += `<div class="grid-hour-line" style="top: ${(h / TOTAL_HOURS) * 100}%;"></div>`;
+        list.push({
+          id: ev.uid || Math.random().toString(),
+          title,
+          start: ev.startDate.toJSDate(),
+          end: ev.endDate.toJSDate(),
+          location: ev.location || '',
+          description: ev.description || '',
+          category,
+        });
       }
+      return list;
+    } catch (e) {
+      console.warn('Erreur parsing ICS:', e);
+      return [];
+    }
+  }
 
-      // Calcul des cartes positionnées absolument
-      let eventsHtml = '';
-      for (const ev of dayEvents) {
-        const startH = ev.start.getHours() + ev.start.getMinutes() / 60;
-        const endH = ev.end.getHours() + ev.end.getMinutes() / 60;
+  function loadEventsForCurrentWeek(): CalendarEvent[] {
+    const monday = getStartOfWeek(activeDate);
 
-        // Limites affichées
-        const clampedStart = Math.max(START_HOUR, Math.min(END_HOUR, startH));
-        const clampedEnd = Math.max(START_HOUR, Math.min(END_HOUR, endH));
-        const duration = Math.max(0.5, clampedEnd - clampedStart);
+    // Vérifier si l'utilisateur a importé son fichier .ics dans les cookies/localStorage
+    const savedIcs = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
+    if (savedIcs && savedIcs.trim().length > 20) {
+      const parsed = parseIcs(savedIcs);
+      if (parsed.length > 0) {
+        isCustomIcsLoaded = true;
+        return parsed;
+      }
+    }
 
-        const topPercent = ((clampedStart - START_HOUR) / TOTAL_HOURS) * 100;
-        const heightPercent = (duration / TOTAL_HOURS) * 100;
+    // Sinon, générer les cours récurrents du cursus exactement conformes à sa maquette
+    isCustomIcsLoaded = false;
+    return generateWeekEvents(monday);
+  }
 
-        const colorClass = getCourseColorClass(ev.title);
+  function renderCalendar() {
+    const monday = getStartOfWeek(activeDate);
+    currentEvents = loadEventsForCurrentWeek();
 
-        eventsHtml += `
-          <div
-            class="event-block ${colorClass}"
-            style="top: ${topPercent}%; height: ${heightPercent}%;"
-            title="${ev.title}${ev.location ? ' — ' + ev.location : ''}"
-          >
-            <div class="event-block-time">${formatTime(ev.start)} – ${formatTime(ev.end)}</div>
-            <div class="event-block-title">${ev.title}</div>
-            ${ev.location ? `<div class="event-block-loc">📍 ${ev.location}</div>` : ''}
+    // 1. Titre du mois en haut
+    const monthDisplay = document.getElementById('cal-month-display');
+    if (monthDisplay) {
+      const monthStr = activeDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+      monthDisplay.textContent = monthStr.charAt(0).toUpperCase() + monthStr.slice(1);
+    }
+
+    // 2. Les 7 dates de la semaine
+    const weekDays: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      weekDays.push(d);
+    }
+
+    const todayDate = new Date();
+    const todayDateString = todayDate.toDateString();
+
+    // 3. Bandeau supérieur des jours (L, M, M, J, V, S, D + numéro)
+    const stripContainer = document.getElementById('week-strip-container');
+    if (stripContainer) {
+      const letters = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+      stripContainer.innerHTML = weekDays
+        .map((day, i) => {
+          const isToday = day.toDateString() === todayDateString;
+          const isSelected = day.toDateString() === activeDate.toDateString();
+          return `
+          <button type="button" class="strip-day-btn ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''}" data-day-idx="${i}">
+            <span class="strip-letter">${letters[i]}</span>
+            <span class="strip-num">${day.getDate()}</span>
+          </button>
+        `;
+        })
+        .join('');
+
+      stripContainer.querySelectorAll('[data-day-idx]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.getAttribute('data-day-idx') || '0', 10);
+          activeDate = new Date(weekDays[idx]);
+          renderCalendar();
+        });
+      });
+    }
+
+    // 4. En-têtes des 7 colonnes (ex: "mar. - 13 oct." en rouge si aujourd'hui)
+    const colHeaderContainer = document.getElementById('cal-columns-header');
+    if (colHeaderContainer) {
+      let html = '<div class="col-header-corner"></div>';
+      for (const day of weekDays) {
+        const isToday = day.toDateString() === todayDateString;
+        const formatted = day.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+        // Formatage "mar. - 13 oct."
+        const parts = formatted.split(' ');
+        const label = `${parts[0]} - ${parts.slice(1).join(' ')}`;
+        html += `
+          <div class="col-header-cell ${isToday ? 'header-today' : ''}">
+            <span>${label}</span>
           </div>
         `;
       }
-
-      colsHtml += `
-        <div class="day-column ${isToday ? 'is-today-column' : ''}">
-          ${hourLines}
-          <div class="events-container">
-            ${eventsHtml}
-          </div>
-        </div>
-      `;
+      colHeaderContainer.innerHTML = html;
     }
-    columnsEl.innerHTML = colsHtml;
+
+    // 5. Bandeau d'habitudes / toute la journée (ex: 20 pompes mini)
+    const allDayRow = document.getElementById('cal-allday-row');
+    if (allDayRow) {
+      let html = '<div class="allday-corner"></div>';
+      for (const day of weekDays) {
+        // Recherche des événements de type habit pour ce jour
+        const habitEv = currentEvents.find(
+          (e) => e.start.toDateString() === day.toDateString() && (e.category === 'habit' || e.title.includes('pompes'))
+        );
+        html += `
+          <div class="allday-cell">
+            ${
+              habitEv
+                ? `<div class="habit-badge" title="${habitEv.title}">
+                    <span class="habit-circle"></span>
+                    <span class="habit-title">${habitEv.title}</span>
+                  </div>`
+                : ''
+            }
+          </div>
+        `;
+      }
+      allDayRow.innerHTML = html;
+    }
+
+    // 6. Lignes horizontales d'heures (arborescence d'arrière plan)
+    const hourLinesContainer = document.getElementById('cal-hour-lines');
+    if (hourLinesContainer) {
+      let linesHtml = '';
+      for (let h = 0; h < TOTAL_HOURS; h++) {
+        linesHtml += `<div class="hour-line" style="top: ${(h / TOTAL_HOURS) * 100}%;"></div>`;
+      }
+      hourLinesContainer.innerHTML = linesHtml;
+    }
+
+    // 7. Colonnes de jours et cartes de cours
+    const columnsContainer = document.getElementById('cal-day-columns');
+    if (columnsContainer) {
+      let colsHtml = '';
+
+      weekDays.forEach((day, dayIndex) => {
+        const isToday = day.toDateString() === todayDateString;
+        // Filtrer les événements de ce jour (hors tâches habit toute la journée)
+        const dayEvents = currentEvents.filter(
+          (e) => e.start.toDateString() === day.toDateString() && e.category !== 'habit' && !e.title.includes('pompes')
+        );
+
+        let eventsHtml = '';
+        dayEvents.forEach((ev) => {
+          const startH = ev.start.getHours() + ev.start.getMinutes() / 60;
+          const endH = ev.end.getHours() + ev.end.getMinutes() / 60;
+
+          const clampedStart = Math.max(START_HOUR, Math.min(END_HOUR, startH));
+          const clampedEnd = Math.max(START_HOUR, Math.min(END_HOUR, endH));
+          const duration = Math.max(0.65, clampedEnd - clampedStart);
+
+          const topPercent = ((clampedStart - START_HOUR) / TOTAL_HOURS) * 100;
+          const heightPercent = (duration / TOTAL_HOURS) * 100;
+
+          const isTD = ev.title.toUpperCase().startsWith('TD') || ev.category === 'td';
+          const cardTypeClass = isTD ? 'card-td' : 'card-cm';
+
+          eventsHtml += `
+            <div
+              class="course-card ${cardTypeClass}"
+              style="top: ${topPercent}%; height: ${heightPercent}%;"
+              data-ev-id="${ev.id}"
+            >
+              <div class="card-inner">
+                <h3 class="card-title">${ev.title}</h3>
+                ${ev.location ? `<div class="card-meta">📍 ${ev.location}</div>` : ''}
+                <div class="card-meta">🕒 ${formatTime(ev.start)}${ev.description ? ' (' + ev.description + ')' : ''}</div>
+              </div>
+            </div>
+          `;
+        });
+
+        colsHtml += `
+          <div class="cal-day-col ${isToday ? 'col-today' : ''}" data-col-day="${dayIndex}">
+            ${eventsHtml}
+            ${isToday ? '<div class="now-indicator-line" id="now-line"></div>' : ''}
+          </div>
+        `;
+      });
+
+      columnsContainer.innerHTML = colsHtml;
+
+      // Clic sur une carte pour ouvrir le modal
+      columnsContainer.querySelectorAll('[data-ev-id]').forEach((card) => {
+        card.addEventListener('click', () => {
+          const id = card.getAttribute('data-ev-id');
+          const ev = currentEvents.find((e) => e.id === id);
+          if (ev) openEventModal(ev);
+        });
+      });
+    }
+
+    // 8. Rendu de l'indicateur temporel rouge en direct
+    updateCurrentTimeIndicator();
+
+    // 9. Mise à jour vue liste agenda
+    renderAgendaView();
   }
 
-  function renderAgenda() {
-    const list = document.querySelector('[data-agenda-list]');
-    if (!list) return;
+  function updateCurrentTimeIndicator() {
+    const now = new Date();
+    const nowLine = document.getElementById('now-line');
+    const badge = document.getElementById('current-time-badge');
+    const textEl = document.getElementById('current-time-text');
+
+    const curH = now.getHours() + now.getMinutes() / 60;
+    if (curH >= START_HOUR && curH <= END_HOUR) {
+      const topPercent = ((curH - START_HOUR) / TOTAL_HOURS) * 100;
+      if (nowLine) {
+        nowLine.style.top = `${topPercent}%`;
+        nowLine.style.display = 'block';
+      }
+      if (badge && textEl) {
+        badge.style.top = `${topPercent}%`;
+        badge.style.display = 'flex';
+        textEl.textContent = formatTime(now);
+      }
+    } else {
+      if (nowLine) nowLine.style.display = 'none';
+      if (badge) badge.style.display = 'none';
+    }
+  }
+
+  function renderAgendaView() {
+    const listEl = document.getElementById('agenda-card-list');
+    if (!listEl) return;
 
     if (currentEvents.length === 0) {
-      list.innerHTML = '<li class="no-events meta">Aucun cours trouvé dans ce calendrier. Rendez-vous dans la page Configuration pour en importer un.</li>';
+      listEl.innerHTML = '<li class="no-events meta">Aucun cours trouvé pour cette semaine.</li>';
       return;
     }
 
-    list.innerHTML = currentEvents
-      .map(
-        (e) => `
-      <li class="agenda-item">
-        <div class="agenda-date meta">
-          <strong>${formatDateFr(e.start)}</strong>
-          <span>${formatTime(e.start)} – ${formatTime(e.end)}</span>
-        </div>
-        <div class="agenda-content">
-          <h3 class="agenda-title">${e.title}</h3>
-          ${e.location ? `<p class="agenda-loc meta">📍 ${e.location}</p>` : ''}
-          ${e.description ? `<p class="agenda-desc meta">${e.description}</p>` : ''}
-        </div>
-      </li>
-    `
-      )
+    const sorted = [...currentEvents].sort((a, b) => a.start.getTime() - b.start.getTime());
+
+    listEl.innerHTML = sorted
+      .map((ev) => {
+        const isTD = ev.title.toUpperCase().startsWith('TD') || ev.category === 'td';
+        return `
+        <li class="agenda-item card-${isTD ? 'td' : 'cm'}">
+          <div class="agenda-date">
+            <strong>${ev.start.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</strong>
+            <span>${formatTime(ev.start)} – ${formatTime(ev.end)}</span>
+          </div>
+          <div class="agenda-info">
+            <h3 class="agenda-title">${ev.title}</h3>
+            ${ev.location ? `<p class="agenda-loc">📍 ${ev.location}</p>` : ''}
+            ${ev.description ? `<p class="agenda-desc meta">${ev.description}</p>` : ''}
+          </div>
+        </li>
+      `;
+      })
       .join('');
   }
 
-  function updateView() {
-    const weekGrid = document.querySelector('[data-week-grid]');
-    const agendaView = document.querySelector('[data-agenda-view]');
-    if (!weekGrid || !agendaView) return;
+  function openEventModal(ev: CalendarEvent) {
+    const modal = document.getElementById('event-modal') as HTMLDialogElement;
+    if (!modal) return;
 
-    if (currentView === 'week') {
-      weekGrid.removeAttribute('hidden');
-      agendaView.setAttribute('hidden', '');
-      renderModernWeek();
-    } else {
-      weekGrid.setAttribute('hidden', '');
-      agendaView.removeAttribute('hidden');
-      renderAgenda();
-    }
-  }
+    const catEl = document.getElementById('modal-category');
+    const titleEl = document.getElementById('modal-title');
+    const timeEl = document.getElementById('modal-time');
+    const locEl = document.getElementById('modal-location');
+    const descEl = document.getElementById('modal-desc');
 
-  function loadData() {
-    let raw = loadPersistent(STORAGE_KEY);
-    if (!raw) {
-      raw = SAMPLE_ICS_DATA;
-      savePersistent(STORAGE_KEY, raw);
-    }
-    currentEvents = parseIcsText(raw);
-    updateView();
+    if (catEl) catEl.textContent = ev.title.toUpperCase().startsWith('TD') ? 'TD' : 'CM';
+    if (titleEl) titleEl.textContent = ev.title;
+    if (timeEl) timeEl.textContent = `🕒 ${formatTime(ev.start)} – ${formatTime(ev.end)}`;
+    if (locEl) locEl.textContent = ev.location ? `📍 ${ev.location}` : 'Salle non spécifiée';
+    if (descEl) descEl.textContent = ev.description || '';
+
+    modal.showModal();
   }
 
   function initTimetable() {
-    loadData();
+    renderCalendar();
 
+    // Boutons de navigation semaines
     document.getElementById('cal-prev')?.addEventListener('click', () => {
-      currentDate.setDate(currentDate.getDate() - 7);
-      updateView();
-    });
-    document.getElementById('cal-next')?.addEventListener('click', () => {
-      currentDate.setDate(currentDate.getDate() + 7);
-      updateView();
-    });
-    document.getElementById('cal-today')?.addEventListener('click', () => {
-      currentDate = new Date();
-      updateView();
+      activeDate.setDate(activeDate.getDate() - 7);
+      renderCalendar();
     });
 
-    document.querySelectorAll('[data-view]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('[data-view]').forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentView = btn.getAttribute('data-view') as 'week' | 'agenda';
-        updateView();
-      });
+    document.getElementById('cal-next')?.addEventListener('click', () => {
+      activeDate.setDate(activeDate.getDate() + 7);
+      renderCalendar();
     });
+
+    // Bouton Aujourd'hui (Pill flottante iOS)
+    document.getElementById('btn-today-pill')?.addEventListener('click', () => {
+      activeDate = new Date();
+      renderCalendar();
+      // Scroll doux vers aujourd'hui sur mobile
+      const todayCol = document.querySelector('.col-today');
+      todayCol?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    });
+
+    // Bascule vues Semaine / Liste
+    const weekView = document.querySelector('[data-week-view]') as HTMLElement;
+    const agendaView = document.querySelector('[data-agenda-view]') as HTMLElement;
+    const btnWeek = document.getElementById('btn-view-week');
+    const btnAgenda = document.getElementById('btn-view-agenda');
+
+    btnWeek?.addEventListener('click', () => {
+      btnWeek.classList.add('active');
+      btnAgenda?.classList.remove('active');
+      if (weekView) weekView.hidden = false;
+      if (agendaView) agendaView.hidden = true;
+    });
+
+    btnAgenda?.addEventListener('click', () => {
+      btnAgenda.classList.add('active');
+      btnWeek?.classList.remove('active');
+      if (weekView) weekView.hidden = true;
+      if (agendaView) agendaView.hidden = false;
+    });
+
+    // Fermeture modal
+    document.getElementById('modal-close')?.addEventListener('click', () => {
+      (document.getElementById('event-modal') as HTMLDialogElement)?.close();
+    });
+
+    document.getElementById('event-modal')?.addEventListener('click', (e) => {
+      const modal = document.getElementById('event-modal') as HTMLDialogElement;
+      if (e.target === modal) modal.close();
+    });
+
+    // Actualisation de l'indicateur de temps toutes les minutes
+    setInterval(updateCurrentTimeIndicator, 30000);
   }
 
   document.addEventListener('astro:page-load', initTimetable);
 </script>
 
 <style>
-  .timetable-page {
-    padding-bottom: 5rem;
-  }
-  .header-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-  .btn-config {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.35rem 0.75rem;
-    background: var(--soft);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    color: var(--fg);
-    text-decoration: none;
-    transition: border-color 0.15s ease;
-  }
-  .btn-config:hover {
-    border-color: var(--fg);
+  /* -------------------------------------------------------------
+     THEME SOMBRE IOS CALENDAR (MAQUETTE EXACTE)
+     ------------------------------------------------------------- */
+  :root {
+    --ios-bg: #000000;
+    --ios-surface: #121214;
+    --ios-border: #1e1e24;
+    --ios-red: #ff3b30;
+    --ios-magenta-cm: #320743;
+    --ios-magenta-td: #430c50;
+    --ios-neon-border-cm: #c026d3;
+    --ios-neon-border-td: #e11d48;
+    --ios-text-pink: #f472b6;
+    --ios-text-lavender: #e9d5ff;
+    --ios-habit-bg: #111e38;
+    --ios-habit-border: #1e3a8a;
+    --ios-habit-text: #93c5fd;
   }
 
-  /* Barre d'outils calendrier */
-  .calendar-toolbar {
+  .calendar-app-root {
+    background: var(--ios-bg);
+    color: #ffffff;
+    min-height: calc(100vh - 120px);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    padding-bottom: 5rem;
+    position: relative;
+    user-select: none;
+  }
+
+  /* 1. BARRE SUPERIEURE IOS */
+  .cal-top-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    margin-bottom: 1.25rem;
+    padding: 0.85rem 1.25rem;
+    background: var(--ios-bg);
+    border-bottom: 1px solid var(--ios-border);
   }
-  .nav-cluster {
+  .cal-top-left {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .btn-cal-month {
+    background: #1c1c1e;
+    border: none;
+    color: #ffffff;
+    font-size: 1.25rem;
+    line-height: 1;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: background 0.15s ease;
+  }
+  .btn-cal-month:hover {
+    background: #2c2c2e;
+  }
+  .cal-month-title {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+  }
+  .cal-top-actions {
     display: flex;
     align-items: center;
     gap: 0.5rem;
   }
-  .btn-nav {
-    width: 2rem;
-    height: 2rem;
+  .icon-btn {
+    background: #1c1c1e;
+    border: none;
+    color: #e4e4e7;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
     display: grid;
     place-items: center;
-    background: var(--soft);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
     cursor: pointer;
-    font-size: 1.1rem;
-    color: var(--fg);
+    text-decoration: none;
+    transition: all 0.15s ease;
   }
-  .btn-nav:hover {
-    border-color: var(--fg);
+  .icon-btn:hover, .icon-btn.active {
+    background: #2c2c2e;
+    color: #ffffff;
   }
-  .btn-today {
-    padding: 0.35rem 0.8rem;
-    background: var(--soft);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
+
+  /* 2. BANDEAU DE SEMAINE HORIZONTAL */
+  .cal-week-strip {
+    background: var(--ios-bg);
+    padding: 0.5rem 0.5rem 0.65rem;
+    border-bottom: 1px solid var(--ios-border);
+  }
+  .week-strip-inner {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    max-width: 600px;
+    margin: 0 auto;
+    gap: 0.25rem;
+  }
+  .strip-day-btn {
+    background: none;
+    border: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
     cursor: pointer;
-    font-family: var(--font-ui);
-    font-size: 0.85rem;
-    color: var(--fg);
+    padding: 0.35rem 0;
+    border-radius: 12px;
+    color: #a1a1aa;
+    transition: background 0.15s ease;
   }
-  .btn-today:hover {
-    border-color: var(--fg);
+  .strip-day-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
   }
-  .current-period-title {
-    margin: 0 0 0 0.5rem;
-    font-size: 1.2rem;
+  .strip-letter {
+    font-size: 0.72rem;
     font-weight: 600;
+    text-transform: uppercase;
   }
-  .view-switch {
+  .strip-num {
+    font-size: 1.05rem;
+    font-weight: 600;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: #ffffff;
+  }
+  /* Aujourd'hui = Cercle rouge vif */
+  .strip-day-btn.is-today .strip-num {
+    background: var(--ios-red);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(255, 59, 48, 0.4);
+  }
+  .strip-day-btn.is-selected:not(.is-today) .strip-num {
+    background: #27272a;
+    color: #ffffff;
+  }
+
+  /* 3. VUE GRILLE SEMAINE */
+  .calendar-scroll-viewport {
+    overflow-x: auto;
+    overflow-y: visible;
+    background: var(--ios-bg);
+    width: 100%;
+  }
+  .cal-grid-frame {
+    display: flex;
+    flex-direction: column;
+    min-width: 900px;
+    width: 100%;
+  }
+
+  /* En-têtes de colonnes (ex: mar. - 13 oct.) */
+  .cal-columns-header {
+    display: grid;
+    grid-template-columns: 58px repeat(7, 1fr);
+    background: var(--ios-bg);
+    border-bottom: 1px solid var(--ios-border);
+  }
+  .col-header-corner {
+    border-right: 1px solid var(--ios-border);
+  }
+  .col-header-cell {
+    padding: 0.65rem 0.5rem;
+    text-align: center;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #e4e4e7;
+    border-right: 1px solid var(--ios-border);
+    letter-spacing: -0.01em;
+  }
+  .col-header-cell:last-child {
+    border-right: none;
+  }
+  .col-header-cell.header-today {
+    color: var(--ios-red);
+  }
+
+  /* Ligne des habitudes toute la journée */
+  .cal-allday-row {
+    display: grid;
+    grid-template-columns: 58px repeat(7, 1fr);
+    background: var(--ios-bg);
+    border-bottom: 1px solid var(--ios-border);
+    min-height: 40px;
+  }
+  .allday-corner {
+    border-right: 1px solid var(--ios-border);
+  }
+  .allday-cell {
+    padding: 0.4rem 0.35rem;
+    border-right: 1px solid var(--ios-border);
     display: flex;
     align-items: center;
   }
-  .btn-switch {
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: var(--muted);
-    font-size: 0.9rem;
-    padding: 0 0.25rem;
-  }
-  .btn-switch.active {
-    color: var(--fg);
-    font-weight: 600;
-  }
-
-  /* Grille moderne */
-  .modern-calendar-wrapper {
-    background: var(--soft);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
-  .grid-table {
-    display: flex;
-    flex-direction: column;
-    min-width: 650px;
-    overflow-x: auto;
-  }
-  .grid-days-header {
-    display: grid;
-    grid-template-columns: 55px repeat(7, 1fr);
-    background: var(--bg);
-    border-bottom: 1px solid var(--line);
-  }
-  .header-corner {
-    border-right: 1px solid var(--line);
-  }
-  .day-header-cell {
-    padding: 0.75rem 0.5rem;
-    text-align: center;
-    border-right: 1px solid var(--line);
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-  }
-  .day-header-cell:last-child {
+  .allday-cell:last-child {
     border-right: none;
   }
-  .day-header-cell.is-today {
-    background: color-mix(in srgb, var(--fg) 5%, transparent);
-  }
-  .day-header-name {
-    font-family: var(--font-ui);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--muted);
-  }
-  .day-header-number {
-    font-size: 1.25rem;
+  .habit-badge {
+    background: var(--ios-habit-bg);
+    border: 1px solid var(--ios-habit-border);
+    color: var(--ios-habit-text);
+    border-radius: 6px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.76rem;
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .is-today .day-header-number {
-    color: var(--fg);
-    text-decoration: underline;
-    text-decoration-thickness: 2px;
+  .habit-circle {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: 2px solid #38bdf8;
+    flex: none;
+  }
+  .habit-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  /* Corps de grille */
-  .grid-body-container {
+  /* 4. CORPS PRINCIPAL DE LA GRILLE */
+  .cal-grid-body {
     display: grid;
-    grid-template-columns: 55px 1fr;
-    height: 640px;
+    grid-template-columns: 58px 1fr;
+    height: 750px;
     position: relative;
-    background: var(--bg);
+    background: var(--ios-bg);
   }
-  .time-axis {
+
+  /* Axe temporel gauche */
+  .cal-time-axis {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    border-right: 1px solid var(--line);
-    padding: 0.25rem 0.4rem;
-    user-select: none;
+    border-right: 1px solid var(--ios-border);
+    padding: 0.15rem 0.4rem;
+    position: relative;
+    z-index: 5;
   }
-  .time-slot-label {
-    font-family: var(--font-ui);
-    font-size: 0.7rem;
-    color: var(--muted);
-    font-feature-settings: 'tnum' 1;
+  .time-label {
+    font-size: 0.72rem;
+    color: #71717a;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    line-height: 1;
+    transform: translateY(-50%);
   }
-  .grid-columns {
+  .time-label:first-child {
+    transform: translateY(0);
+  }
+  .time-label:last-child {
+    transform: translateY(-100%);
+  }
+
+  /* Badge rouge heure actuelle */
+  .current-time-badge {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    transform: translateY(-50%);
+    background: var(--ios-red);
+    color: #ffffff;
+    border-radius: 999px;
+    padding: 2px 4px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(255, 59, 48, 0.4);
+    z-index: 10;
+  }
+
+  /* Lignes horizontales d'heures */
+  .cal-hour-lines {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 58px;
+    right: 0;
+    pointer-events: none;
+  }
+  .hour-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  /* 7 Colonnes de jours */
+  .cal-day-columns {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     position: relative;
     height: 100%;
   }
-  .day-column {
+  .cal-day-col {
     position: relative;
     height: 100%;
-    border-right: 1px solid var(--line);
+    border-right: 1px solid var(--ios-border);
   }
-  .day-column:last-child {
+  .cal-day-col:last-child {
     border-right: none;
   }
-  .is-today-column {
-    background: color-mix(in srgb, var(--fg) 3%, transparent);
+  .cal-day-col.col-today {
+    background: rgba(255, 255, 255, 0.015);
   }
-  .grid-hour-line {
+
+  /* Ligne rouge "Now" */
+  .now-indicator-line {
     position: absolute;
     left: 0;
     right: 0;
-    border-top: 1px dashed var(--line);
+    height: 2px;
+    background: var(--ios-red);
+    z-index: 8;
     pointer-events: none;
+    box-shadow: 0 0 6px rgba(255, 59, 48, 0.6);
   }
-  .events-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
+  .now-indicator-line::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ios-red);
   }
 
-  /* Cartes d'événements positionnées */
-  .event-block {
+  /* 5. CARTES DE COURS EXACTES DU SCREENSHOT */
+  .course-card {
     position: absolute;
-    left: 4px;
-    right: 4px;
-    padding: 0.45rem 0.55rem;
+    left: 3px;
+    right: 3px;
     border-radius: 6px;
     overflow: hidden;
-    font-family: var(--font-ui);
     cursor: pointer;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    transition: transform 0.15s ease, z-index 0.15s ease;
-    z-index: 1;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    transition: transform 0.15s ease, z-index 0.15s ease, filter 0.15s ease;
+    z-index: 2;
   }
-  .event-block:hover {
+  .course-card:hover {
     transform: scale(1.02);
-    z-index: 10;
+    z-index: 15;
+    filter: brightness(1.15);
   }
-  .event-block-time {
-    font-size: 0.68rem;
-    font-weight: 600;
-    opacity: 0.85;
-    margin-bottom: 0.15rem;
+  .card-inner {
+    padding: 0.45rem 0.55rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
   }
-  .event-block-title {
-    font-size: 0.8rem;
-    font-weight: 650;
+
+  /* CM : Violet foncé & bordure fuchsia */
+  .card-cm {
+    background: var(--ios-magenta-cm);
+    border: 1px solid rgba(192, 38, 211, 0.25);
+    border-left: 3.5px solid var(--ios-neon-border-cm);
+  }
+  .card-cm .card-title {
+    color: #f0abfc;
+  }
+  .card-cm .card-meta {
+    color: #e9d5ff;
+  }
+
+  /* TD : Violet saturé & bordure rose néon */
+  .card-td {
+    background: var(--ios-magenta-td);
+    border: 1px solid rgba(225, 29, 72, 0.25);
+    border-left: 3.5px solid var(--ios-neon-border-td);
+  }
+  .card-td .card-title {
+    color: #f472b6;
+  }
+  .card-td .card-meta {
+    color: #fbcfe8;
+  }
+
+  .card-title {
+    margin: 0 0 0.2rem;
+    font-size: 0.82rem;
+    font-weight: 700;
     line-height: 1.25;
-    white-space: nowrap;
+    letter-spacing: -0.01em;
     overflow: hidden;
-    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
-  .event-block-loc {
+  .card-meta {
     font-size: 0.68rem;
-    margin-top: 0.2rem;
-    opacity: 0.8;
+    font-weight: 500;
+    line-height: 1.3;
+    opacity: 0.9;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  /* Thèmes de couleurs épurés */
-  .event-theme-philo {
-    background: #1e1b4b;
-    color: #e0e7ff;
-    border-left: 3px solid #6366f1;
+  /* 6. VUE LISTE AGENDA */
+  .agenda-view-wrapper {
+    padding-top: 2rem;
   }
-  .event-theme-code {
-    background: #064e3b;
-    color: #d1fae5;
-    border-left: 3px solid #10b981;
-  }
-  .event-theme-math {
-    background: #431407;
-    color: #ffedd5;
-    border-left: 3px solid #f97316;
-  }
-  .event-theme-default {
-    background: #1f2937;
-    color: #f3f4f6;
-    border-left: 3px solid #9ca3af;
-  }
-
-  /* Mode clair : ajustement du contraste */
-  :global(:root[data-theme='light']) .event-theme-philo {
-    background: #eef2ff;
-    color: #312e81;
-    border-left: 3px solid #4f46e5;
-  }
-  :global(:root[data-theme='light']) .event-theme-code {
-    background: #ecfdf5;
-    color: #064e3b;
-    border-left: 3px solid #059669;
-  }
-  :global(:root[data-theme='light']) .event-theme-math {
-    background: #fff7ed;
-    color: #7c2d12;
-    border-left: 3px solid #ea580c;
-  }
-  :global(:root[data-theme='light']) .event-theme-default {
-    background: #f3f4f6;
-    color: #111827;
-    border-left: 3px solid #4b5563;
-  }
-
-  /* Vue agenda */
-  .agenda-list {
+  .agenda-card-list {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
     gap: 1rem;
+    max-width: 700px;
+    margin: 0 auto;
   }
   .agenda-item {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
+    align-items: center;
     gap: 1.5rem;
-    padding: 1.25rem;
-    background: var(--soft);
-    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    border-radius: 8px;
   }
   .agenda-date {
     display: grid;
     width: 140px;
     flex: none;
+    font-size: 0.85rem;
   }
-  .agenda-content {
+  .agenda-info {
     flex: 1;
   }
   .agenda-title {
     margin: 0 0 0.25rem;
-    font-size: 1.15rem;
+    font-size: 1.05rem;
+    font-weight: 700;
   }
-  .no-events {
-    padding: 3rem 0;
-    text-align: center;
-    font-style: italic;
+  .agenda-loc {
+    margin: 0;
+    font-size: 0.85rem;
+    opacity: 0.85;
+  }
+  .agenda-desc {
+    margin: 0.25rem 0 0;
+    font-size: 0.78rem;
+  }
+
+  /* 7. BOUTON FLOTTANT "AUJOURD'HUI" TYPE IOS */
+  .cal-floating-bar {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+  }
+  .btn-today-pill {
+    background: rgba(28, 28, 30, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    border-radius: 999px;
+    padding: 0.6rem 1.4rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+  .btn-today-pill:hover {
+    transform: scale(1.04);
+    background: rgba(44, 44, 46, 0.95);
+  }
+  .red-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ios-red);
+    box-shadow: 0 0 6px rgba(255, 59, 48, 0.8);
+  }
+
+  /* 8. MODAL DETAILS DU COURS */
+  .cal-event-dialog {
+    background: #18181b;
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 1.5rem;
+    max-width: 480px;
+    width: 90%;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  }
+  .cal-event-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+  }
+  .dialog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  .dialog-badge {
+    background: #3b0764;
+    color: #f0abfc;
+    border: 1px solid #c026d3;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .btn-close-modal {
+    background: none;
+    border: none;
+    color: #a1a1aa;
+    font-size: 1.2rem;
+    cursor: pointer;
+  }
+  .btn-close-modal:hover {
+    color: #ffffff;
+  }
+  .dialog-title {
+    margin: 0 0 1rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #f472b6;
+  }
+  .dialog-meta-list {
+    display: grid;
+    gap: 0.4rem;
+    margin-bottom: 1.5rem;
+  }
+  .dialog-meta {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #e4e4e7;
+  }
+  .dialog-desc {
+    margin: 0.5rem 0 0;
+    font-size: 0.85rem;
+    color: #a1a1aa;
+    line-height: 1.4;
+  }
+  .dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .btn-modal-action {
+    background: #c026d3;
+    color: #ffffff;
+    padding: 0.55rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.15s ease;
+  }
+  .btn-modal-action:hover {
+    opacity: 0.85;
+  }
+
+  @media (max-width: 60rem) {
+    .cal-grid-frame {
+      min-width: 950px;
+    }
   }
 </style>
