@@ -38,13 +38,6 @@ import Base from '../../layouts/Base.astro';
       </div>
     </header>
 
-    <!-- Bandeau sélecteur de la semaine (L, M, M, J, V, S, D + pastille rouge Aujourd'hui) -->
-    <nav class="cal-week-strip" aria-label="Jours de la semaine">
-      <div class="week-strip-inner" id="week-strip-container">
-        <!-- Rempli dynamiquement en JS -->
-      </div>
-    </nav>
-
     <!-- Vue Grille Calendrier Hebdomadaire (7 jours) -->
     <div class="calendar-scroll-viewport" data-week-view>
       <div class="cal-grid-frame">
@@ -354,33 +347,7 @@ import Base from '../../layouts/Base.astro';
     const todayDate = new Date();
     const todayDateString = todayDate.toDateString();
 
-    // 3. Bandeau supérieur des jours (L, M, M, J, V, S, D + numéro)
-    const stripContainer = document.getElementById('week-strip-container');
-    if (stripContainer) {
-      const letters = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-      stripContainer.innerHTML = weekDays
-        .map((day, i) => {
-          const isToday = day.toDateString() === todayDateString;
-          const isSelected = day.toDateString() === activeDate.toDateString();
-          return `
-          <button type="button" class="strip-day-btn ${isToday ? 'is-today' : ''} ${isSelected ? 'is-selected' : ''}" data-day-idx="${i}">
-            <span class="strip-letter">${letters[i]}</span>
-            <span class="strip-num">${day.getDate()}</span>
-          </button>
-        `;
-        })
-        .join('');
-
-      stripContainer.querySelectorAll('[data-day-idx]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const idx = parseInt(btn.getAttribute('data-day-idx') || '0', 10);
-          activeDate = new Date(weekDays[idx]);
-          renderCalendar();
-        });
-      });
-    }
-
-    // 4. En-têtes des 7 colonnes (ex: "mar. - 13 oct." en rouge si aujourd'hui)
+    // 3. En-têtes des 7 colonnes (ex: "mar. - 13 oct." en rouge si aujourd'hui)
     const colHeaderContainer = document.getElementById('cal-columns-header');
     if (colHeaderContainer) {
       let html = '<div class="col-header-corner"></div>';
@@ -973,72 +940,6 @@ import Base from '../../layouts/Base.astro';
     .view-switch-group .icon-btn {
       padding: 0 0.4rem;
     }
-  }
-
-  /* 2. BANDEAU DE SEMAINE HORIZONTAL */
-  .cal-week-strip {
-    background: var(--cal-bg);
-    padding: 0.5rem 0.75rem 0.65rem;
-    border-bottom: 1px solid var(--cal-border);
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-  }
-  .week-strip-inner {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    max-width: 560px;
-    margin: 0 auto;
-    gap: 0.35rem;
-  }
-  .strip-day-btn {
-    background: transparent !important;
-    border: 1px solid transparent !important;
-    box-shadow: none !important;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    cursor: pointer;
-    padding: 0.4rem 0.2rem;
-    border-radius: var(--radius-sm);
-    color: var(--muted) !important;
-    transition: all 0.15s ease;
-  }
-  .strip-day-btn:hover {
-    background: var(--soft) !important;
-    color: var(--fg) !important;
-  }
-  .strip-letter {
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    opacity: 0.85;
-  }
-  .strip-num {
-    font-size: 0.95rem;
-    font-weight: 600;
-    width: 28px;
-    height: 28px;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    color: var(--fg) !important;
-    background: transparent !important;
-    transition: all 0.15s ease;
-  }
-  /* Aujourd'hui = pastille accent */
-  .strip-day-btn.is-today .strip-num {
-    background: var(--accent) !important;
-    color: #ffffff !important;
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 40%, transparent);
-  }
-  .strip-day-btn.is-selected:not(.is-today) {
-    background: var(--soft) !important;
-    border-color: var(--line) !important;
-  }
-  .strip-day-btn.is-selected:not(.is-today) .strip-num {
-    background: var(--line);
-    color: var(--fg) !important;
   }
 
   /* 3. VUE GRILLE SEMAINE */
