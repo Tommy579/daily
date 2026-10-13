@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { url } from './url';
 
 export type CourseFileType = 'pdf' | 'doc' | 'code' | 'text' | 'other';
 
@@ -66,8 +67,8 @@ function scanFolder(dirPath: string, relativeBase: string = ''): CourseFolder {
         files.push({
           name: item,
           path: relPath,
-          url: `/cours-files/${encodeURI(relPath)}`,
-          viewerUrl: `/cours/viewer/${encodeURI(relPath)}`,
+          url: url(`/cours-files/${encodeURI(relPath)}`),
+          viewerUrl: url(`/cours/viewer/${encodeURI(relPath)}`),
           size: stat.size,
           ext,
           type: getFileType(ext),

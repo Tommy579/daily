@@ -1,23 +1,24 @@
 ---
 import { SITE } from '../consts';
+import { url } from '../utils/url';
 const year = new Date().getFullYear();
 ---
 
 <footer class="site-footer">
   <div class="container container--wide footer-inner">
     <div class="footer-brand">
-      <a href="/" class="footer-title">{SITE.title}</a>
+      <a href={url('/')} class="footer-title">{SITE.title}</a>
       <p class="footer-motto">Sans publicité, sans traçage, sans algorithme.</p>
     </div>
     <nav class="footer-links" aria-label="Liens secondaires">
-      <a href="/textes/">Textes</a>
-      <a href="/themes/">Thèmes</a>
-      <a href="/emploi-du-temps/">Emploi du temps</a>
-      <a href="/cours/">Cours</a>
-      <a href="/rappels/">Rappels</a>
-      <a href="/configuration/">Configuration</a>
-      <a href="/rss.xml">RSS</a>
-      <a href="/mentions-legales/">Mentions légales</a>
+      <a href={url('/textes/')}>Textes</a>
+      <a href={url('/themes/')}>Thèmes</a>
+      <a href={url('/emploi-du-temps/')}>Emploi du temps</a>
+      <a href={url('/cours/')}>Cours</a>
+      <a href={url('/rappels/')}>Rappels</a>
+      <a href={url('/configuration/')}>Configuration</a>
+      <a href={url('/rss.xml')}>RSS</a>
+      <a href={url('/mentions-legales/')}>Mentions légales</a>
       <a href={`mailto:${SITE.email}`}>Contact</a>
     </nav>
     <p class="footer-copy">

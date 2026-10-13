@@ -22,8 +22,10 @@ export function formatDate(date: Date): string {
   return dateFormatter.format(date);
 }
 
+import { url } from './url';
+
 export function textUrl(entry: Texte): string {
-  return `/textes/${entry.id}/`;
+  return url(`/textes/${entry.id}/`);
 }
 
 export function themeLabel(slug: ThemeSlug): string {

@@ -2,20 +2,21 @@
 import ThemeToggle from './ThemeToggle.astro';
 import Icon from './Icon.astro';
 import { SITE } from '../consts';
+import { url } from '../utils/url';
 
 const path = Astro.url.pathname.replace(/\/$/, '') || '/';
 const links = [
-  { href: '/textes/', label: 'Textes', active: path.startsWith('/textes') || path.startsWith('/themes') },
-  { href: '/emploi-du-temps/', label: 'Emploi du temps', active: path.startsWith('/emploi-du-temps') },
-  { href: '/cours/', label: 'Cours', active: path.startsWith('/cours') },
-  { href: '/rappels/', label: 'Rappels', active: path.startsWith('/rappels') },
+  { href: url('/textes/'), label: 'Textes', active: path.includes('/textes') || path.includes('/themes') },
+  { href: url('/emploi-du-temps/'), label: 'Emploi du temps', active: path.includes('/emploi-du-temps') },
+  { href: url('/cours/'), label: 'Cours', active: path.includes('/cours') },
+  { href: url('/rappels/'), label: 'Rappels', active: path.includes('/rappels') },
 ];
-const isConfig = path.startsWith('/configuration');
+const isConfig = path.includes('/configuration');
 ---
 
 <header class="site-header">
   <div class="container container--wide header-inner">
-    <a class="brand" href="/" aria-label={`${SITE.title} — accueil`} aria-current={path === '/' ? 'page' : undefined}>
+    <a class="brand" href={url('/')} aria-label={`${SITE.title} — accueil`}>
       {SITE.title}
     </a>
 
@@ -33,7 +34,7 @@ const isConfig = path.startsWith('/configuration');
       <ThemeToggle />
       <a
         class="icon-link"
-        href="/configuration/"
+        href={url('/configuration/')}
         aria-current={isConfig ? 'page' : undefined}
         aria-label="Configuration"
         title="Configuration"

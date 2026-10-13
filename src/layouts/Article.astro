@@ -6,6 +6,7 @@ import TableOfContents from '../components/TableOfContents.astro';
 import { SITE } from '../consts';
 import { readingTime } from '../utils/readingTime';
 import { formatDate, textUrl, themeLabel, typeLabel, fr, type Texte } from '../utils/textes';
+import { url as getUrl } from '../utils/url';
 
 interface Props {
   entry: Texte;
@@ -69,7 +70,7 @@ const jsonLd = {
     <article class="article" data-pagefind-body>
       <header class="article-header">
         <p class="meta kicker">
-          <a href={`/textes/?type=${type}`} data-pagefind-ignore>{typeLabel(type)}</a>
+          <a href={getUrl(`/textes/?type=${type}`)} data-pagefind-ignore>{typeLabel(type)}</a>
           {
             series && (
               <>
@@ -95,7 +96,7 @@ const jsonLd = {
                   {themes.map((t, i) => (
                     <>
                       {i > 0 && ', '}
-                      <a href={`/themes/${t}/`}>{themeLabel(t)}</a>
+                      <a href={getUrl(`/themes/${t}/`)}>{themeLabel(t)}</a>
                     </>
                   ))}
                 </span>
@@ -104,7 +105,7 @@ const jsonLd = {
           }
           <span class="sep" aria-hidden="true">·</span>
           <a
-            href={`/rappels/?presetTitle=${encodeURIComponent(`Lire : ${title}`)}&presetType=texte&presetTarget=${encodeURIComponent(textUrl(entry))}`}
+            href={getUrl(`/rappels/?presetTitle=${encodeURIComponent(`Lire : ${title}`)}&presetType=texte&presetTarget=${encodeURIComponent(textUrl(entry))}`)}
             class="article-reminder-link"
             title="Programmer une alerte pour lire ce texte"
           >

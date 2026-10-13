@@ -3,6 +3,7 @@ import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
 import { getTextes } from '../../utils/textes';
 import { getCourses } from '../../utils/courses';
+import { url } from '../../utils/url';
 
 const textes = await getTextes();
 const subjects = getCourses();
@@ -11,7 +12,7 @@ const serializedTextes = textes.map((t) => ({
   id: t.id,
   title: t.data.title,
   author: t.data.epigraphAuthor || '',
-  url: `/textes/${t.id}/`,
+  url: url(`/textes/${t.id}/`),
 }));
 
 const serializedCourses = subjects.map((s) => ({
@@ -34,14 +35,14 @@ const serializedCourses = subjects.map((s) => ({
     <header class="page-header reminders-hero">
       <div class="reminders-hero-top">
         <div>
-          <p class="crumbs"><a href="/">Accueil</a> / Notifications</p>
+          <p class="crumbs"><a href={url('/')}>Accueil</a> / Notifications</p>
           <h1 class="reminders-title">Rappels automatiques</h1>
           <p class="reminders-motto">
             Votre assistant personnel pour rythmer vos lectures philosophiques et révisions académiques.
           </p>
         </div>
         <div class="header-action">
-          <a href="/configuration/" class="btn btn--sm">
+          <a href={url('/configuration/')} class="btn btn--sm">
             <Icon name="settings" size={14} />
             Modifier les réglages
           </a>
@@ -70,7 +71,7 @@ const serializedCourses = subjects.map((s) => ({
               <span class="dot-status" id="schedule-dot"></span>
               <h2 class="label" id="schedule-state-title">Programme de rappels actif</h2>
             </div>
-            <a href="/configuration/" class="more">Ajuster <span aria-hidden="true">→</span></a>
+            <a href={url('/configuration/')} class="more">Ajuster <span aria-hidden="true">→</span></a>
           </div>
 
           <div class="schedule-details">

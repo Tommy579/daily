@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import { SITE, TYPES } from '../consts';
+import { url } from '../utils/url';
 ---
 
 <Base title="À propos" description="Qui écrit Marges, pourquoi, et comment me contacter.">
@@ -52,7 +53,7 @@ import { SITE, TYPES } from '../consts';
       <p>
         Les objections sont les bienvenues, surtout les bonnes. Écrivez à
         <a href={`mailto:${SITE.email}`}>{SITE.email}</a>. Pour suivre les publications sans rien donner de vous, il y a
-        le <a href="/rss.xml">flux RSS</a>.
+        le <a href={url('/rss.xml')}>flux RSS</a>.
       </p>
 
       <p class="signature">— {SITE.author}</p>

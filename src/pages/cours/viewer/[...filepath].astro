@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { COURS_ROOT, getCourses, type CourseFile, type CourseFolder } from '../../../utils/courses';
+import { url } from '../../../utils/url';
 
 export async function getStaticPaths() {
   const subjects = getCourses();
@@ -49,7 +50,7 @@ if (file.type === 'code' || file.type === 'text') {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{file.name} — Marges Cours</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href={url('/favicon.svg')} />
     <style>
       :root {
         --bg: #fcfcfb;
@@ -234,17 +235,17 @@ if (file.type === 'code' || file.type === 'text') {
         <span class="header-meta">({file.path})</span>
       </div>
       <div class="header-actions">
-        <a href={`/cours-files/${encodeURI(file.path)}`} download={file.name} class="btn-header btn-header--primary">
+        <a href={url(`/cours-files/${encodeURI(file.path)}`)} download={file.name} class="btn-header btn-header--primary">
           Télécharger
         </a>
-        <a href="/cours/" class="btn-header">
+        <a href={url('/cours/')} class="btn-header">
           Retour aux cours
         </a>
       </div>
     </header>
 
     {file.type === 'pdf' ? (
-      <iframe src={`/cours-files/${encodeURI(file.path)}`} title={file.name}></iframe>
+      <iframe src={url(`/cours-files/${encodeURI(file.path)}`)} title={file.name}></iframe>
     ) : (file.type === 'code' || file.type === 'text') ? (
       <pre><code>{content}</code></pre>
     ) : (
@@ -255,10 +256,10 @@ if (file.type === 'code' || file.type === 'text') {
             Ce format de fichier ({file.ext.toUpperCase() || 'Document'}) ne peut pas être affiché directement dans le navigateur. Vous pouvez l'ouvrir avec l'application appropriée sur votre machine.
           </p>
           <div class="actions-group">
-            <a href={`/cours-files/${encodeURI(file.path)}`} download={file.name} class="btn-download">
+            <a href={url(`/cours-files/${encodeURI(file.path)}`)} download={file.name} class="btn-download">
               Télécharger le fichier
             </a>
-            <a href="/cours/" class="btn-back-link">Retour à la liste des cours</a>
+            <a href={url('/cours/')} class="btn-back-link">Retour à la liste des cours</a>
           </div>
         </div>
       </main>
