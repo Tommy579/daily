@@ -1,0 +1,84 @@
+---
+import Base from '../../layouts/Base.astro';
+import TextCard from '../../components/TextCard.astro';
+import { getTextes, plural } from '../../utils/textes';
+import { THEMES, THEME_SLUGS, type ThemeSlug } from '../../data/themes';
+
+export async function getStaticPaths() {
+  return THEME_SLUGS.map((theme) => ({ params: { theme } }));
+}
+
+const theme = Astro.params.theme as ThemeSlug;
+const { label, description } = THEMES[theme];
+const textes = (await getTextes()).filter((t) => t.data.themes.includes(theme));
+const others = THEME_SLUGS.filter((t) => t !== theme);
+---
+
+<Base title={label} description={`${label} — ${description}`}>
+  <div class="container">
+    <header class="page-header">
+      <p class="label crumb"><a href="/themes/">Thèmes</a></p>
+      <h1>{label}</h1>
+      <p class="lede">{description}</p>
+    </header>
+
+    <p class="meta count">{textes.length ? plural(textes.length, 'texte', 'textes') : 'Aucun texte pour l’instant.'}</p>
+
+    {
+      textes.length > 0 && (
+        <ol class="list" role="list">
+          {textes.map((entry) => (
+            <li>
+              <TextCard entry={entry} />
+            </li>
+          ))}
+        </ol>
+      )
+    }
+
+    <nav class="others" aria-label="Autres thèmes">
+      <p class="label">Autres thèmes</p>
+      <ul role="list">
+        {
+          others.map((t) => (
+            <li>
+              <a href={`/themes/${t}/`}>{THEMES[t].label}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </div>
+</Base>
+
+<style>
+  .crumb { margin-bottom: 1rem; }
+  .crumb a { text-decoration-color: transparent; }
+  .crumb a:hover { color: var(--fg); text-decoration-color: currentColor; }
+  .crumb a::before { content: '← '; }
+
+  .count {
+    margin: 0;
+    padding-bottom: .9rem;
+    border-bottom: 1px solid var(--fg);
+  }
+
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list > li + li { border-top: 1px solid var(--line); }
+
+  .others {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+  }
+  .others ul {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem 1.4rem;
+  }
+  .others a { font-style: italic; text-decoration-color: transparent; }
+  .others a:hover { text-decoration-color: currentColor; }
+</style>

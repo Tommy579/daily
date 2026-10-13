@@ -1,0 +1,273 @@
+---
+import Icon from './Icon.astro';
+---
+
+<dialog class="panel course-modal" id="modal-manage-course">
+  <div class="modal-inner">
+    <header class="modal-header">
+      <div>
+        <span class="label">Gestion des cours</span>
+        <h2 class="modal-title">Ajouter ou classer des cours</h2>
+      </div>
+      <button type="button" class="btn-close" id="btn-close-course-modal" aria-label="Fermer">✕</button>
+    </header>
+
+    <!-- Onglets : Nouvelle Matière / Nouveau Document -->
+    <div class="modal-tabs" role="tablist">
+      <button type="button" class="modal-tab active" data-tab="tab-subject" role="tab" aria-selected="true">
+        <Icon name="folder" size={15} />
+        Nouvelle Matière
+      </button>
+      <button type="button" class="modal-tab" data-tab="tab-file" role="tab" aria-selected="false">
+        <Icon name="file" size={15} />
+        Importer un Cours / TD
+      </button>
+    </div>
+
+    <!-- 1. Formulaire : Créer une matière -->
+    <form id="form-create-subject" class="modal-tab-panel active" data-panel="tab-subject">
+      <p class="meta tab-desc">
+        Créez un nouveau répertoire de matière ou d'unité d'enseignement (ex : « Philosophie contemporaine », « Logique formelle »).
+      </p>
+
+      <div class="form-group">
+        <label for="new-subject-name" class="field-label">Nom de la matière :</label>
+        <input
+          type="text"
+          id="new-subject-name"
+          placeholder="ex : Philosophie des sciences"
+          required
+          autocomplete="off"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="field-label">Sous-dossiers par défaut créés automatiquement :</label>
+        <div class="preset-subfolders">
+          <label class="tag-check">
+            <input type="checkbox" id="preset-cm" checked />
+            <span>CM (Cours Magistral)</span>
+          </label>
+          <label class="tag-check">
+            <input type="checkbox" id="preset-td" checked />
+            <span>TD (Travaux Dirigés)</span>
+          </label>
+          <label class="tag-check">
+            <input type="checkbox" id="preset-revisions" checked />
+            <span>Fiches de révisions</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn--sm" id="btn-cancel-subject">Annuler</button>
+        <button type="submit" class="btn btn--primary btn--sm">Créer la matière</button>
+      </div>
+    </form>
+
+    <!-- 2. Formulaire : Importer / Classer un fichier de cours -->
+    <form id="form-upload-file" class="modal-tab-panel" data-panel="tab-file">
+      <p class="meta tab-desc">
+        Importez un support (PDF, DOCX, C, Scilab, Markdown...) et classez-le directement dans la matière et la catégorie de votre choix.
+      </p>
+
+      <div class="form-group">
+        <label for="select-target-subject" class="field-label">Matière de rattachement :</label>
+        <select id="select-target-subject" required>
+          <option value="" disabled selected>Sélectionner une matière...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="select-target-folder" class="field-label">Catégorie / Dossier :</label>
+        <select id="select-target-folder">
+          <option value="">Documents racines (Général)</option>
+          <option value="CM">CM (Cours Magistral)</option>
+          <option value="TD">TD (Travaux Dirigés)</option>
+          <option value="Fiches de révisions">Fiches de révisions</option>
+          <option value="__custom__">+ Créer un nouveau sous-dossier...</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="group-custom-folder" style="display: none;">
+        <label for="input-custom-folder" class="field-label">Nom du nouveau sous-dossier :</label>
+        <input
+          type="text"
+          id="input-custom-folder"
+          placeholder="ex : TP, Projet Scilab, Partiels blancs"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="course-file-input" class="field-label">Fichier à importer :</label>
+        <input
+          type="file"
+          id="course-file-input"
+          accept=".pdf,.doc,.docx,.odt,.txt,.md,.c,.h,.cpp,.m,.sci,.sce,.py,.sh"
+          required
+        />
+        <span class="help-text meta">Formats pris en charge : PDF, Word/Doc, Texte, Code C/Scilab. Le fichier sera sauvegardé directement dans votre dossier de cours.</span>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn--sm" id="btn-cancel-file">Annuler</button>
+        <button type="submit" class="btn btn--primary btn--sm">Importer et répertorier</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<style>
+  .course-modal {
+    border-radius: var(--radius);
+    padding: 0;
+    max-width: 540px;
+    width: 90%;
+    margin: auto;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--fg);
+    box-shadow: var(--shadow-md);
+  }
+  .course-modal::backdrop {
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  .modal-inner {
+    padding: 1.5rem 1.75rem;
+    display: grid;
+    gap: 1.25rem;
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .modal-title {
+    margin: 0.2rem 0 0;
+    font-family: var(--font-text);
+    font-size: 1.35rem;
+    letter-spacing: -.02em;
+  }
+  .btn-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.2rem;
+    border-radius: 4px;
+    transition: color .15s ease;
+  }
+  .btn-close:hover {
+    color: var(--fg);
+  }
+
+  .modal-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.5rem;
+  }
+  .modal-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: var(--r-sm);
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+  .modal-tab:hover {
+    color: var(--fg);
+    background: var(--soft);
+  }
+  .modal-tab.active {
+    background: var(--soft);
+    color: var(--fg);
+    border-color: var(--line);
+    font-weight: 600;
+  }
+
+  .modal-tab-panel {
+    display: none;
+    grid-gap: 1.25rem;
+  }
+  .modal-tab-panel.active {
+    display: grid;
+  }
+  .tab-desc {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.5;
+  }
+
+  .form-group {
+    display: grid;
+    gap: 0.4rem;
+  }
+  .field-label {
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .modal-tab-panel input[type="text"],
+  .modal-tab-panel input[type="file"],
+  .modal-tab-panel select {
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 0.92rem;
+    transition: border-color .15s ease;
+  }
+  .modal-tab-panel input:focus,
+  .modal-tab-panel select:focus {
+    border-color: var(--fg);
+    outline: none;
+  }
+
+  .preset-subfolders {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.2rem;
+  }
+  .tag-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.65rem;
+    background: var(--soft);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  .help-text {
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+  }
+</style>

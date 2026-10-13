@@ -1,0 +1,610 @@
+---
+import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
+import { getTextes } from '../../utils/textes';
+import { getCourses } from '../../utils/courses';
+
+const textes = await getTextes();
+const subjects = getCourses();
+
+const serializedTextes = textes.map((t) => ({
+  id: t.id,
+  title: t.data.title,
+  author: t.data.epigraphAuthor || '',
+  url: `/textes/${t.id}/`,
+}));
+
+const serializedCourses = subjects.map((s) => ({
+  id: s.id,
+  title: s.name,
+  url: `/cours/#folder-${s.id}`,
+}));
+---
+
+<Base
+  title="Rappels & Notifications"
+  description="Suivi de vos alertes programmées pour lire un texte philosophique ou réviser un cours."
+>
+  <div
+    class="container container--wide app-page reminders-page"
+    data-reminders-root
+    data-textes={JSON.stringify(serializedTextes)}
+    data-courses={JSON.stringify(serializedCourses)}
+  >
+    <header class="page-header reminders-hero">
+      <div class="reminders-hero-top">
+        <div>
+          <p class="crumbs"><a href="/">Accueil</a> / Notifications</p>
+          <h1 class="reminders-title">Rappels automatiques</h1>
+          <p class="reminders-motto">
+            Votre assistant personnel pour rythmer vos lectures philosophiques et révisions académiques.
+          </p>
+        </div>
+        <div class="header-action">
+          <a href="/configuration/" class="btn btn--sm">
+            <Icon name="settings" size={14} />
+            Modifier les réglages
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Statut des notifications Web -->
+    <div class="panel permission-banner" data-permission-banner>
+      <div class="banner-content">
+        <strong id="perm-title">Statut du système d'alerte :</strong>
+        <span id="perm-status" class="meta">Vérification...</span>
+      </div>
+      <button type="button" class="btn btn--primary btn--sm" id="btn-request-perm">
+        Activer les notifications
+      </button>
+    </div>
+
+    <div class="reminders-grid">
+      <!-- Colonne principale -->
+      <div class="reminders-main">
+        <!-- Carte du planning récurrent actif -->
+        <section class="panel schedule-summary-card">
+          <div class="schedule-header">
+            <div class="status-indicator">
+              <span class="dot-status" id="schedule-dot"></span>
+              <h2 class="label" id="schedule-state-title">Programme de rappels actif</h2>
+            </div>
+            <a href="/configuration/" class="more">Ajuster <span aria-hidden="true">→</span></a>
+          </div>
+
+          <div class="schedule-details">
+            <div class="detail-block">
+              <span class="meta detail-label">Fréquence configurée</span>
+              <strong class="detail-value" id="schedule-freq-text">Quotidienne</strong>
+            </div>
+            <div class="detail-block">
+              <span class="meta detail-label">Heures d'envoi</span>
+              <strong class="detail-value" id="schedule-times-text">09:00</strong>
+            </div>
+            <div class="detail-block">
+              <span class="meta detail-label">Sélection du support</span>
+              <strong class="detail-value" id="schedule-pref-text">Aléatoire (texte philo ou cours)</strong>
+            </div>
+          </div>
+
+          <div class="schedule-footer">
+            <button type="button" class="btn btn--primary btn--sm" id="btn-trigger-now">
+              Déclencher un rappel maintenant (test)
+            </button>
+          </div>
+        </section>
+
+        <!-- Historique des notifications envoyées -->
+        <section class="panel history-section">
+          <div class="list-header">
+            <h2 class="label">Historique des notifications récentes</h2>
+            <span class="meta" id="history-count">0 notification</span>
+          </div>
+
+          <ul class="history-list" id="history-list" role="list">
+            <!-- Rempli en JS -->
+          </ul>
+        </section>
+      </div>
+
+      <!-- Colonne latérale : Suggestion actuelle -->
+      <aside class="reminders-aside">
+        <section class="panel suggestion-card" id="suggestion-card">
+          <div class="section-head">
+            <h2 class="label">Prochaine suggestion</h2>
+          </div>
+          <div class="suggestion-type meta" id="sug-type">Philosophie</div>
+          <h3 class="suggestion-title" id="sug-title">Chargement...</h3>
+          <p class="suggestion-desc meta" id="sug-desc">
+            Ce contenu sera automatiquement proposé lors de votre prochaine notification.
+          </p>
+          <div class="suggestion-actions">
+            <a href="#" class="btn btn--primary btn--sm" id="sug-link">
+              Consulter <Icon name="arrow-right" size={13} />
+            </a>
+            <button type="button" class="btn btn--sm" id="btn-refresh-suggestion">
+              Tirer au sort
+            </button>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import {
+    STORAGE_KEYS,
+    savePersistentJSON,
+    loadPersistentJSON,
+    type ReminderScheduleConfig,
+    type NotificationLogItem,
+  } from '../../utils/persistence';
+
+  interface SuggestionItem {
+    type: 'philo' | 'cours';
+    typeLabel: string;
+    title: string;
+    desc: string;
+    url: string;
+  }
+
+  function initRemindersPage() {
+    const root = document.querySelector('[data-reminders-root]');
+    if (!root) return;
+
+    const rawTextes = root.getAttribute('data-textes');
+    const rawCourses = root.getAttribute('data-courses');
+    const textes: Array<{ id: string; title: string; author: string; url: string }> = rawTextes ? JSON.parse(rawTextes) : [];
+    const courses: Array<{ id: string; title: string; url: string }> = rawCourses ? JSON.parse(rawCourses) : [];
+
+    const scheduleDot = document.getElementById('schedule-dot');
+    const scheduleStateTitle = document.getElementById('schedule-state-title');
+    const scheduleFreqText = document.getElementById('schedule-freq-text');
+    const scheduleTimesText = document.getElementById('schedule-times-text');
+    const schedulePrefText = document.getElementById('schedule-pref-text');
+
+    const sugType = document.getElementById('sug-type');
+    const sugTitle = document.getElementById('sug-title');
+    const sugDesc = document.getElementById('sug-desc');
+    const sugLink = document.getElementById('sug-link') as HTMLAnchorElement;
+    const btnRefresh = document.getElementById('btn-refresh-suggestion');
+
+    const historyList = document.getElementById('history-list');
+    const historyCount = document.getElementById('history-count');
+    const btnTriggerNow = document.getElementById('btn-trigger-now');
+
+    const statusEl = document.getElementById('perm-status');
+    const btnReq = document.getElementById('btn-request-perm');
+
+    // 1. Charger configuration des rappels
+    const config: ReminderScheduleConfig = loadPersistentJSON(STORAGE_KEYS.REMINDERS_CONFIG, {
+      enabled: true,
+      frequency: 'daily',
+      times: ['09:00'],
+      weekday: 1,
+      contentType: 'all',
+    });
+
+    if (scheduleDot && scheduleStateTitle) {
+      if (config.enabled) {
+        scheduleDot.className = 'dot-status dot-active';
+        scheduleStateTitle.textContent = 'Programme de rappels actif';
+      } else {
+        scheduleDot.className = 'dot-status dot-inactive';
+        scheduleStateTitle.textContent = 'Rappels désactivés';
+      }
+    }
+
+    if (scheduleFreqText) {
+      if (config.frequency === 'daily') scheduleFreqText.textContent = 'Quotidienne (1 fois / jour)';
+      else if (config.frequency === 'twice_daily') scheduleFreqText.textContent = 'Biquotidienne (2 fois / jour)';
+      else if (config.frequency === 'weekly') scheduleFreqText.textContent = 'Hebdomadaire (1 fois / semaine)';
+    }
+
+    if (scheduleTimesText) {
+      scheduleTimesText.textContent = config.times && config.times.length > 0 ? config.times.join(' & ') : 'Non définies';
+    }
+
+    if (schedulePrefText) {
+      if (config.contentType === 'philo') schedulePrefText.textContent = 'Textes philosophiques uniquement';
+      else if (config.contentType === 'cours') schedulePrefText.textContent = 'Fiches et cours de révision';
+      else schedulePrefText.textContent = 'Aléatoire (Textes philo & Cours)';
+    }
+
+    // 2. Sélectionner une suggestion aléatoire
+    function getRandomContent(): SuggestionItem {
+      let pickPhilo = true;
+      if (config.contentType === 'philo') pickPhilo = true;
+      else if (config.contentType === 'cours') pickPhilo = false;
+      else {
+        pickPhilo = Math.random() < 0.5;
+      }
+
+      if (pickPhilo && textes.length > 0) {
+        const item = textes[Math.floor(Math.random() * textes.length)];
+        return {
+          type: 'philo' as const,
+          typeLabel: 'Texte philosophique',
+          title: item.title,
+          desc: item.author ? `Auteur : ${item.author}` : 'Article philosophique',
+          url: item.url,
+        };
+      } else if (courses.length > 0) {
+        const item = courses[Math.floor(Math.random() * courses.length)];
+        return {
+          type: 'cours' as const,
+          typeLabel: 'Support de cours',
+          title: item.title,
+          desc: 'Matière universitaire & fiches de révision',
+          url: item.url,
+        };
+      } else {
+        return {
+          type: 'philo' as const,
+          typeLabel: 'Bibliothèque',
+          title: 'Explorer les textes',
+          desc: 'Retrouvez vos lectures et essais',
+          url: '/textes/',
+        };
+      }
+    }
+
+    let currentSuggestion = getRandomContent();
+
+    function renderSuggestion() {
+      if (sugType) sugType.textContent = currentSuggestion.typeLabel;
+      if (sugTitle) sugTitle.textContent = currentSuggestion.title;
+      if (sugDesc) sugDesc.textContent = currentSuggestion.desc;
+      if (sugLink) sugLink.href = currentSuggestion.url;
+    }
+
+    btnRefresh?.addEventListener('click', () => {
+      currentSuggestion = getRandomContent();
+      renderSuggestion();
+    });
+
+    renderSuggestion();
+
+    // 3. Historique des notifications
+    function loadHistory(): NotificationLogItem[] {
+      return loadPersistentJSON(STORAGE_KEYS.NOTIFICATIONS_HISTORY, []);
+    }
+
+    function renderHistory() {
+      const history = loadHistory();
+      if (!historyList || !historyCount) return;
+
+      historyCount.textContent = `${history.length} notification${history.length > 1 ? 's' : ''}`;
+
+      if (history.length === 0) {
+        historyList.innerHTML = '<li class="no-history meta">Aucun rappel déclenché pour le moment.</li>';
+        return;
+      }
+
+      historyList.innerHTML = history
+        .slice(0, 10)
+        .map((item) => {
+          const date = new Date(item.timestamp);
+          const timeStr = date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+          const dateStr = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+          const isPhilo = item.type === 'philo';
+
+          return `
+          <li class="history-item">
+            <div class="history-time meta">
+              <strong>${timeStr}</strong>
+              <small>${dateStr}</small>
+            </div>
+            <div class="history-info">
+              <span class="history-badge ${isPhilo ? 'badge-philo' : 'badge-cours'}">
+                ${isPhilo ? 'Philo' : 'Cours'}
+              </span>
+              <a href="${item.url}" class="history-link">${item.title}</a>
+            </div>
+            <a href="${item.url}" class="meta config-shortcut">Consulter →</a>
+          </li>
+        `;
+        })
+        .join('');
+    }
+
+    renderHistory();
+
+    // 4. Déclencher un rappel maintenant
+    function triggerNotification() {
+      const sug = getRandomContent();
+      const notificationTitle = sug.type === 'philo' ? `Lecture philosophique : ${sug.title}` : `Révision de cours : ${sug.title}`;
+      const notificationBody = sug.desc;
+
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const notif = new Notification(notificationTitle, {
+          body: notificationBody,
+          icon: '/favicon.svg',
+        });
+        notif.onclick = () => {
+          window.open(sug.url, '_blank');
+        };
+      } else {
+        alert(`${notificationTitle}\n\n${notificationBody}\n\nLien : ${window.location.origin}${sug.url}`);
+      }
+
+      const history = loadHistory();
+      history.unshift({
+        id: Math.random().toString(),
+        timestamp: Date.now(),
+        title: sug.title,
+        type: sug.type,
+        url: sug.url,
+      });
+      savePersistentJSON(STORAGE_KEYS.NOTIFICATIONS_HISTORY, history.slice(0, 50));
+      renderHistory();
+    }
+
+    btnTriggerNow?.addEventListener('click', triggerNotification);
+
+    // 5. Autorisations du navigateur
+    function updatePermissionUI() {
+      if (!('Notification' in window)) {
+        if (statusEl) statusEl.textContent = 'Non supporté par ce navigateur.';
+        if (btnReq) (btnReq as HTMLButtonElement).disabled = true;
+        return;
+      }
+      const perm = Notification.permission;
+      if (statusEl) {
+        if (perm === 'granted') statusEl.textContent = 'Autorisées & actives';
+        else if (perm === 'denied') statusEl.textContent = 'Bloquées dans votre navigateur';
+        else statusEl.textContent = 'En attente d’autorisation';
+      }
+      if (btnReq) {
+        btnReq.style.display = perm === 'granted' ? 'none' : 'inline-block';
+      }
+    }
+
+    updatePermissionUI();
+    document.getElementById('btn-request-perm')?.addEventListener('click', async () => {
+      if ('Notification' in window) {
+        await Notification.requestPermission();
+        updatePermissionUI();
+      }
+    });
+
+    // 6. Surveillance récurrente
+    setInterval(() => {
+      if (!config.enabled) return;
+      const now = new Date();
+      const currentHHMM = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+      if (now.getSeconds() < 15) {
+        if (config.frequency === 'weekly') {
+          const currentDay = now.getDay() === 0 ? 7 : now.getDay();
+          if (currentDay !== config.weekday) return;
+        }
+
+        if (config.times && config.times.includes(currentHHMM)) {
+          triggerNotification();
+        }
+      }
+    }, 15000);
+  }
+
+  document.addEventListener('astro:page-load', initRemindersPage);
+</script>
+
+<style>
+  .reminders-page {
+    padding-bottom: 5rem;
+  }
+  .reminders-hero {
+    padding-block: clamp(1.5rem, 1rem + 2vw, 3rem) clamp(1rem, 0.75rem + 1vw, 2rem);
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+  .reminders-hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .reminders-title {
+    font-family: var(--font-text);
+    font-size: clamp(2rem, 1.5rem + 2vw, 3rem);
+    letter-spacing: -.03em;
+    margin: .35rem 0 .35rem;
+  }
+  .reminders-motto {
+    font-family: var(--font-text);
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .permission-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+    border-left: 3px solid var(--fg);
+  }
+
+  .reminders-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 20rem;
+    gap: 2.5rem;
+    align-items: start;
+  }
+  .reminders-main {
+    display: grid;
+    gap: 2rem;
+  }
+  .reminders-aside {
+    position: sticky;
+    top: 5rem;
+  }
+
+  /* Planning actif */
+  .schedule-summary-card {
+    padding: 1.5rem 1.75rem;
+  }
+  .schedule-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.85rem;
+    margin-bottom: 1.25rem;
+  }
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .dot-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .dot-active {
+    background: var(--success);
+  }
+  .dot-inactive {
+    background: var(--muted);
+  }
+  .schedule-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .detail-block {
+    display: grid;
+    gap: 0.25rem;
+  }
+  .detail-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .detail-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+  .schedule-footer {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  /* Suggestion */
+  .suggestion-card {
+    padding: 1.5rem;
+  }
+  .suggestion-type {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.4rem;
+  }
+  .suggestion-title {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-text);
+    font-size: 1.3rem;
+    line-height: 1.3;
+    letter-spacing: -.02em;
+  }
+  .suggestion-desc {
+    margin: 0 0 1.25rem;
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+  .suggestion-actions {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  /* Historique */
+  .history-section {
+    padding: 1.5rem 1.75rem;
+  }
+  .list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1rem;
+  }
+  .history-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+  .history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 0.9rem;
+    background: var(--soft);
+    border-radius: var(--radius);
+    gap: 1rem;
+    border-left: 3px solid var(--line-strong);
+  }
+  .history-time {
+    display: grid;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8rem;
+    width: 65px;
+    flex: none;
+  }
+  .history-time strong {
+    color: var(--fg);
+    font-weight: 600;
+  }
+  .history-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+  .history-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    text-transform: uppercase;
+  }
+  .badge-philo { color: var(--tone-philo); }
+  .badge-cours { color: var(--accent); }
+  .history-link {
+    color: var(--fg);
+    font-size: 0.92rem;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .history-link:hover {
+    text-decoration: underline;
+  }
+  .no-history {
+    font-style: italic;
+    padding: 1.5rem 0;
+    text-align: center;
+  }
+
+  @media (max-width: 62rem) {
+    .reminders-grid { grid-template-columns: 1fr; }
+    .reminders-aside { position: static; }
+  }
+</style>

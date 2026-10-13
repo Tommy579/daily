@@ -1,0 +1,78 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getTextes, plural } from '../../utils/textes';
+import { THEMES, THEME_SLUGS } from '../../data/themes';
+
+const textes = await getTextes();
+const themes = THEME_SLUGS.map((slug) => ({
+  slug,
+  ...THEMES[slug],
+  count: textes.filter((t) => t.data.themes.includes(slug)).length,
+}));
+---
+
+<Base title="Thèmes" description="Les thèmes explorés par Marges : conscience, langage, éthique, travail, créativité, relations, pouvoir, attention.">
+  <div class="container">
+    <header class="page-header">
+      <h1>Thèmes</h1>
+      <p class="lede">Huit portes d’entrée, qui donnent souvent sur la même pièce.</p>
+    </header>
+
+    <ol class="themes" role="list">
+      {
+        themes.map((t, i) => (
+          <li>
+            <a href={`/themes/${t.slug}/`} class="theme">
+              <span class="num meta">{String(i + 1).padStart(2, '0')}</span>
+              <span class="body">
+                <span class="name">{t.label}</span>
+                <span class="desc">{t.description}</span>
+              </span>
+              <span class="meta n">{plural(t.count, 'texte', 'textes')}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</Base>
+
+<style>
+  .themes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--fg);
+  }
+  .themes li { border-bottom: 1px solid var(--line); }
+
+  .theme {
+    display: grid;
+    grid-template-columns: 2.5rem 1fr auto;
+    gap: 1rem;
+    align-items: baseline;
+    padding: 1.4rem 0;
+    text-decoration: none;
+  }
+  .num { font-feature-settings: 'tnum' 1; }
+  .body { display: grid; gap: .3rem; }
+  .name {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: -.015em;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-decoration-thickness: 1px;
+    text-underline-offset: .18em;
+    transition: text-decoration-color .15s ease;
+  }
+  .desc { color: var(--muted); line-height: 1.55; font-size: .95em; transition: color .2s ease; }
+  .theme:hover .name { text-decoration-color: currentColor; }
+  .theme:hover .desc { color: var(--fg); }
+  .n { white-space: nowrap; }
+
+  @media (max-width: 34rem) {
+    .theme { grid-template-columns: 1fr; gap: .4rem; }
+    .num { display: none; }
+  }
+</style>

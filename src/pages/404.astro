@@ -1,0 +1,28 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="Page introuvable" description="Cette page n'existe pas." noindex>
+  <div class="container notfound">
+    <p class="label">Erreur 404</p>
+    <h1>Cette page n’existe pas.</h1>
+    <p class="lede">Ou pas encore. Ou plus. C’est parfois difficile à dire.</p>
+    <blockquote>
+      <p>« Il faut imaginer Sisyphe heureux. »</p>
+      <p>— Albert Camus</p>
+    </blockquote>
+    <p class="links">
+      <a class="more" href="/"><span aria-hidden="true">←</span> Retour à l’accueil</a>
+      <a class="more" href="/textes/">Parcourir les textes <span aria-hidden="true">→</span></a>
+    </p>
+  </div>
+</Base>
+
+<style>
+  .notfound { padding-block: clamp(3rem, 2rem + 6vw, 7rem) 2rem; }
+  .notfound .label { margin-bottom: 1rem; }
+  blockquote { margin: 3rem 0; }
+  blockquote p:last-child { font-style: normal; font-family: var(--font-ui); font-size: .8rem; }
+  .links { display: flex; flex-wrap: wrap; gap: 1rem 2rem; }
+  .more:first-child:hover span { transform: translateX(-3px); }
+</style>

@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# ⚠️ Remplacer par l'URL finale du site
+Sitemap: https://marges.example/sitemap-index.xml

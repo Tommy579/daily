@@ -1,0 +1,545 @@
+---
+import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
+import { getCourses } from '../../utils/courses';
+
+const subjects = getCourses();
+const totalCourses = subjects.length;
+const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
+---
+
+<Base
+  title="Configuration & Paramètres"
+  description="Centralisez l'import de votre emploi du temps, vos supports de cours et la planification de vos notifications."
+>
+  <div class="container container--wide app-page config-page" data-config-root>
+    <header class="page-header config-hero">
+      <div class="config-hero-top">
+        <div>
+          <p class="crumbs"><a href="/">Accueil</a> / Paramètres</p>
+          <h1 class="config-title">Configuration & Paramètres</h1>
+          <p class="config-motto">
+            Paramétrez vos fichiers de cours, votre calendrier et vos alertes en local sur votre machine.
+          </p>
+        </div>
+      </div>
+    </header>
+
+    <div class="config-grid">
+      <!-- 1. Fichiers de Cours & Révisions -->
+      <section class="panel config-card">
+        <div class="card-head">
+          <span class="icon-tile"><Icon name="folder" size={20} /></span>
+          <div>
+            <h2>Mes Fichiers de Cours & Révisions</h2>
+            <p class="meta">Gestion des supports académiques et fiches de révisions importés en local</p>
+          </div>
+        </div>
+
+        <div class="storage-info">
+          <p>
+            Vos supports de cours et fiches de révisions sont importés directement depuis votre dossier <strong>Semestre 5</strong>. Aucune dépendance externe ni compte en ligne n'est nécessaire : tous vos cours sont disponibles instantanément et consultables dans la visionneuse.
+          </p>
+          <div class="storage-status-list meta">
+            <div class="storage-row">
+              <span>Matières répertoriées :</span>
+              <strong>{totalCourses} matières actives</strong>
+            </div>
+            <div class="storage-row">
+              <span>Fichiers disponibles :</span>
+              <strong>{totalFiles} documents importés</strong>
+            </div>
+            <div class="storage-row">
+              <span>Source :</span>
+              <code>Semestre 5 (Local)</code>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <a href="/cours/" class="btn btn--primary btn--sm">Consulter mes cours</a>
+          <a href="/rappels/?presetType=cours" class="btn btn--sm">Programmer un rappel de cours</a>
+        </div>
+      </section>
+
+      <!-- 2. Emploi du temps & Calendrier iCal -->
+      <section class="panel config-card" id="calendar-settings">
+        <div class="card-head">
+          <span class="icon-tile"><Icon name="calendar" size={20} /></span>
+          <div>
+            <h2>Emploi du temps universitaire</h2>
+            <p class="meta">Importation de votre calendrier iCal (.ics) ou flux en ligne</p>
+          </div>
+        </div>
+
+        <form id="form-timetable" class="config-form">
+          <div class="form-group">
+            <label for="ics-file" class="field-label">Importer un fichier iCalendar (.ics) :</label>
+            <input type="file" id="ics-file" accept=".ics,text/calendar" />
+            <span class="help-text">Exportez votre emploi du temps depuis votre ENT (ADE Campus, Zimbra, Google Agenda) et déposez-le ici.</span>
+          </div>
+
+          <div class="form-group">
+            <label for="ics-url" class="field-label">Ou URL de synchronisation iCal / RSS / Webcal :</label>
+            <input
+              type="url"
+              id="ics-url"
+              placeholder="https://ent.universite.fr/agenda/export.ics"
+            />
+          </div>
+
+          <div class="status-box" id="timetable-status-box">
+            <div class="status-indicator">
+              <span class="dot-status dot-active" id="timetable-dot"></span>
+              <strong id="timetable-status-title">Calendrier actif</strong>
+            </div>
+            <p class="status-desc meta" id="timetable-status-desc">
+              Calendrier par défaut chargé (Licence Philosophie / L2-L3).
+            </p>
+          </div>
+
+          <div class="card-actions">
+            <button type="submit" class="btn btn--primary btn--sm">Mettre à jour le calendrier</button>
+            <button type="button" class="btn btn--danger btn--sm" id="btn-reset-timetable">Réinitialiser par défaut</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- 3. Planification des notifications récurrentes -->
+      <section class="panel config-card">
+        <div class="card-head">
+          <span class="icon-tile"><Icon name="bell" size={20} /></span>
+          <div>
+            <h2>Rappels récurrents automatiques</h2>
+            <p class="meta">Programmation de révisions ou de lectures sans avoir à créer chaque alerte à la main</p>
+          </div>
+        </div>
+
+        <form id="form-reminders" class="config-form">
+          <div class="form-group">
+            <label class="form-checkbox main-toggle">
+              <input type="checkbox" id="reminders-enabled" checked />
+              <span>Activer la programmation automatique des alertes</span>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label for="reminders-frequency" class="field-label">Fréquence des rappels :</label>
+            <select id="reminders-frequency">
+              <option value="daily">Quotidienne (chaque jour)</option>
+              <option value="twice_daily">Deux fois par jour (Matin & Soir)</option>
+              <option value="weekly">Hebdomadaire (un jour précis de la semaine)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="reminders-content" class="field-label">Type de contenu proposé lors du rappel :</label>
+            <select id="reminders-content">
+              <option value="all">Aléatoire équilibré (Textes & Cours)</option>
+              <option value="philo">Textes de philosophie uniquement</option>
+              <option value="cours">Supports de cours uniquement</option>
+            </select>
+          </div>
+
+          <div class="times-subgrid">
+            <div class="form-group" id="group-time-1">
+              <label for="reminder-time-1" class="field-label" id="label-time-1">Heure quotidienne :</label>
+              <input type="time" id="reminder-time-1" value="09:00" />
+            </div>
+
+            <div class="form-group" id="group-time-2" style="display: none;">
+              <label for="reminder-time-2" class="field-label">Deuxième heure (soir) :</label>
+              <input type="time" id="reminder-time-2" value="18:30" />
+            </div>
+
+            <div class="form-group" id="group-weekday" style="display: none;">
+              <label for="reminder-weekday" class="field-label">Jour de la semaine :</label>
+              <select id="reminder-weekday">
+                <option value="1">Lundi</option>
+                <option value="2">Mardi</option>
+                <option value="3">Mercredi</option>
+                <option value="4">Jeudi</option>
+                <option value="5">Vendredi</option>
+                <option value="6">Samedi</option>
+                <option value="7">Dimanche</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card-actions">
+            <button type="submit" class="btn btn--primary btn--sm">Enregistrer mes préférences de rappels</button>
+            <a href="/rappels/" class="btn btn--sm">Tester les rappels</a>
+          </div>
+        </form>
+      </section>
+
+      <!-- 4. Persistance des données & Cookies -->
+      <section class="panel config-card">
+        <div class="card-head">
+          <span class="icon-tile"><Icon name="book" size={20} /></span>
+          <div>
+            <h2>Persistance des données & Cookies</h2>
+            <p class="meta">Gestion du stockage local et des préférences de votre session</p>
+          </div>
+        </div>
+
+        <div class="storage-info">
+          <p>
+            Toutes vos informations (calendrier personnalisé, préférences de révision et notifications) sont sauvegardées sur une durée de <strong>365 jours</strong> dans vos cookies sécurisés et votre stockage navigateur.
+          </p>
+          <div class="storage-status-list meta">
+            <div class="storage-row">
+              <span>Cookies actifs :</span>
+              <strong id="cookie-status">Vérification...</strong>
+            </div>
+            <div class="storage-row">
+              <span>Notifications navigateur :</span>
+              <strong id="notif-perm-status">Vérification...</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <button type="button" class="btn btn--sm" id="btn-request-notif-perm">Activer les notifications navigateur</button>
+          <button type="button" class="btn btn--danger btn--sm" id="btn-clear-all-data">Effacer toutes mes données</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import {
+    STORAGE_KEYS,
+    savePersistent,
+    loadPersistent,
+    savePersistentJSON,
+    loadPersistentJSON,
+    deleteCookie,
+    type ReminderScheduleConfig,
+  } from '../../utils/persistence';
+
+  function initConfigPage() {
+    // 1. GESTION DE L'EMPLOI DU TEMPS
+    const timetableForm = document.getElementById('form-timetable') as HTMLFormElement;
+    const icsFileInput = document.getElementById('ics-file') as HTMLInputElement;
+    const icsUrlInput = document.getElementById('ics-url') as HTMLInputElement;
+    const timetableDesc = document.getElementById('timetable-status-desc');
+    const btnResetTimetable = document.getElementById('btn-reset-timetable');
+
+    const savedIcsUrl = loadPersistent(STORAGE_KEYS.TIMETABLE_URL);
+    if (savedIcsUrl && icsUrlInput) icsUrlInput.value = savedIcsUrl;
+
+    const savedIcsRaw = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
+    if (savedIcsRaw && timetableDesc) {
+      timetableDesc.textContent = 'Emploi du temps personnalisé actif (importé par vos soins).';
+    }
+
+    timetableForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (icsFileInput.files && icsFileInput.files[0]) {
+        const file = icsFileInput.files[0];
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const content = evt.target?.result as string;
+          if (content) {
+            savePersistent(STORAGE_KEYS.TIMETABLE_ICS, content);
+            if (timetableDesc) timetableDesc.textContent = `Fichier "${file.name}" importé avec succès.`;
+            alert('Emploi du temps mis à jour à partir de votre fichier .ics !');
+          }
+        };
+        reader.readAsText(file);
+      } else if (icsUrlInput.value.trim()) {
+        savePersistent(STORAGE_KEYS.TIMETABLE_URL, icsUrlInput.value.trim());
+        if (timetableDesc) timetableDesc.textContent = `Flux distant configuré : ${icsUrlInput.value.trim()}`;
+        alert('URL de flux d’emploi du temps enregistrée.');
+      }
+    });
+
+    btnResetTimetable?.addEventListener('click', () => {
+      if (confirm('Voulez-vous réinitialiser l’emploi du temps avec le calendrier par défaut de la faculté ?')) {
+        savePersistent(STORAGE_KEYS.TIMETABLE_ICS, '');
+        savePersistent(STORAGE_KEYS.TIMETABLE_URL, '');
+        deleteCookie(STORAGE_KEYS.TIMETABLE_ICS);
+        deleteCookie(STORAGE_KEYS.TIMETABLE_URL);
+        if (icsFileInput) icsFileInput.value = '';
+        if (icsUrlInput) icsUrlInput.value = '';
+        if (timetableDesc) timetableDesc.textContent = 'Calendrier par défaut chargé (Licence Philosophie / L2-L3).';
+        alert('Emploi du temps réinitialisé aux cours standards.');
+      }
+    });
+
+    // 2. PLANIFICATION DES NOTIFICATIONS RÉCURRENTES
+    const remindersForm = document.getElementById('form-reminders') as HTMLFormElement;
+    const remindersEnabled = document.getElementById('reminders-enabled') as HTMLInputElement;
+    const remindersFreq = document.getElementById('reminders-frequency') as HTMLSelectElement;
+    const remindersContent = document.getElementById('reminders-content') as HTMLSelectElement;
+    const time1Input = document.getElementById('reminder-time-1') as HTMLInputElement;
+    const time2Input = document.getElementById('reminder-time-2') as HTMLInputElement;
+    const weekdayInput = document.getElementById('reminder-weekday') as HTMLSelectElement;
+
+    const groupTime2 = document.getElementById('group-time-2');
+    const groupWeekday = document.getElementById('group-weekday');
+    const labelTime1 = document.getElementById('label-time-1');
+
+    function updateFreqUI() {
+      const val = remindersFreq.value;
+      if (val === 'twice_daily') {
+        if (groupTime2) groupTime2.style.display = 'grid';
+        if (groupWeekday) groupWeekday.style.display = 'none';
+        if (labelTime1) labelTime1.textContent = 'Première heure (matin) :';
+      } else if (val === 'weekly') {
+        if (groupTime2) groupTime2.style.display = 'none';
+        if (groupWeekday) groupWeekday.style.display = 'grid';
+        if (labelTime1) labelTime1.textContent = 'Heure du rappel :';
+      } else {
+        if (groupTime2) groupTime2.style.display = 'none';
+        if (groupWeekday) groupWeekday.style.display = 'none';
+        if (labelTime1) labelTime1.textContent = 'Heure quotidienne :';
+      }
+    }
+
+    remindersFreq?.addEventListener('change', updateFreqUI);
+
+    const savedConfig: ReminderScheduleConfig = loadPersistentJSON(STORAGE_KEYS.REMINDERS_CONFIG, {
+      enabled: true,
+      frequency: 'daily',
+      times: ['09:00'],
+      weekday: 1,
+      contentType: 'all',
+    });
+
+    if (remindersEnabled) remindersEnabled.checked = savedConfig.enabled;
+    if (remindersFreq) remindersFreq.value = savedConfig.frequency;
+    if (remindersContent && savedConfig.contentType) remindersContent.value = savedConfig.contentType;
+    if (savedConfig.times && savedConfig.times[0] && time1Input) time1Input.value = savedConfig.times[0];
+    if (savedConfig.times && savedConfig.times[1] && time2Input) time2Input.value = savedConfig.times[1];
+    if (savedConfig.weekday && weekdayInput) weekdayInput.value = String(savedConfig.weekday);
+
+    updateFreqUI();
+
+    remindersForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const times: string[] = [];
+      if (time1Input.value) times.push(time1Input.value);
+      if (remindersFreq.value === 'twice_daily' && time2Input.value) times.push(time2Input.value);
+
+      const newConfig: ReminderScheduleConfig = {
+        enabled: remindersEnabled.checked,
+        frequency: remindersFreq.value as any,
+        times,
+        weekday: parseInt(weekdayInput.value, 10),
+        contentType: remindersContent.value as any,
+      };
+
+      savePersistentJSON(STORAGE_KEYS.REMINDERS_CONFIG, newConfig);
+      alert('Préférences de rappels sauvegardées avec succès pour 1 an !');
+    });
+
+    // 3. COOKIES & DONNÉES
+    const cookieStatus = document.getElementById('cookie-status');
+    const notifPermStatus = document.getElementById('notif-perm-status');
+    const btnReqNotifPerm = document.getElementById('btn-request-notif-perm');
+    const btnClearAll = document.getElementById('btn-clear-all-data');
+
+    if (cookieStatus) {
+      cookieStatus.textContent = navigator.cookieEnabled ? 'Actifs (365 jours)' : 'Désactivés';
+    }
+
+    function checkPerm() {
+      if (!('Notification' in window)) {
+        if (notifPermStatus) notifPermStatus.textContent = 'Non supportées';
+        return;
+      }
+      const perm = Notification.permission;
+      if (notifPermStatus) {
+        if (perm === 'granted') notifPermStatus.textContent = 'Autorisées';
+        else if (perm === 'denied') notifPermStatus.textContent = 'Bloquées';
+        else notifPermStatus.textContent = 'En attente d’autorisation';
+      }
+    }
+
+    checkPerm();
+
+    btnReqNotifPerm?.addEventListener('click', async () => {
+      if ('Notification' in window) {
+        await Notification.requestPermission();
+        checkPerm();
+      }
+    });
+
+    btnClearAll?.addEventListener('click', () => {
+      if (confirm('Attention : cela supprimera tous vos cours personnalisés, vos rappels et votre calendrier. Continuer ?')) {
+        Object.values(STORAGE_KEYS).forEach((k) => {
+          deleteCookie(k);
+          localStorage.removeItem(k);
+        });
+        alert('Toutes les données locales ont été réinitialisées.');
+        window.location.reload();
+      }
+    });
+  }
+
+  document.addEventListener('astro:page-load', initConfigPage);
+</script>
+
+<style>
+  .config-page {
+    padding-bottom: 5rem;
+  }
+  .config-hero {
+    padding-block: clamp(1.5rem, 1rem + 2vw, 3rem) clamp(1rem, 0.75rem + 1vw, 2rem);
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+  .config-title {
+    font-family: var(--font-text);
+    font-size: clamp(2rem, 1.5rem + 2vw, 3rem);
+    letter-spacing: -.03em;
+    margin: .35rem 0 .35rem;
+  }
+  .config-motto {
+    font-family: var(--font-text);
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .config-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  .config-card {
+    padding: 1.75rem 2rem;
+  }
+  .card-head {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .card-head h2 {
+    margin: 0 0 0.2rem;
+    font-family: var(--font-text);
+    font-size: 1.35rem;
+    letter-spacing: -.02em;
+  }
+  .card-head p {
+    margin: 0;
+    font-size: 0.88rem;
+  }
+
+  .config-form {
+    display: grid;
+    gap: 1.25rem;
+  }
+  .form-group {
+    display: grid;
+    gap: 0.4rem;
+  }
+  .field-label {
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .config-form input[type="text"],
+  .config-form input[type="url"],
+  .config-form input[type="time"],
+  .config-form input[type="file"],
+  .config-form select {
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 0.92rem;
+    transition: border-color .15s ease;
+  }
+  .config-form input:focus,
+  .config-form select:focus {
+    border-color: var(--fg);
+    outline: none;
+  }
+  .help-text {
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .form-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  .main-toggle {
+    background: var(--soft);
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+  }
+  .times-subgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    background: var(--soft);
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+  }
+  .status-box {
+    background: var(--soft);
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius);
+    border-left: 3px solid var(--fg);
+  }
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+  }
+  .dot-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .dot-active {
+    background: var(--success);
+  }
+  .status-desc {
+    margin: 0;
+    font-size: 0.85rem;
+  }
+  .storage-info {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+  }
+  .storage-status-list {
+    margin-top: 1rem;
+    display: grid;
+    gap: 0.5rem;
+    background: var(--soft);
+    padding: 1rem 1.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+  }
+  .storage-row {
+    display: flex;
+    justify-content: space-between;
+  }
+  .card-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 0.5rem;
+  }
+</style>

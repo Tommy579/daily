@@ -1,0 +1,59 @@
+name: Automatisation Marges (Publication IA & Sync Cours)
+
+on:
+  workflow_dispatch: # Déclenchement manuel avec paramètres
+    inputs:
+      action:
+        description: 'Action à exécuter'
+        required: true
+        default: 'generate_article'
+        type: choice
+        options:
+          - 'generate_article'
+          - 'sync_courses'
+  schedule:
+    # Exemple : chaque lundi matin à 08h00 UTC
+    - cron: '0 8 * * 1'
+
+jobs:
+  automate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+
+      - name: Configuration de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Installation des dépendances
+        run: npm ci
+
+      - name: Génération automatique d'un texte par l'IA
+        if: ${{ github.event.inputs.action == 'generate_article' || github.event_name == 'schedule' }}
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -n "$GEMINI_API_KEY" ]; then
+            node scripts/generate-article.mjs conscience essai
+          else
+            echo "GEMINI_API_KEY non configurée dans les Secrets GitHub, étape ignorée."
+          fi
+
+      - name: Synchronisation & Build du site
+        run: |
+          npm run build
+
+      - name: Commit et Push automatique vers dev
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add src/content/textes/ public/cours-files/
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore(auto): publication automatique d'un texte et mise à jour" && git push origin dev)
