@@ -543,33 +543,177 @@ import Base from '../../layouts/Base.astro';
 </script>
 
 <style>
-  /* -------------------------------------------------------------
-     THEME SOMBRE IOS CALENDAR (MAQUETTE EXACTE)
-     ------------------------------------------------------------- */
+  /* ==============================================================
+     TOKENS CALENDRIER THEMATIQUES (CLAIR / SOMBRE)
+     ============================================================== */
+
+  /* THÈME CLAIR (par défaut si data-theme="light" ou système clair) */
+  :root,
+  :root[data-theme='light'] {
+    --cal-bg: #ffffff;
+    --cal-surface: #f4f4f5;
+    --cal-border: #e4e4e7;
+    --cal-text: #09090b;
+    --cal-text-muted: #71717a;
+    --cal-hour-line: rgba(0, 0, 0, 0.06);
+    --cal-today-col: rgba(255, 59, 48, 0.03);
+
+    --cal-btn-bg: #f4f4f5;
+    --cal-btn-hover: #e4e4e7;
+    --cal-btn-fg: #18181b;
+
+    --cal-pill-bg: rgba(255, 255, 255, 0.92);
+    --cal-pill-border: rgba(0, 0, 0, 0.12);
+    --cal-pill-text: #09090b;
+    --cal-pill-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+
+    --cal-modal-bg: #ffffff;
+    --cal-modal-border: #e4e4e7;
+    --cal-modal-text: #09090b;
+
+    /* Carré Magenta Éclatant (Matlab, Algèbre, Programmation) */
+    --card-magenta-bg: #fdf2f8;
+    --card-magenta-border: #f472b6;
+    --card-magenta-bar: #db2777;
+    --card-magenta-title: #831843;
+    --card-magenta-meta: #9d174d;
+
+    /* Carré TD (Violet / Pourpre riche) */
+    --card-td-bg: #f5f3ff;
+    --card-td-border: #c4b5fd;
+    --card-td-bar: #7c3aed;
+    --card-td-title: #4c1d95;
+    --card-td-meta: #6d28d9;
+
+    /* Carré CM (Prune profond) */
+    --card-cm-bg: #faf5ff;
+    --card-cm-border: #d8b4fe;
+    --card-cm-bar: #9333ea;
+    --card-cm-title: #581c87;
+    --card-cm-meta: #7e22ce;
+
+    /* Carré Habitude / Quotidien */
+    --card-habit-bg: #f0f9ff;
+    --card-habit-border: #7dd3fc;
+    --card-habit-bar: #0284c7;
+    --card-habit-title: #0369a1;
+    --card-habit-meta: #0284c7;
+  }
+
+  /* THÈME SOMBRE (forcé par toggle dark ou préférence système sombre) */
+  :root[data-theme='dark'] {
+    --cal-bg: #000000;
+    --cal-surface: #121214;
+    --cal-border: #1e1e24;
+    --cal-text: #ffffff;
+    --cal-text-muted: #a1a1aa;
+    --cal-hour-line: rgba(255, 255, 255, 0.05);
+    --cal-today-col: rgba(255, 255, 255, 0.015);
+
+    --cal-btn-bg: #1c1c1e;
+    --cal-btn-hover: #2c2c2e;
+    --cal-btn-fg: #e4e4e7;
+
+    --cal-pill-bg: rgba(28, 28, 30, 0.85);
+    --cal-pill-border: rgba(255, 255, 255, 0.12);
+    --cal-pill-text: #ffffff;
+    --cal-pill-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+
+    --cal-modal-bg: #18181b;
+    --cal-modal-border: rgba(255, 255, 255, 0.15);
+    --cal-modal-text: #ffffff;
+
+    /* Carré Magenta Éclatant */
+    --card-magenta-bg: #a21caf;
+    --card-magenta-border: #f472b6;
+    --card-magenta-bar: #ff007f;
+    --card-magenta-title: #ffffff;
+    --card-magenta-meta: #fdf2f8;
+
+    /* Carré TD */
+    --card-td-bg: #581c87;
+    --card-td-border: #c084fc;
+    --card-td-bar: #ec4899;
+    --card-td-title: #f5d0fe;
+    --card-td-meta: #fae8ff;
+
+    /* Carré CM */
+    --card-cm-bg: #3b0764;
+    --card-cm-border: #a855f7;
+    --card-cm-bar: #d946ef;
+    --card-cm-title: #f0abfc;
+    --card-cm-meta: #e9d5ff;
+
+    /* Carré Habitude */
+    --card-habit-bg: #1e3a8a;
+    --card-habit-border: #38bdf8;
+    --card-habit-bar: #0ea5e9;
+    --card-habit-title: #bae6fd;
+    --card-habit-meta: #e0f2fe;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --cal-bg: #000000;
+      --cal-surface: #121214;
+      --cal-border: #1e1e24;
+      --cal-text: #ffffff;
+      --cal-text-muted: #a1a1aa;
+      --cal-hour-line: rgba(255, 255, 255, 0.05);
+      --cal-today-col: rgba(255, 255, 255, 0.015);
+
+      --cal-btn-bg: #1c1c1e;
+      --cal-btn-hover: #2c2c2e;
+      --cal-btn-fg: #e4e4e7;
+
+      --cal-pill-bg: rgba(28, 28, 30, 0.85);
+      --cal-pill-border: rgba(255, 255, 255, 0.12);
+      --cal-pill-text: #ffffff;
+      --cal-pill-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+
+      --cal-modal-bg: #18181b;
+      --cal-modal-border: rgba(255, 255, 255, 0.15);
+      --cal-modal-text: #ffffff;
+
+      --card-magenta-bg: #a21caf;
+      --card-magenta-border: #f472b6;
+      --card-magenta-bar: #ff007f;
+      --card-magenta-title: #ffffff;
+      --card-magenta-meta: #fdf2f8;
+
+      --card-td-bg: #581c87;
+      --card-td-border: #c084fc;
+      --card-td-bar: #ec4899;
+      --card-td-title: #f5d0fe;
+      --card-td-meta: #fae8ff;
+
+      --card-cm-bg: #3b0764;
+      --card-cm-border: #a855f7;
+      --card-cm-bar: #d946ef;
+      --card-cm-title: #f0abfc;
+      --card-cm-meta: #e9d5ff;
+
+      --card-habit-bg: #1e3a8a;
+      --card-habit-border: #38bdf8;
+      --card-habit-bar: #0ea5e9;
+      --card-habit-title: #bae6fd;
+      --card-habit-meta: #e0f2fe;
+    }
+  }
+
   :root {
-    --ios-bg: #000000;
-    --ios-surface: #121214;
-    --ios-border: #1e1e24;
     --ios-red: #ff3b30;
-    --ios-magenta-cm: #320743;
-    --ios-magenta-td: #430c50;
-    --ios-neon-border-cm: #c026d3;
-    --ios-neon-border-td: #e11d48;
-    --ios-text-pink: #f472b6;
-    --ios-text-lavender: #e9d5ff;
-    --ios-habit-bg: #111e38;
-    --ios-habit-border: #1e3a8a;
-    --ios-habit-text: #93c5fd;
   }
 
   .calendar-app-root {
-    background: var(--ios-bg);
-    color: #ffffff;
+    background: var(--cal-bg);
+    color: var(--cal-text);
     min-height: calc(100vh - 120px);
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
     padding-bottom: 5rem;
     position: relative;
     user-select: none;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   /* 1. BARRE SUPERIEURE IOS */
@@ -578,8 +722,9 @@ import Base from '../../layouts/Base.astro';
     justify-content: space-between;
     align-items: center;
     padding: 0.85rem 1.25rem;
-    background: var(--ios-bg);
-    border-bottom: 1px solid var(--ios-border);
+    background: var(--cal-bg);
+    border-bottom: 1px solid var(--cal-border);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
   }
   .cal-top-left {
     display: flex;
@@ -587,9 +732,9 @@ import Base from '../../layouts/Base.astro';
     gap: 0.6rem;
   }
   .btn-cal-month {
-    background: #1c1c1e;
+    background: var(--cal-btn-bg);
     border: none;
-    color: #ffffff;
+    color: var(--cal-btn-fg);
     font-size: 1.25rem;
     line-height: 1;
     width: 32px;
@@ -598,16 +743,16 @@ import Base from '../../layouts/Base.astro';
     cursor: pointer;
     display: grid;
     place-items: center;
-    transition: background 0.15s ease;
+    transition: background 0.15s ease, color 0.15s ease;
   }
   .btn-cal-month:hover {
-    background: #2c2c2e;
+    background: var(--cal-btn-hover);
   }
   .cal-month-title {
     margin: 0;
     font-size: 1.15rem;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--cal-text);
     letter-spacing: -0.02em;
   }
   .cal-top-actions {
@@ -616,9 +761,9 @@ import Base from '../../layouts/Base.astro';
     gap: 0.5rem;
   }
   .icon-btn {
-    background: #1c1c1e;
+    background: var(--cal-btn-bg);
     border: none;
-    color: #e4e4e7;
+    color: var(--cal-btn-fg);
     width: 34px;
     height: 34px;
     border-radius: 8px;
@@ -629,15 +774,16 @@ import Base from '../../layouts/Base.astro';
     transition: all 0.15s ease;
   }
   .icon-btn:hover, .icon-btn.active {
-    background: #2c2c2e;
-    color: #ffffff;
+    background: var(--cal-btn-hover);
+    color: var(--cal-text);
   }
 
   /* 2. BANDEAU DE SEMAINE HORIZONTAL */
   .cal-week-strip {
-    background: var(--ios-bg);
+    background: var(--cal-bg);
     padding: 0.5rem 0.5rem 0.65rem;
-    border-bottom: 1px solid var(--ios-border);
+    border-bottom: 1px solid var(--cal-border);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
   }
   .week-strip-inner {
     display: grid;
@@ -657,11 +803,11 @@ import Base from '../../layouts/Base.astro';
     cursor: pointer;
     padding: 0.35rem 0;
     border-radius: 12px;
-    color: #a1a1aa !important;
-    transition: background 0.15s ease;
+    color: var(--cal-text-muted) !important;
+    transition: background 0.15s ease, color 0.15s ease;
   }
   .strip-day-btn:hover {
-    background: rgba(255, 255, 255, 0.08) !important;
+    background: var(--cal-btn-hover) !important;
   }
   .strip-letter {
     font-size: 0.72rem;
@@ -676,7 +822,7 @@ import Base from '../../layouts/Base.astro';
     display: grid;
     place-items: center;
     border-radius: 50%;
-    color: #ffffff !important;
+    color: var(--cal-text) !important;
     background: transparent !important;
   }
   /* Aujourd'hui = Cercle rouge vif */
@@ -686,16 +832,17 @@ import Base from '../../layouts/Base.astro';
     box-shadow: 0 2px 8px rgba(255, 59, 48, 0.5);
   }
   .strip-day-btn.is-selected:not(.is-today) .strip-num {
-    background: #27272a !important;
-    color: #ffffff !important;
+    background: var(--cal-btn-hover) !important;
+    color: var(--cal-text) !important;
   }
 
   /* 3. VUE GRILLE SEMAINE */
   .calendar-scroll-viewport {
     overflow-x: auto;
     overflow-y: visible;
-    background: var(--ios-bg);
+    background: var(--cal-bg);
     width: 100%;
+    transition: background-color 0.2s ease;
   }
   .cal-grid-frame {
     display: flex;
@@ -708,19 +855,20 @@ import Base from '../../layouts/Base.astro';
   .cal-columns-header {
     display: grid;
     grid-template-columns: 58px repeat(7, 1fr);
-    background: var(--ios-bg);
-    border-bottom: 1px solid var(--ios-border);
+    background: var(--cal-bg);
+    border-bottom: 1px solid var(--cal-border);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
   }
   .col-header-corner {
-    border-right: 1px solid var(--ios-border);
+    border-right: 1px solid var(--cal-border);
   }
   .col-header-cell {
     padding: 0.65rem 0.5rem;
     text-align: center;
     font-size: 0.88rem;
     font-weight: 700;
-    color: #e4e4e7;
-    border-right: 1px solid var(--ios-border);
+    color: var(--cal-text);
+    border-right: 1px solid var(--cal-border);
     letter-spacing: -0.01em;
   }
   .col-header-cell:last-child {
@@ -734,16 +882,17 @@ import Base from '../../layouts/Base.astro';
   .cal-allday-row {
     display: grid;
     grid-template-columns: 58px repeat(7, 1fr);
-    background: var(--ios-bg);
-    border-bottom: 1px solid var(--ios-border);
+    background: var(--cal-bg);
+    border-bottom: 1px solid var(--cal-border);
     min-height: 40px;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
   }
   .allday-corner {
-    border-right: 1px solid var(--ios-border);
+    border-right: 1px solid var(--cal-border);
   }
   .allday-cell {
     padding: 0.4rem 0.35rem;
-    border-right: 1px solid var(--ios-border);
+    border-right: 1px solid var(--cal-border);
     display: flex;
     align-items: center;
   }
@@ -751,9 +900,9 @@ import Base from '../../layouts/Base.astro';
     border-right: none;
   }
   .habit-badge {
-    background: var(--ios-habit-bg);
-    border: 1px solid var(--ios-habit-border);
-    color: var(--ios-habit-text);
+    background: var(--card-habit-bg);
+    border: 1px solid var(--card-habit-border);
+    color: var(--card-habit-title);
     border-radius: 6px;
     padding: 0.25rem 0.5rem;
     font-size: 0.76rem;
@@ -770,7 +919,7 @@ import Base from '../../layouts/Base.astro';
     width: 9px;
     height: 9px;
     border-radius: 50%;
-    border: 2px solid #38bdf8;
+    border: 2px solid var(--card-habit-bar);
     flex: none;
   }
   .habit-title {
@@ -784,7 +933,8 @@ import Base from '../../layouts/Base.astro';
     grid-template-columns: 58px 1fr;
     height: 750px;
     position: relative;
-    background: var(--ios-bg);
+    background: var(--cal-bg);
+    transition: background-color 0.2s ease;
   }
 
   /* Axe temporel gauche */
@@ -792,14 +942,14 @@ import Base from '../../layouts/Base.astro';
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    border-right: 1px solid var(--ios-border);
+    border-right: 1px solid var(--cal-border);
     padding: 0.15rem 0.4rem;
     position: relative;
     z-index: 5;
   }
   .time-label {
     font-size: 0.72rem;
-    color: #71717a;
+    color: var(--cal-text-muted);
     font-variant-numeric: tabular-nums;
     text-align: right;
     line-height: 1;
@@ -844,7 +994,7 @@ import Base from '../../layouts/Base.astro';
     position: absolute;
     left: 0;
     right: 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: 1px solid var(--cal-hour-line);
   }
 
   /* 7 Colonnes de jours */
@@ -857,13 +1007,13 @@ import Base from '../../layouts/Base.astro';
   .cal-day-col {
     position: relative;
     height: 100%;
-    border-right: 1px solid var(--ios-border);
+    border-right: 1px solid var(--cal-border);
   }
   .cal-day-col:last-child {
     border-right: none;
   }
   .cal-day-col.col-today {
-    background: rgba(255, 255, 255, 0.015);
+    background: var(--cal-today-col);
   }
 
   /* Ligne rouge "Now" */
@@ -896,14 +1046,17 @@ import Base from '../../layouts/Base.astro';
     border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
     transition: transform 0.15s ease, z-index 0.15s ease, filter 0.15s ease;
     z-index: 2;
+  }
+  :root[data-theme='dark'] .course-card {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
   }
   .course-card:hover {
     transform: scale(1.02);
     z-index: 15;
-    filter: brightness(1.15);
+    filter: brightness(1.06);
   }
   .card-inner {
     padding: 0.4rem 0.55rem;
@@ -916,55 +1069,54 @@ import Base from '../../layouts/Base.astro';
 
   /* Carré Magenta Vif Éclatant (Matlab, Algèbre, Programmation) */
   .card-magenta-vivid {
-    background: #a21caf !important;
-    border: 1.5px solid #f472b6 !important;
-    border-left: 5px solid #ff007f !important;
+    background: var(--card-magenta-bg) !important;
+    border: 1.5px solid var(--card-magenta-border) !important;
+    border-left: 5px solid var(--card-magenta-bar) !important;
   }
   .card-magenta-vivid .card-title {
-    color: #ffffff !important;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    color: var(--card-magenta-title) !important;
   }
   .card-magenta-vivid .card-meta {
-    color: #fdf2f8 !important;
+    color: var(--card-magenta-meta) !important;
   }
 
   /* Carré TD : Violet / Pourpre riche & bordure rose néon */
   .card-td {
-    background: #581c87 !important;
-    border: 1.5px solid #c084fc !important;
-    border-left: 5px solid #ec4899 !important;
+    background: var(--card-td-bg) !important;
+    border: 1.5px solid var(--card-td-border) !important;
+    border-left: 5px solid var(--card-td-bar) !important;
   }
   .card-td .card-title {
-    color: #f5d0fe !important;
+    color: var(--card-td-title) !important;
   }
   .card-td .card-meta {
-    color: #fae8ff !important;
+    color: var(--card-td-meta) !important;
   }
 
   /* Carré CM : Pourpre profond & bordure fuchsia électrique */
   .card-cm {
-    background: #3b0764 !important;
-    border: 1.5px solid #a855f7 !important;
-    border-left: 5px solid #d946ef !important;
+    background: var(--card-cm-bg) !important;
+    border: 1.5px solid var(--card-cm-border) !important;
+    border-left: 5px solid var(--card-cm-bar) !important;
   }
   .card-cm .card-title {
-    color: #f0abfc !important;
+    color: var(--card-cm-title) !important;
   }
   .card-cm .card-meta {
-    color: #e9d5ff !important;
+    color: var(--card-cm-meta) !important;
   }
 
   /* Carré Habitude / Quotidien : Bleu nuit & bordure cyan */
   .card-habit {
-    background: #1e3a8a !important;
-    border: 1.5px solid #38bdf8 !important;
-    border-left: 4.5px solid #0ea5e9 !important;
+    background: var(--card-habit-bg) !important;
+    border: 1.5px solid var(--card-habit-border) !important;
+    border-left: 4.5px solid var(--card-habit-bar) !important;
   }
   .card-habit .card-title {
-    color: #bae6fd !important;
+    color: var(--card-habit-title) !important;
   }
   .card-habit .card-meta {
-    color: #e0f2fe !important;
+    color: var(--card-habit-meta) !important;
   }
 
   .card-title {
@@ -1007,12 +1159,14 @@ import Base from '../../layouts/Base.astro';
     gap: 1.5rem;
     padding: 1.25rem 1.5rem;
     border-radius: 8px;
+    border: 1px solid var(--cal-border);
   }
   .agenda-date {
     display: grid;
     width: 140px;
     flex: none;
     font-size: 0.85rem;
+    color: var(--cal-text-muted);
   }
   .agenda-info {
     flex: 1;
@@ -1021,15 +1175,18 @@ import Base from '../../layouts/Base.astro';
     margin: 0 0 0.25rem;
     font-size: 1.05rem;
     font-weight: 700;
+    color: var(--cal-text);
   }
   .agenda-loc {
     margin: 0;
     font-size: 0.85rem;
     opacity: 0.85;
+    color: var(--cal-text-muted);
   }
   .agenda-desc {
     margin: 0.25rem 0 0;
     font-size: 0.78rem;
+    color: var(--cal-text-muted);
   }
 
   /* 7. BOUTON FLOTTANT "AUJOURD'HUI" TYPE IOS */
@@ -1041,11 +1198,11 @@ import Base from '../../layouts/Base.astro';
     z-index: 50;
   }
   .btn-today-pill {
-    background: rgba(28, 28, 30, 0.85);
+    background: var(--cal-pill-bg);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #ffffff;
+    border: 1px solid var(--cal-pill-border);
+    color: var(--cal-pill-text);
     border-radius: 999px;
     padding: 0.6rem 1.4rem;
     font-size: 0.95rem;
@@ -1054,12 +1211,11 @@ import Base from '../../layouts/Base.astro';
     align-items: center;
     gap: 0.55rem;
     cursor: pointer;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
-    transition: transform 0.15s ease, background 0.15s ease;
+    box-shadow: var(--cal-pill-shadow);
+    transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
   }
   .btn-today-pill:hover {
     transform: scale(1.04);
-    background: rgba(44, 44, 46, 0.95);
   }
   .red-dot {
     width: 8px;
@@ -1071,17 +1227,20 @@ import Base from '../../layouts/Base.astro';
 
   /* 8. MODAL DETAILS DU COURS */
   .cal-event-dialog {
-    background: #18181b;
-    color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: var(--cal-modal-bg);
+    color: var(--cal-modal-text);
+    border: 1px solid var(--cal-modal-border);
     border-radius: 12px;
     padding: 1.5rem;
     max-width: 480px;
     width: 90%;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  }
+  :root[data-theme='dark'] .cal-event-dialog {
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
   }
   .cal-event-dialog::backdrop {
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
   }
   .dialog-header {
@@ -1091,9 +1250,9 @@ import Base from '../../layouts/Base.astro';
     margin-bottom: 1rem;
   }
   .dialog-badge {
-    background: #3b0764;
-    color: #f0abfc;
-    border: 1px solid #c026d3;
+    background: var(--card-cm-bg);
+    color: var(--card-cm-title);
+    border: 1px solid var(--card-cm-border);
     padding: 0.2rem 0.6rem;
     border-radius: 4px;
     font-size: 0.75rem;
@@ -1102,18 +1261,18 @@ import Base from '../../layouts/Base.astro';
   .btn-close-modal {
     background: none;
     border: none;
-    color: #a1a1aa;
+    color: var(--cal-text-muted);
     font-size: 1.2rem;
     cursor: pointer;
   }
   .btn-close-modal:hover {
-    color: #ffffff;
+    color: var(--cal-text);
   }
   .dialog-title {
     margin: 0 0 1rem;
     font-size: 1.25rem;
     font-weight: 700;
-    color: #f472b6;
+    color: var(--card-magenta-bar);
   }
   .dialog-meta-list {
     display: grid;
@@ -1123,12 +1282,12 @@ import Base from '../../layouts/Base.astro';
   .dialog-meta {
     margin: 0;
     font-size: 0.9rem;
-    color: #e4e4e7;
+    color: var(--cal-text);
   }
   .dialog-desc {
     margin: 0.5rem 0 0;
     font-size: 0.85rem;
-    color: #a1a1aa;
+    color: var(--cal-text-muted);
     line-height: 1.4;
   }
   .dialog-actions {
@@ -1136,7 +1295,7 @@ import Base from '../../layouts/Base.astro';
     justify-content: flex-end;
   }
   .btn-modal-action {
-    background: #c026d3;
+    background: var(--card-magenta-bar);
     color: #ffffff;
     padding: 0.55rem 1rem;
     border-radius: 6px;
