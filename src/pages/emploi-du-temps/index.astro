@@ -80,6 +80,7 @@ import Base from '../../layouts/Base.astro';
 
 <script>
   import { SAMPLE_ICS_DATA } from '../../utils/timetable';
+  import { STORAGE_KEYS, savePersistent, loadPersistent } from '../../utils/persistence';
 
   interface EventParsed {
     id: string;
@@ -90,8 +91,8 @@ import Base from '../../layouts/Base.astro';
     description: string;
   }
 
-  const STORAGE_KEY = 'marges_timetable_ics';
-  const STORAGE_URL_KEY = 'marges_timetable_url';
+  const STORAGE_KEY = STORAGE_KEYS.TIMETABLE_ICS;
+  const STORAGE_URL_KEY = STORAGE_KEYS.TIMETABLE_URL;
 
   let currentEvents: EventParsed[] = [];
   let currentDate = new Date();
@@ -281,8 +282,8 @@ import Base from '../../layouts/Base.astro';
 
   async function loadData() {
     const statusEl = document.querySelector('[data-sync-status]');
-    let raw = localStorage.getItem(STORAGE_KEY);
-    const savedUrl = localStorage.getItem(STORAGE_URL_KEY);
+    let raw = loadPersistent(STORAGE_KEY);
+    const savedUrl = loadPersistent(STORAGE_URL_KEY);
 
     const urlInput = document.getElementById('ical-url') as HTMLInputElement;
     if (savedUrl && urlInput) {
@@ -291,7 +292,7 @@ import Base from '../../layouts/Base.astro';
 
     if (!raw) {
       raw = SAMPLE_ICS_DATA;
-      localStorage.setItem(STORAGE_KEY, raw);
+      savePersistent(STORAGE_KEY, raw);
     }
 
     currentEvents = parseIcsText(raw);
@@ -334,7 +335,7 @@ import Base from '../../layouts/Base.astro';
       const file = fileInput.files?.[0];
       if (!file) return;
       const text = await file.text();
-      localStorage.setItem(STORAGE_KEY, text);
+      savePersistent(STORAGE_KEY, text);
       currentEvents = parseIcsText(text);
       const statusEl = document.querySelector('[data-sync-status]');
       if (statusEl) statusEl.textContent = `Fichier "${file.name}" importé (${currentEvents.length} cours)`;
@@ -355,8 +356,8 @@ import Base from '../../layouts/Base.astro';
         const res = await fetch(`/api/calendar/proxy?url=${encodeURIComponent(targetUrl)}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const content = await res.text();
-        localStorage.setItem(STORAGE_KEY, content);
-        localStorage.setItem(STORAGE_URL_KEY, targetUrl);
+        savePersistent(STORAGE_KEY, content);
+        savePersistent(STORAGE_URL_KEY, targetUrl);
         currentEvents = parseIcsText(content);
         if (statusEl) statusEl.textContent = `Synchronisé avec succès (${currentEvents.length} événements)`;
         updateView();

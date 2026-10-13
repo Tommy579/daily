@@ -35,6 +35,9 @@
     try {
       localStorage.setItem('theme', next);
     } catch (e) {}
+    try {
+      document.cookie = 'theme=' + encodeURIComponent(next) + '; path=/; max-age=31536000; SameSite=Lax';
+    } catch (e) {}
     syncLabel();
   });
 

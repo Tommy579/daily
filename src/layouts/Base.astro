@@ -50,11 +50,16 @@ const websiteLd = {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
 
-    <!-- Anti-flash : applique le thème mémorisé avant le premier rendu -->
+    <!-- Anti-flash : applique le thème mémorisé avant le premier rendu (Cookie + LocalStorage) -->
     <script is:inline>
       (function () {
         function saved() {
-          try { return localStorage.getItem('theme'); } catch (e) { return null; }
+          try {
+            var local = localStorage.getItem('theme');
+            if (local) return local;
+          } catch (e) {}
+          var match = document.cookie.match(/(?:^|; )theme=([^;]*)/);
+          return match ? decodeURIComponent(match[1]) : null;
         }
         var t = saved();
         if (t) document.documentElement.dataset.theme = t;

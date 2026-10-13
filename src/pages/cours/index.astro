@@ -12,22 +12,87 @@ const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
   title="Mes Cours"
   description="Accès direct et visionneuse de vos cours, TD, travaux pratiques et documents académiques."
 >
-  <div class="container courses-page">
+  <div class="container courses-page" data-courses-root>
     <header class="page-header">
       <p class="label"><a href="/dashboard/">Espace de travail</a> / Cours</p>
       <h1>Mes Cours</h1>
       <p class="lede">
-        Tous vos supports, énoncés de TD et codes sources indexés depuis votre dossier local.
+        Tous vos supports, énoncés de TD, codes sources et cours personnels enregistrés.
       </p>
       <div class="meta stats-bar">
-        <span>{totalCourses} matières</span>
+        <span>{totalCourses} matières locales</span>
         <span class="sep">·</span>
         <span>{totalFiles} fichiers</span>
         <span class="sep">·</span>
         <span>{totalPdfs} documents PDF</span>
+        <span class="sep">·</span>
+        <span data-custom-count class="custom-badge">0 note/cours personnel</span>
       </div>
     </header>
 
+    <!-- Formulaire d'ajout rapide de cours / fiche de révision -->
+    <section class="add-course-panel" aria-labelledby="add-course-title">
+      <div class="panel-header">
+        <h2 id="add-course-title" class="label">Ajouter un cours ou une fiche (persistance automatique)</h2>
+        <span class="meta cookie-badge" title="Sauvegardé dans vos cookies et stockage local">🍪 Persistance active</span>
+      </div>
+      <form id="add-course-form" class="course-form">
+        <div class="form-row">
+          <div class="form-field">
+            <label for="course-subject" class="meta">Matière / Catégorie :</label>
+            <input
+              type="text"
+              id="course-subject"
+              placeholder="Ex : Philosophie, Algorithmique, EDO..."
+              required
+            />
+          </div>
+          <div class="form-field">
+            <label for="course-title" class="meta">Titre du cours ou du chapitre :</label>
+            <input
+              type="text"
+              id="course-title"
+              placeholder="Ex : Chapitre 4 — Intégrales multiples"
+              required
+            />
+          </div>
+          <div class="form-field">
+            <label for="course-url" class="meta">Lien externe / document (optionnel) :</label>
+            <input
+              type="url"
+              id="course-url"
+              placeholder="https://drive.google.com/... ou URL cours"
+            />
+          </div>
+        </div>
+
+        <div class="form-field full-width">
+          <label for="course-notes" class="meta">Notes / Synthèse du cours :</label>
+          <textarea
+            id="course-notes"
+            rows="3"
+            placeholder="Points clés à retenir, formules importantes, références..."
+          ></textarea>
+        </div>
+
+        <div class="form-footer">
+          <button type="submit" class="btn btn-primary">Enregistrer ce cours</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Liste des cours personnalisés persistés par Cookie/LocalStorage -->
+    <section class="custom-courses-section" id="custom-courses-section" hidden>
+      <div class="custom-header">
+        <h2 class="label">Mes cours & fiches ajoutés</h2>
+        <span class="meta" data-custom-summary></span>
+      </div>
+      <div class="custom-grid" id="custom-courses-container">
+        <!-- Rempli en JS -->
+      </div>
+    </section>
+
+    <!-- Matières issues du dossier Documents/Cours -->
     <div class="subjects-grid">
       {subjects.map((sub) => (
         <section class="subject-card">
@@ -118,19 +183,134 @@ const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
 </Base>
 
 <script>
-  document.querySelectorAll('.action-notify').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      const target = btn.getAttribute('data-plan-target');
-      const title = btn.getAttribute('data-plan-title');
-      const type = btn.getAttribute('data-plan-type');
-      const params = new URLSearchParams({
-        presetTarget: target || '',
-        presetTitle: title || '',
-        presetType: type || '',
+  import { STORAGE_KEYS, savePersistentJSON, loadPersistentJSON } from '../../utils/persistence';
+
+  interface CustomCourse {
+    id: string;
+    subject: string;
+    title: string;
+    url?: string;
+    notes?: string;
+    created: string;
+  }
+
+  let customCourses: CustomCourse[] = [];
+
+  function renderCustomCourses() {
+    const container = document.getElementById('custom-courses-container');
+    const section = document.getElementById('custom-courses-section');
+    const badge = document.querySelector('[data-custom-count]');
+    const summary = document.querySelector('[data-custom-summary]');
+
+    if (!container || !section) return;
+
+    if (badge) {
+      badge.textContent = `${customCourses.length} cours personnel${customCourses.length > 1 ? 's' : ''}`;
+    }
+
+    if (customCourses.length === 0) {
+      section.setAttribute('hidden', '');
+      return;
+    }
+
+    section.removeAttribute('hidden');
+    if (summary) summary.textContent = `${customCourses.length} cours persisté${customCourses.length > 1 ? 's' : ''}`;
+
+    container.innerHTML = customCourses
+      .map(
+        (c) => `
+      <div class="custom-card">
+        <div class="custom-card-header">
+          <span class="custom-tag meta">${c.subject}</span>
+          <button type="button" class="btn-del-custom" data-del-id="${c.id}" title="Supprimer ce cours">✕</button>
+        </div>
+        <h3 class="custom-title">${c.title}</h3>
+        ${c.notes ? `<p class="custom-notes">${c.notes}</p>` : ''}
+        <div class="custom-actions meta">
+          ${c.url ? `<a href="${c.url}" target="_blank" rel="noopener" class="custom-link">Ouvrir le support ↗</a><span class="sep">·</span>` : ''}
+          <button
+            type="button"
+            class="action-btn btn-plan-custom"
+            data-title="${encodeURIComponent(c.title)}"
+            data-subject="${encodeURIComponent(c.subject)}"
+          >
+            ⏰ Rappel
+          </button>
+        </div>
+      </div>
+    `
+      )
+      .join('');
+
+    container.querySelectorAll('.btn-del-custom').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.getAttribute('data-del-id');
+        customCourses = customCourses.filter((c) => c.id !== id);
+        savePersistentJSON(STORAGE_KEYS.CUSTOM_COURSES, customCourses);
+        renderCustomCourses();
       });
-      window.location.href = `/rappels/?${params.toString()}`;
     });
-  });
+
+    container.querySelectorAll('.btn-plan-custom').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const title = decodeURIComponent(btn.getAttribute('data-title') || '');
+        const subject = decodeURIComponent(btn.getAttribute('data-subject') || '');
+        const params = new URLSearchParams({
+          presetTitle: `Réviser ${subject} : ${title}`,
+          presetTarget: `/cours/#custom-courses-section`,
+          presetType: 'cours',
+        });
+        window.location.href = `/rappels/?${params.toString()}`;
+      });
+    });
+  }
+
+  function initCoursesPage() {
+    customCourses = loadPersistentJSON<CustomCourse[]>(STORAGE_KEYS.CUSTOM_COURSES, []);
+    renderCustomCourses();
+
+    const form = document.getElementById('add-course-form') as HTMLFormElement;
+    form?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const subjectInput = document.getElementById('course-subject') as HTMLInputElement;
+      const titleInput = document.getElementById('course-title') as HTMLInputElement;
+      const urlInput = document.getElementById('course-url') as HTMLInputElement;
+      const notesInput = document.getElementById('course-notes') as HTMLTextAreaElement;
+
+      if (!subjectInput.value.trim() || !titleInput.value.trim()) return;
+
+      const newCourse: CustomCourse = {
+        id: 'course-' + Date.now(),
+        subject: subjectInput.value.trim(),
+        title: titleInput.value.trim(),
+        url: urlInput.value.trim() || undefined,
+        notes: notesInput.value.trim() || undefined,
+        created: new Date().toISOString(),
+      };
+
+      customCourses.unshift(newCourse);
+      savePersistentJSON(STORAGE_KEYS.CUSTOM_COURSES, customCourses);
+      renderCustomCourses();
+
+      form.reset();
+    });
+
+    document.querySelectorAll('.action-notify').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const target = btn.getAttribute('data-plan-target');
+        const title = btn.getAttribute('data-plan-title');
+        const type = btn.getAttribute('data-plan-type');
+        const params = new URLSearchParams({
+          presetTarget: target || '',
+          presetTitle: title || '',
+          presetType: type || '',
+        });
+        window.location.href = `/rappels/?${params.toString()}`;
+      });
+    });
+  }
+
+  document.addEventListener('astro:page-load', initCoursesPage);
 </script>
 
 <style>
@@ -141,7 +321,133 @@ const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
     margin-top: 0.75rem;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem 0;
   }
+  .custom-badge {
+    color: var(--fg);
+    font-weight: 500;
+  }
+
+  /* Formulaire d'ajout */
+  .add-course-panel {
+    background: var(--soft);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 3rem;
+    border-left: 3px solid var(--fg);
+  }
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1.25rem;
+  }
+  .cookie-badge {
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .course-form {
+    display: grid;
+    gap: 1.2rem;
+  }
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+  .form-field {
+    display: grid;
+    gap: 0.35rem;
+  }
+  .full-width {
+    grid-column: 1 / -1;
+  }
+  .form-field input,
+  .form-field textarea {
+    padding: 0.6rem 0.8rem;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    color: var(--fg);
+    font-family: inherit;
+  }
+  .form-footer {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  /* Section cours personnalisés */
+  .custom-courses-section {
+    margin-bottom: 4rem;
+    border-top: 1px solid var(--fg);
+    padding-top: 1.5rem;
+  }
+  .custom-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1.25rem;
+  }
+  .custom-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+  }
+  .custom-card {
+    background: var(--soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+  }
+  .custom-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  .custom-tag {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--fg);
+  }
+  .btn-del-custom {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  .btn-del-custom:hover {
+    color: var(--fg);
+  }
+  .custom-title {
+    margin: 0 0 0.5rem;
+    font-size: 1.15rem;
+  }
+  .custom-notes {
+    margin: 0 0 1rem;
+    font-size: 0.9rem;
+    color: var(--muted);
+    line-height: 1.5;
+    flex: 1;
+    white-space: pre-line;
+  }
+  .custom-actions {
+    display: flex;
+    align-items: center;
+  }
+  .custom-link {
+    color: var(--fg);
+  }
+
+  /* Matières locales */
   .subjects-grid {
     display: grid;
     gap: 3.5rem;
@@ -255,7 +561,31 @@ const totalPdfs = subjects.reduce((acc, s) => acc + s.stats.pdfCount, 0);
     font-size: 0.85rem;
   }
   .action-btn:hover {
-    color: var(--fg);
     opacity: 0.7;
+  }
+
+  .btn {
+    padding: 0.6rem 1.25rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: var(--bg);
+    cursor: pointer;
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
+    transition: all 0.15s ease;
+  }
+  .btn-primary {
+    background: var(--fg);
+    color: var(--bg);
+    border-color: var(--fg);
+  }
+  .btn-primary:hover {
+    opacity: 0.85;
+  }
+
+  @media (max-width: 50rem) {
+    .form-row {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

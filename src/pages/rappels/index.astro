@@ -119,22 +119,18 @@ const subjects = getCourses();
 
 <script>
   import type { ReminderItem } from '../../utils/timetable';
+  import { STORAGE_KEYS, savePersistentJSON, loadPersistentJSON } from '../../utils/persistence';
 
-  const STORAGE_KEY = 'marges_reminders_list';
+  const STORAGE_KEY = STORAGE_KEYS.REMINDERS;
   let reminders: ReminderItem[] = [];
   let activeFilter: 'pending' | 'all' = 'pending';
 
   function loadReminders(): ReminderItem[] {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
+    return loadPersistentJSON<ReminderItem[]>(STORAGE_KEY, []);
   }
 
   function saveReminders() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
+    savePersistentJSON(STORAGE_KEY, reminders);
     renderReminders();
   }
 
