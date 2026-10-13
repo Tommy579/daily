@@ -1,0 +1,57 @@
+name: Déploiement GitHub Pages
+
+on:
+  push:
+    branches: [dev, main]
+  workflow_dispatch:
+
+# Permet un seul déploiement concurrent
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
+# Nécessaire pour déployer sur GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    name: Build Astro & Pagefind
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du code
+        uses: actions/checkout@v4
+
+      - name: Configuration de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Installation des dépendances
+        run: npm ci
+
+      - name: Build du site statique
+        run: npm run build
+
+      - name: Configuration de GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Téléversement de l'artefact Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+  deploy:
+    name: Déploiement sur GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Déploiement vers GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
