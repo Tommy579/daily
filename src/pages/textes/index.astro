@@ -1,0 +1,382 @@
+---
+import Base from '../../layouts/Base.astro';
+import TextCard from '../../components/TextCard.astro';
+import { getTextes, textUrl, plural, type Texte } from '../../utils/textes';
+import { TYPES, type TypeSlug } from '../../consts';
+import { THEMES, type ThemeSlug } from '../../data/themes';
+
+const textes = await getTextes();
+
+// Regroupement par année
+const byYear = new Map<number, Texte[]>();
+for (const t of textes) {
+  const y = t.data.date.getUTCFullYear();
+  if (!byYear.has(y)) byYear.set(y, []);
+  byYear.get(y)!.push(t);
+}
+
+const usedTypes = (Object.keys(TYPES) as TypeSlug[]).filter((k) => textes.some((t) => t.data.type === k));
+const usedThemes = (Object.keys(THEMES) as ThemeSlug[]).filter((k) => textes.some((t) => t.data.themes.includes(k)));
+
+const searchText = (t: Texte) =>
+  [t.data.title, t.data.subtitle, t.data.summary, ...t.data.themes.map((th) => THEMES[th].label)]
+    .filter(Boolean)
+    .join(' ');
+---
+
+<Base title="Textes" description="Tous les textes de Marges : essais, questions ouvertes, dialogues et notes sur l'intelligence artificielle.">
+  <div class="container archive" data-archive>
+    <header class="page-header">
+      <h1>Textes</h1>
+      <p class="lede">
+        {plural(textes.length, 'texte', 'textes')}, du plus récent au plus ancien. Essais, questions, dialogues et notes.
+      </p>
+    </header>
+
+    <search class="tools" role="search">
+      <div class="search-field">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+          <path d="m15.5 15.5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+        </svg>
+        <label for="search" class="visually-hidden">Rechercher dans les textes</label>
+        <input id="search" type="search" name="q" placeholder="Rechercher dans les textes…" autocomplete="off" spellcheck="false" />
+        <kbd class="shortcut" aria-hidden="true">/</kbd>
+      </div>
+
+      <div class="filters" role="group" aria-label="Filtrer par format">
+        <span class="label filter-label">Format</span>
+        <button type="button" data-filter="type" data-value="" aria-pressed="true">Tous</button>
+        {
+          usedTypes.map((k) => (
+            <button type="button" data-filter="type" data-value={k} aria-pressed="false">
+              {TYPES[k].plural}
+            </button>
+          ))
+        }
+      </div>
+
+      <div class="filters" role="group" aria-label="Filtrer par thème">
+        <span class="label filter-label">Thème</span>
+        <button type="button" data-filter="theme" data-value="" aria-pressed="true">Tous</button>
+        {
+          usedThemes.map((k) => (
+            <button type="button" data-filter="theme" data-value={k} aria-pressed="false">
+              {THEMES[k].label}
+            </button>
+          ))
+        }
+      </div>
+    </search>
+
+    <p class="meta status" data-status aria-live="polite">{plural(textes.length, 'texte', 'textes')}</p>
+
+    {
+      [...byYear.entries()].map(([year, items]) => (
+        <section class="year-group" data-year-group aria-labelledby={`annee-${year}`}>
+          <h2 class="year" id={`annee-${year}`}>
+            {year}
+          </h2>
+          <ol class="list" role="list">
+            {items.map((entry) => (
+              <li
+                data-item
+                data-url={textUrl(entry).replace(/\/$/, '')}
+                data-type={entry.data.type}
+                data-themes={entry.data.themes.join(' ')}
+                data-search={searchText(entry)}
+              >
+                <TextCard entry={entry} withExcerpt />
+              </li>
+            ))}
+          </ol>
+        </section>
+      ))
+    }
+
+    <div class="empty" data-empty hidden>
+      <p>Aucun texte ne correspond à cette recherche.</p>
+      <button type="button" class="reset" data-reset>Effacer les filtres</button>
+    </div>
+  </div>
+</Base>
+
+<script>
+  type Pagefind = {
+    options: (o: Record<string, unknown>) => Promise<void>;
+    init: () => void;
+    debouncedSearch: (
+      q: string,
+      o?: Record<string, unknown>,
+      ms?: number,
+    ) => Promise<{ results: { data: () => Promise<{ url: string; excerpt: string }> }[] } | null>;
+  };
+
+  let pagefind: Pagefind | null | undefined;
+
+  async function loadPagefind(): Promise<Pagefind | null> {
+    if (pagefind !== undefined) return pagefind;
+    try {
+      const path = '/pagefind/pagefind.js';
+      const mod = (await import(/* @vite-ignore */ path)) as Pagefind;
+      await mod.options({ excerptLength: 22 });
+      mod.init();
+      pagefind = mod;
+    } catch {
+      // Pagefind n'existe qu'après `npm run build` : repli sur une recherche simple.
+      pagefind = null;
+    }
+    return pagefind;
+  }
+
+  const fold = (s: string) =>
+    s
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+  const normalizeUrl = (u: string) => u.replace(/(index)?\.html$/, '').replace(/\/$/, '');
+
+  function initArchive() {
+    const root = document.querySelector<HTMLElement>('[data-archive]');
+    if (!root) return;
+
+    const items = [...root.querySelectorAll<HTMLElement>('[data-item]')];
+    const groups = [...root.querySelectorAll<HTMLElement>('[data-year-group]')];
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')];
+    const input = root.querySelector<HTMLInputElement>('#search')!;
+    const status = root.querySelector<HTMLElement>('[data-status]')!;
+    const empty = root.querySelector<HTMLElement>('[data-empty]')!;
+    const reset = root.querySelector<HTMLButtonElement>('[data-reset]')!;
+
+    const params = new URLSearchParams(location.search);
+    const state = {
+      type: params.get('type') ?? '',
+      theme: params.get('theme') ?? '',
+      q: params.get('q') ?? '',
+    };
+    let matches: Set<string> | null = null;
+    let excerpts = new Map<string, string>();
+
+    input.value = state.q;
+
+    function syncUrl() {
+      const p = new URLSearchParams();
+      if (state.q) p.set('q', state.q);
+      if (state.type) p.set('type', state.type);
+      if (state.theme) p.set('theme', state.theme);
+      const qs = p.toString();
+      history.replaceState(history.state, '', qs ? `?${qs}` : location.pathname);
+    }
+
+    function render() {
+      let count = 0;
+      for (const item of items) {
+        const url = item.dataset.url!;
+        const ok =
+          (!state.type || item.dataset.type === state.type) &&
+          (!state.theme || item.dataset.themes!.split(' ').includes(state.theme)) &&
+          (!matches || matches.has(url));
+        item.hidden = !ok;
+        if (ok) count++;
+
+        const ex = item.querySelector<HTMLElement>('[data-excerpt]');
+        if (ex) {
+          const html = matches ? excerpts.get(url) : undefined;
+          ex.hidden = !html;
+          ex.innerHTML = html ? `…${html}…` : '';
+        }
+      }
+      for (const g of groups) g.hidden = !g.querySelector('[data-item]:not([hidden])');
+
+      for (const b of buttons) {
+        const key = b.dataset.filter as 'type' | 'theme';
+        b.setAttribute('aria-pressed', String(state[key] === b.dataset.value));
+      }
+
+      status.textContent = count === items.length ? `${count} textes` : `${count} sur ${items.length} textes`;
+      empty.hidden = count > 0;
+      syncUrl();
+    }
+
+    async function search() {
+      const q = state.q.trim();
+      if (!q) {
+        matches = null;
+        excerpts = new Map();
+        render();
+        return;
+      }
+      const pf = await loadPagefind();
+      if (pf) {
+        const res = await pf.debouncedSearch(q, {}, 180);
+        if (res === null) return; // requête remplacée par une plus récente
+        const data = await Promise.all(res.results.map((r) => r.data()));
+        if (state.q.trim() !== q) return;
+        matches = new Set(data.map((d) => normalizeUrl(d.url)));
+        excerpts = new Map(data.map((d) => [normalizeUrl(d.url), d.excerpt]));
+      } else {
+        const terms = fold(q).split(/\s+/).filter(Boolean);
+        matches = new Set(
+          items
+            .filter((i) => {
+              const hay = fold(i.dataset.search ?? '');
+              return terms.every((t) => hay.includes(t));
+            })
+            .map((i) => i.dataset.url!),
+        );
+        excerpts = new Map();
+      }
+      render();
+    }
+
+    input.addEventListener('input', () => {
+      state.q = input.value;
+      search();
+    });
+
+    buttons.forEach((b) =>
+      b.addEventListener('click', () => {
+        const key = b.dataset.filter as 'type' | 'theme';
+        state[key] = b.dataset.value ?? '';
+        render();
+      }),
+    );
+
+    reset.addEventListener('click', () => {
+      state.type = '';
+      state.theme = '';
+      state.q = '';
+      input.value = '';
+      search();
+      input.focus();
+    });
+
+    search();
+  }
+
+  // Raccourci « / » pour rechercher
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+    const el = document.activeElement as HTMLElement | null;
+    if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+    const input = document.getElementById('search');
+    if (input) {
+      e.preventDefault();
+      input.focus();
+    }
+  });
+
+  document.addEventListener('astro:page-load', initArchive);
+</script>
+
+<style>
+  .tools {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 2.25rem;
+  }
+
+  .search-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    border-bottom: 1px solid var(--line);
+    transition: border-color .2s ease;
+    margin-bottom: .5rem;
+  }
+  .search-field:focus-within { border-bottom-color: var(--fg); }
+  .search-field svg { color: var(--muted); flex: none; }
+  .search-field input {
+    flex: 1;
+    min-width: 0;
+    padding: .85rem 0;
+    background: none;
+    border: 0;
+    font-family: var(--font-text);
+    font-size: 1.15rem;
+    outline: none;
+  }
+  .search-field input::placeholder { color: var(--muted); opacity: 1; font-style: italic; }
+  .search-field input::-webkit-search-cancel-button { filter: grayscale(1); cursor: pointer; }
+  .shortcut {
+    flex: none;
+    font-family: var(--font-ui);
+    font-size: .72rem;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: .05rem .4rem;
+  }
+  .search-field:focus-within .shortcut { opacity: 0; }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: .25rem .9rem;
+    font-family: var(--font-ui);
+    font-size: .85rem;
+  }
+  .filter-label { width: 4.5rem; flex: none; font-size: .68rem; }
+  .filters button {
+    background: none;
+    border: 0;
+    padding: .2rem 0;
+    cursor: pointer;
+    color: var(--muted);
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-decoration-thickness: 1px;
+    text-underline-offset: .3em;
+    transition: color .15s ease, text-decoration-color .15s ease;
+  }
+  .filters button:hover { color: var(--fg); }
+  .filters button[aria-pressed='true'] {
+    color: var(--fg);
+    text-decoration-color: currentColor;
+    font-weight: 500;
+  }
+
+  @media (max-width: 34rem) {
+    .filter-label { width: 100%; }
+  }
+
+  .status { margin: 0 0 .5rem; }
+
+  .year-group { margin-top: 1.5rem; }
+  .year {
+    font-family: var(--font-ui);
+    font-size: .8rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    margin: 0;
+    padding: .9rem 0 .6rem;
+    border-bottom: 1px solid var(--fg);
+    font-feature-settings: 'tnum' 1;
+  }
+
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list > li:not([hidden]) ~ li:not([hidden]) { border-top: 1px solid var(--line); }
+
+  .empty {
+    padding: 3rem 0;
+    text-align: center;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .reset {
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: .45rem 1rem;
+    font-family: var(--font-ui);
+    font-size: .85rem;
+    font-style: normal;
+    color: var(--fg);
+    cursor: pointer;
+    transition: border-color .15s ease;
+  }
+  .reset:hover { border-color: var(--fg); }
+</style>

@@ -1,0 +1,108 @@
+---
+import type { Texte } from '../utils/textes';
+import { formatDate, textUrl, typeLabel, fr } from '../utils/textes';
+import { readingTime } from '../utils/readingTime';
+
+interface Props {
+  entry: Texte;
+  /** Niveau du titre, selon la page qui accueille la carte. */
+  headingLevel?: 2 | 3;
+  /** Affiche un emplacement pour l'extrait de recherche (archive). */
+  withExcerpt?: boolean;
+}
+
+const { entry, headingLevel = 2, withExcerpt = false } = Astro.props;
+const { title, subtitle, summary, date, type, draft } = entry.data;
+const minutes = readingTime(entry.body ?? '');
+const Heading = `h${headingLevel}` as 'h2' | 'h3';
+---
+
+<article class="card">
+  <p class="meta card-meta">
+    <span class="card-type">{typeLabel(type)}</span>
+    <span class="sep" aria-hidden="true">·</span>
+    <time datetime={date.toISOString()}>{formatDate(date)}</time>
+    <span class="sep" aria-hidden="true">·</span>
+    <span>{minutes} min</span>
+    {draft && <span class="card-draft">Brouillon</span>}
+  </p>
+  <Heading class="card-title">
+    <a href={textUrl(entry)}>{fr(title)}</a>
+  </Heading>
+  {subtitle && <p class="card-subtitle">{fr(subtitle)}</p>}
+  <p class="card-summary">{fr(summary)}</p>
+  {withExcerpt && <p class="card-excerpt meta" data-excerpt hidden></p>}
+</article>
+
+<style>
+  .card {
+    position: relative;
+    padding-block: 1.9rem;
+  }
+
+  .card-meta { margin: 0 0 .55rem; }
+  .card-type { color: var(--fg); font-weight: 500; }
+  .card-draft {
+    margin-left: .6rem;
+    padding: .1rem .45rem;
+    border: 1px dashed var(--muted);
+    border-radius: 4px;
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+
+  .card-title {
+    font-size: clamp(1.35rem, 1.15rem + .8vw, 1.65rem);
+    line-height: 1.2;
+    margin: 0 0 .5rem;
+  }
+  .card-title a {
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-decoration-thickness: 1px;
+    text-underline-offset: .18em;
+  }
+  /* Toute la carte est cliquable */
+  .card-title a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+  .card:hover .card-title a { text-decoration-color: currentColor; }
+  .card-title a:focus-visible { outline: none; }
+  .card:has(.card-title a:focus-visible) {
+    outline: 2px solid var(--fg);
+    outline-offset: 6px;
+    border-radius: 4px;
+  }
+
+  .card-subtitle {
+    margin: -.2rem 0 .5rem;
+    font-style: italic;
+    color: var(--muted);
+  }
+
+  .card-summary {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.6;
+    transition: color .2s ease;
+  }
+  .card:hover .card-summary { color: var(--fg); }
+
+  .card-excerpt {
+    margin: .75rem 0 0;
+    padding-left: .9rem;
+    border-left: 1px solid var(--line);
+    font-size: .82rem;
+  }
+  .card-excerpt :global(mark) {
+    background: none;
+    color: var(--fg);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: .2em;
+  }
+</style>

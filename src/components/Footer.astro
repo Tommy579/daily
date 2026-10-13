@@ -1,0 +1,47 @@
+---
+import { SITE } from '../consts';
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <p class="footer-motto">Sans publicité, sans traçage, sans algorithme. Seulement des textes.</p>
+    <nav class="meta footer-links" aria-label="Liens secondaires">
+      <a href="/themes/">Thèmes</a>
+      <a href="/rss.xml">RSS</a>
+      <a href="/mentions-legales/">Mentions légales</a>
+      <a href={`mailto:${SITE.email}`}>Contact</a>
+    </nav>
+    <p class="meta footer-copy">
+      © {year} {SITE.title}<span class="sep">·</span>Textes sous licence
+      <a href={SITE.license.url} rel="license noopener" target="_blank">{SITE.license.name}</a>
+    </p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: 6rem;
+    padding-block: 2.5rem 3rem;
+  }
+  .footer-inner {
+    border-top: 1px solid var(--line);
+    padding-top: 2rem;
+    display: grid;
+    gap: .9rem;
+  }
+  .footer-motto {
+    margin: 0;
+    font-style: italic;
+    color: var(--muted);
+    font-size: .95rem;
+  }
+  .footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem 1.25rem;
+  }
+  .footer-links a { color: var(--fg); }
+  .footer-copy { margin: 0; }
+  .footer-copy a { text-decoration-color: currentColor; }
+</style>

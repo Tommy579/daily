@@ -1,0 +1,65 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE, TYPES } from '../consts';
+---
+
+<Base title="À propos" description="Qui écrit Marges, pourquoi, et comment me contacter.">
+  <article class="container">
+    <header class="page-header">
+      <h1>À propos</h1>
+      <p class="lede">Un carnet pour penser la machine sans s’y perdre.</p>
+    </header>
+
+    <div class="prose dropcap">
+      <p>
+        <em>Marges</em> est né d’un agacement et d’une curiosité. L’agacement devant la manière dont on parle de
+        l’intelligence artificielle&#8239;: tantôt l’enthousiasme publicitaire, tantôt la prophétie de malheur, presque
+        jamais la lenteur. La curiosité, parce que ces machines posent, sous une forme neuve, les plus vieilles questions
+        de la philosophie&#8239;: qu’est-ce que comprendre&#8239;? qu’est-ce qu’un auteur&#8239;? que doit-on à ce qui
+        nous parle&#8239;?
+      </p>
+      <p>
+        Le nom dit l’ambition. Les marges, ce sont les endroits où l’on écrit en lisant&#8239;: on y note une objection,
+        une question, un « tiens&#8239;! ». Ce site voudrait être cela&#8239;: des annotations en marge d’une époque.
+      </p>
+
+      <h2>Ce que vous trouverez ici</h2>
+      <ul>
+        {
+          Object.values(TYPES).map((t) => (
+            <li>
+              <strong>{t.plural}</strong>&nbsp;— {t.description.charAt(0).toLowerCase() + t.description.slice(1)}
+            </li>
+          ))
+        }
+      </ul>
+
+      <h2>Ce que vous ne trouverez pas</h2>
+      <p>
+        Ni publicité, ni cookie, ni traceur, ni fenêtre surgissante, ni lettre d’information qui vous poursuit. Le seul
+        stockage local est celui de votre préférence de thème clair ou sombre. Le site est un ensemble de pages
+        statiques&#8239;: on arrive, on lit, on repart.
+      </p>
+
+      <h2>Et l’IA, dans tout ça&#8239;?</h2>
+      <p>
+        Question légitime pour un site qui en parle. Les machines servent parfois ici d’interlocutrices — les dialogues
+        le disent quand c’est le cas — ou d’outils de relecture. Mais les idées, leur ordre et leurs défauts sont
+        assumés par un humain. Si un texte devait être largement co-écrit, il le signalerait.
+      </p>
+
+      <h2>Écrire, répondre, contredire</h2>
+      <p>
+        Les objections sont les bienvenues, surtout les bonnes. Écrivez à
+        <a href={`mailto:${SITE.email}`}>{SITE.email}</a>. Pour suivre les publications sans rien donner de vous, il y a
+        le <a href="/rss.xml">flux RSS</a>.
+      </p>
+
+      <p class="signature">— {SITE.author}</p>
+    </div>
+  </article>
+</Base>
+
+<style>
+  .signature { font-style: italic; text-align: right; margin-top: 2.5rem; }
+</style>

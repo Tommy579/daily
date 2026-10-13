@@ -1,0 +1,64 @@
+---
+import ThemeToggle from './ThemeToggle.astro';
+import { SITE } from '../consts';
+
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+const isTextes = path.startsWith('/textes') || path.startsWith('/themes');
+const isAbout = path.startsWith('/a-propos');
+---
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="/" aria-label={`${SITE.title} — accueil`} aria-current={path === '/' ? 'page' : undefined}>
+      {SITE.title}
+    </a>
+    <nav class="nav" aria-label="Navigation principale">
+      <a href="/textes/" aria-current={isTextes ? 'page' : undefined}>Textes</a>
+      <span class="dot" aria-hidden="true">·</span>
+      <a href="/a-propos/" aria-current={isAbout ? 'page' : undefined}>À propos</a>
+      <span class="dot" aria-hidden="true">·</span>
+      <ThemeToggle />
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    padding-block: 1.6rem;
+  }
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .brand {
+    font-family: var(--font-text);
+    font-size: 1.2rem;
+    font-weight: 650;
+    letter-spacing: -.01em;
+    text-decoration: none;
+    font-style: italic;
+  }
+  .brand:hover { text-decoration: none; opacity: .7; }
+
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    font-family: var(--font-ui);
+    font-size: .9rem;
+  }
+  .nav a {
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-decoration-thickness: 1px;
+    color: var(--muted);
+    transition: color .15s ease, text-decoration-color .15s ease;
+  }
+  .nav a:hover { color: var(--fg); text-decoration-color: currentColor; }
+  .nav a[aria-current='page'] { color: var(--fg); text-decoration-color: currentColor; }
+
+  .dot { color: var(--muted); opacity: .6; }
+</style>

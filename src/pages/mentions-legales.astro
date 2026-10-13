@@ -1,0 +1,56 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE } from '../consts';
+---
+
+<Base title="Mentions légales" description="Mentions légales et politique de confidentialité de Marges.">
+  <article class="container">
+    <header class="page-header">
+      <h1>Mentions légales</h1>
+      <p class="lede">Conformément à la loi n°&nbsp;2004-575 du 21&nbsp;juin 2004 pour la confiance dans l’économie numérique.</p>
+    </header>
+
+    <div class="prose">
+      <h2>Éditeur</h2>
+      <p>
+        Le site <em>{SITE.title}</em> est édité à titre personnel et non commercial par {SITE.author}.<br />
+        Contact&#8239;: <a href={`mailto:${SITE.email}`}>{SITE.email}</a><br />
+        Directeur de la publication&#8239;: {SITE.author}.
+      </p>
+
+      <h2>Hébergement</h2>
+      <p>
+        {SITE.host.name}<br />
+        {SITE.host.address}<br />
+        <a href={SITE.host.url} rel="noopener" target="_blank">{SITE.host.url.replace('https://', '')}</a>
+      </p>
+
+      <h2>Données personnelles</h2>
+      <p>
+        Ce site ne collecte aucune donnée personnelle, ne dépose aucun cookie et n’utilise aucun outil de mesure
+        d’audience ou de traçage. Aucun bandeau de consentement n’est donc nécessaire.
+      </p>
+      <p>
+        Seule votre préférence de thème (clair ou sombre) est enregistrée dans le stockage local de votre navigateur,
+        sur votre appareil, et n’est jamais transmise. Vous pouvez l’effacer à tout moment depuis les réglages de votre
+        navigateur.
+      </p>
+      <p>
+        Les polices de caractères sont hébergées sur ce site&#8239;: aucune requête n’est adressée à un service tiers
+        lors de votre visite.
+      </p>
+
+      <h2>Propriété intellectuelle</h2>
+      <p>
+        Sauf mention contraire, les textes publiés sur ce site sont placés sous licence
+        <a href={SITE.license.url} rel="license noopener" target="_blank">{SITE.license.name}</a>&#8239;: vous pouvez
+        les partager et les adapter, à condition d’en citer l’auteur, de ne pas en faire un usage commercial et de
+        partager vos adaptations dans les mêmes conditions.
+      </p>
+      <p>
+        Les citations d’autres auteurs sont reproduites au titre du droit de courte citation (article L.&nbsp;122-5 du
+        Code de la propriété intellectuelle) et restent la propriété de leurs ayants droit.
+      </p>
+    </div>
+  </article>
+</Base>

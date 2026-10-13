@@ -1,0 +1,33 @@
+---
+/**
+ * Barre de progression de lecture (2 px).
+ * CSS scroll-driven animations quand c'est possible, repli JS sinon (Firefox…).
+ */
+---
+
+<div class="progress" aria-hidden="true"></div>
+
+<script>
+  const supported = CSS.supports('animation-timeline: scroll()');
+
+  if (!supported) {
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      const bar = document.querySelector<HTMLElement>('.progress');
+      if (!bar) return;
+      const el = document.documentElement;
+      const max = el.scrollHeight - el.clientHeight;
+      bar.style.transform = `scaleX(${max > 0 ? Math.min(1, el.scrollTop / max) : 0})`;
+    };
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    };
+    addEventListener('scroll', onScroll, { passive: true });
+    addEventListener('resize', onScroll, { passive: true });
+    document.addEventListener('astro:page-load', update);
+  }
+</script>

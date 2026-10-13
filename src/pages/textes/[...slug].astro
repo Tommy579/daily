@@ -1,0 +1,24 @@
+---
+import { render } from 'astro:content';
+import Article from '../../layouts/Article.astro';
+import { getTextes } from '../../utils/textes';
+
+export async function getStaticPaths() {
+  const textes = await getTextes();
+  return textes.map((entry, i) => ({
+    params: { slug: entry.id },
+    props: {
+      entry,
+      next: textes[i - 1], // plus récent
+      prev: textes[i + 1], // plus ancien
+    },
+  }));
+}
+
+const { entry, prev, next } = Astro.props;
+const { Content, headings } = await render(entry);
+---
+
+<Article entry={entry} headings={headings} prev={prev} next={next}>
+  <Content />
+</Article>

@@ -1,0 +1,90 @@
+---
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  headings: MarkdownHeading[];
+}
+
+const items = Astro.props.headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+<nav class="toc" aria-label="Sommaire">
+  <p class="label toc-title">Sommaire</p>
+  <ol>
+    {
+      items.map((h) => (
+        <li class={`depth-${h.depth}`}>
+          <a href={`#${h.slug}`} data-toc-link={h.slug}>
+            {h.text}
+          </a>
+        </li>
+      ))
+    }
+  </ol>
+</nav>
+
+<script>
+  let observer: IntersectionObserver | undefined;
+
+  function initToc() {
+    observer?.disconnect();
+    const links = [...document.querySelectorAll<HTMLAnchorElement>('[data-toc-link]')];
+    if (!links.length) return;
+
+    const targets = links
+      .map((a) => document.getElementById(a.dataset.tocLink!))
+      .filter((el): el is HTMLElement => Boolean(el));
+
+    const setActive = (id: string) => {
+      links.forEach((a) => {
+        if (a.dataset.tocLink === id) a.setAttribute('aria-current', 'true');
+        else a.removeAttribute('aria-current');
+      });
+    };
+
+    observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting);
+        if (visible.length) {
+          const top = visible.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+          setActive(top.target.id);
+        }
+      },
+      { rootMargin: '0px 0px -70% 0px', threshold: 0 },
+    );
+    targets.forEach((t) => observer!.observe(t));
+  }
+
+  document.addEventListener('astro:page-load', initToc);
+</script>
+
+<style>
+  .toc {
+    font-family: var(--font-ui);
+    font-size: .8rem;
+    line-height: 1.45;
+  }
+  .toc-title { margin-bottom: .9rem; }
+  .toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-left: 1px solid var(--line);
+  }
+  .toc li { margin: 0; }
+  .toc a {
+    display: block;
+    padding: .3rem 0 .3rem .9rem;
+    margin-left: -1px;
+    border-left: 1px solid transparent;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color .2s ease, border-color .2s ease;
+  }
+  .toc .depth-3 a { padding-left: 1.7rem; font-size: .76rem; }
+  .toc a:hover { color: var(--fg); }
+  .toc a[aria-current='true'] {
+    color: var(--fg);
+    border-left-color: var(--fg);
+  }
+</style>
