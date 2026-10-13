@@ -1,26 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <style>
-    /* Mode Clair par défaut : M noir sur fond blanc */
     .bg { fill: #ffffff; }
-    .letter {
-      fill: #141414;
-      font-family: 'Source Serif 4 Variable', 'Source Serif Pro', 'Georgia', 'Times New Roman', serif;
-      font-style: italic;
-      font-weight: 700;
-      font-size: 23px;
-      text-anchor: middle;
-      dominant-baseline: central;
-    }
-
-    /* Mode Sombre : M blanc sur fond noir */
+    .letter { fill: #141414; }
     @media (prefers-color-scheme: dark) {
       .bg { fill: #0b0b0c; }
-      .letter { fill: #ededec; }
+      .letter { fill: #ffffff; }
     }
   </style>
-  <!-- Fond plein sans bordure superflue -->
   <rect class="bg" width="32" height="32" rx="6" />
-
-  <!-- Glyphe M dans la calligraphie serif / italique du titre -->
-  <text class="letter" x="16" y="16.5">M</text>
+  <text class="letter" x="16" y="24" text-anchor="middle" font-family="'Source Serif 4 Variable', 'Source Serif Pro', Georgia, 'Times New Roman', serif" font-style="italic" font-weight="700" font-size="24">M</text>
 </svg>
