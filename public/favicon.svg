@@ -1,9 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <style>
-    .bg { fill: #ffffff; } .fg { fill: #111111; stroke: #111111; }
-    @media (prefers-color-scheme: dark) { .bg { fill: #0a0a0a; } .fg { fill: #ededed; stroke: #ededed; } }
+    .bg { fill: #111111; }
+    .mark { fill: none; stroke: #fcfcfb; stroke-width: 2.25; stroke-linecap: round; stroke-linejoin: round; }
+    .dot { fill: #c93b2b; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #161618; stroke: #2a2a2e; stroke-width: 1; }
+      .mark { stroke: #f5f5f7; }
+      .dot { fill: #e54d3d; }
+    }
   </style>
-  <rect class="bg" width="32" height="32" rx="7"/>
-  <circle class="fg" cx="16" cy="16" r="9" fill="none" stroke-width="2"/>
-  <path class="fg" d="M16 7a9 9 0 0 1 0 18z" stroke="none"/>
+  <!-- Fond squirqle moderne -->
+  <rect class="bg" x="1" y="1" width="30" height="30" rx="8" />
+
+  <!-- Glyphe élégant "M" typographique inspiré de Marges -->
+  <path class="mark" d="M 9.5 22 V 11.5 L 16 18.2 L 22.5 11.5 V 22" />
+
+  <!-- Point rouge signature éditorial / marqueur de marge -->
+  <circle class="dot" cx="24" cy="9.5" r="1.6" />
 </svg>
