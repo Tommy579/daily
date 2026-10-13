@@ -345,8 +345,9 @@ const shortcuts = [
   .shortcut-text small { font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* Lectures */
-  .text-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); font-family: var(--font-text); font-size: 1.05rem; }
-  .text-list > li { border-bottom: 1px solid var(--line); }
+  .text-list { list-style: none; margin: 0; padding: 0; }
+  .text-list > li { border-top: 1px solid var(--line); }
+  .text-list > li:last-child { border-bottom: 1px solid var(--line); }
 
   /* Matières */
   .subject-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
