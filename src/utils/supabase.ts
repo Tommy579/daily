@@ -239,6 +239,82 @@ export async function deleteUserScheduleEvent(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function createBatchUserScheduleEvents(
+  events: Array<Omit<DbScheduleEvent, 'id' | 'user_id' | 'created_at'>>
+): Promise<DbScheduleEvent[]> {
+  if (!events || events.length === 0) return [];
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('schedule_events')
+    .insert(events)
+    .select();
+  if (error) throw error;
+  return data || [];
+}
+
+export async function clearUserScheduleEvents(): Promise<void> {
+  const sb = getSupabase();
+  const user = await getCurrentUser();
+  if (!user) return;
+  const { error } = await sb
+    .from('schedule_events')
+    .delete()
+    .eq('user_id', user.id);
+  if (error) throw error;
+}
+
+export async function syncTimetableToSupabase(data: {
+  icsContent?: string;
+  icsUrl?: string;
+}): Promise<void> {
+  const sb = getSupabase();
+  const { data: { user }, error: userErr } = await sb.auth.getUser();
+  if (userErr || !user) return;
+
+  const currentMeta = user.user_metadata || {};
+  const updates: Record<string, any> = {
+    ...currentMeta,
+    timetable_updated_at: new Date().toISOString(),
+  };
+
+  if (data.icsContent !== undefined) {
+    updates.timetable_ics = data.icsContent;
+  }
+  if (data.icsUrl !== undefined) {
+    updates.timetable_url = data.icsUrl;
+  }
+
+  const { error } = await sb.auth.updateUser({ data: updates });
+  if (error) {
+    console.warn('[Supabase Sync] Échec updateUser metadata:', error);
+    throw error;
+  }
+}
+
+export async function fetchTimetableFromSupabase(): Promise<{
+  icsContent?: string;
+  icsUrl?: string;
+  updatedAt?: string;
+} | null> {
+  try {
+    const sb = getSupabase();
+    const { data: { user }, error } = await sb.auth.getUser();
+    if (error || !user) return null;
+
+    const meta = user.user_metadata;
+    if (!meta) return null;
+
+    return {
+      icsContent: typeof meta.timetable_ics === 'string' ? meta.timetable_ics : undefined,
+      icsUrl: typeof meta.timetable_url === 'string' ? meta.timetable_url : undefined,
+      updatedAt: typeof meta.timetable_updated_at === 'string' ? meta.timetable_updated_at : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+
 export async function fetchUserReminders(): Promise<DbReminder[]> {
   const sb = getSupabase();
   const { data, error } = await sb

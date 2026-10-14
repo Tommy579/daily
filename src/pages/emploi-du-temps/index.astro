@@ -300,7 +300,7 @@ import { url } from '../../utils/url';
 
 <script>
   import ICAL from 'ical.js';
-  import { generateWeekEvents } from '../../utils/timetable';
+  import { syncTimetableState } from '../../utils/timetable';
   import { STORAGE_KEYS, loadPersistent } from '../../utils/persistence';
   import {
     fetchUserScheduleEvents,
@@ -434,8 +434,21 @@ import { url } from '../../utils/url';
     const monday = getStartOfWeek(activeDate);
     const sunday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000);
     const events: CalendarEvent[] = [];
+    const seen = new Set<string>();
 
-    // 1. Tenter de charger depuis Supabase
+    function addCalEvent(ev: CalendarEvent) {
+      const s = ev.start;
+      const key = `${s.getDay()}-${s.getHours()}:${s.getMinutes()}-${ev.title.toLowerCase().trim()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        events.push(ev);
+      }
+    }
+
+    // 0. Auto-synchronisation Supabase Cloud (PC <-> Mobile)
+    await syncTimetableState().catch(() => {});
+
+    // 1. Tenter de charger depuis Supabase (table schedule_events)
     try {
       const dbEvents = await fetchUserScheduleEvents();
       if (dbEvents && dbEvents.length > 0) {
@@ -454,7 +467,7 @@ import { url } from '../../utils/url';
           if (t.includes('TD')) cat = 'td';
           else if (t.includes('TP')) cat = 'tp';
 
-          events.push({
+          addCalEvent({
             id: dbEv.id || `db-${Math.random()}`,
             title: dbEv.title,
             start,
@@ -466,13 +479,12 @@ import { url } from '../../utils/url';
             dbId: dbEv.id,
           });
         });
-        return events;
       }
     } catch {
       // Ignorer si pas connecté à Supabase
     }
 
-    // 2. Fichier ICS personnalisé importé par l'étudiant
+    // 2. Fichier ICS personnalisé importé par l'étudiant (local ou synchronisé depuis le Cloud)
     const savedIcs = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
     if (savedIcs && savedIcs.trim().length > 30) {
       try {
@@ -491,7 +503,7 @@ import { url } from '../../utils/url';
               if (title.toUpperCase().includes('TD')) category = 'td';
               else if (title.toUpperCase().includes('TP')) category = 'tp';
 
-              events.push({
+              addCalEvent({
                 id: ev.uid || `ics-${Math.random()}`,
                 title,
                 start,
@@ -502,7 +514,6 @@ import { url } from '../../utils/url';
               });
             }
           }
-          if (events.length > 0) return events;
         }
       } catch (e) {
         console.warn('Erreur lecture ICS:', e);
@@ -532,7 +543,7 @@ import { url } from '../../utils/url';
           start.setHours(c.startH, c.startM, 0, 0);
           const end = new Date(d);
           end.setHours(c.endH, c.endM, 0, 0);
-          events.push({
+          addCalEvent({
             id: c.id,
             title: c.title,
             start,
@@ -546,7 +557,7 @@ import { url } from '../../utils/url';
       }
     } catch {}
 
-    // Pas de calendrier par défaut : renvoyer uniquement les cours réels de l'utilisateur
+    // Renvoyer les cours réels de l'utilisateur
     return events;
   }
 
