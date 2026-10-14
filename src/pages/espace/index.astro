@@ -133,9 +133,12 @@ const localPresetCourses = getCourses().map((s) => {
               <label for="inline-supabase-key" class="field-label">Clé publique (Anon / Publishable) :</label>
               <input type="text" id="inline-supabase-key" placeholder="sb_publishable_... ou eyJhbGci..." required />
             </div>
-            <div class="card-actions">
+            <div class="card-actions" style="flex-wrap: wrap;">
               <button type="submit" class="btn btn--primary btn--sm" id="btn-save-inline-supabase">
                 Enregistrer et activer
+              </button>
+              <button type="button" class="btn btn--sm" id="btn-reset-default-supabase" title="Réinitialiser avec les clés officielles du projet">
+                Restaurer clés officielles
               </button>
               <button type="button" class="btn btn--sm" id="btn-close-inline-supabase">
                 Masquer
@@ -476,6 +479,8 @@ const localPresetCourses = getCourses().map((s) => {
     getSupabase,
     getSupabaseCredentials,
     saveSupabaseCredentials,
+    resetSupabaseCredentialsToDefault,
+    formatSupabaseError,
     loginWithPassword,
     logoutUser,
     getCurrentSession,
@@ -545,18 +550,28 @@ const localPresetCourses = getCourses().map((s) => {
     const formInlineSupabase = document.getElementById('form-inline-supabase') as HTMLFormElement | null;
     const inlineSupabaseUrl = document.getElementById('inline-supabase-url') as HTMLInputElement | null;
     const inlineSupabaseKey = document.getElementById('inline-supabase-key') as HTMLInputElement | null;
+    const btnResetDefaultSupabase = document.getElementById('btn-reset-default-supabase');
 
     btnToggleSupabase?.addEventListener('click', () => {
       if (!boxSupabaseInline) return;
       const isHidden = boxSupabaseInline.style.display === 'none';
       boxSupabaseInline.style.display = isHidden ? 'block' : 'none';
       const creds = getSupabaseCredentials();
-      if (inlineSupabaseUrl && !creds.url.includes('xxxx.supabase.co')) inlineSupabaseUrl.value = creds.url;
-      if (inlineSupabaseKey && !creds.anonKey.includes('dummy')) inlineSupabaseKey.value = creds.anonKey;
+      if (inlineSupabaseUrl) inlineSupabaseUrl.value = creds.url;
+      if (inlineSupabaseKey) inlineSupabaseKey.value = creds.anonKey;
     });
 
     btnCloseInlineSupabase?.addEventListener('click', () => {
       if (boxSupabaseInline) boxSupabaseInline.style.display = 'none';
+    });
+
+    btnResetDefaultSupabase?.addEventListener('click', async () => {
+      resetSupabaseCredentialsToDefault();
+      const creds = getSupabaseCredentials();
+      if (inlineSupabaseUrl) inlineSupabaseUrl.value = creds.url;
+      if (inlineSupabaseKey) inlineSupabaseKey.value = creds.anonKey;
+      notify('Clés officielles de Supabase restaurées.');
+      await refreshSessionState();
     });
 
     formInlineSupabase?.addEventListener('submit', async (e) => {
@@ -731,7 +746,7 @@ const localPresetCourses = getCourses().map((s) => {
         if (badgeCourses) badgeCourses.textContent = String(cachedCourses.length);
         renderCourses();
       } catch (err: any) {
-        notify('Erreur lors du chargement des cours: ' + err.message, true);
+        notify('Erreur lors du chargement des cours : ' + formatSupabaseError(err), true);
       } finally {
         if (coursesLoading) coursesLoading.style.display = 'none';
       }
@@ -775,7 +790,7 @@ const localPresetCourses = getCourses().map((s) => {
               notify('Cours supprimé.');
               await loadCourses();
             } catch (err: any) {
-              notify(err.message, true);
+              notify(formatSupabaseError(err), true);
             }
           }
         });
@@ -818,7 +833,7 @@ const localPresetCourses = getCourses().map((s) => {
         notify(`${toImport.length} matière(s) locale(s) importée(s) avec succès dans votre espace !`);
         await loadCourses();
       } catch (err: any) {
-        notify('Erreur lors de l’import : ' + err.message, true);
+        notify('Erreur lors de l’import : ' + formatSupabaseError(err), true);
       }
     }
 
@@ -913,7 +928,7 @@ const localPresetCourses = getCourses().map((s) => {
         notify(`${newCourses.length} matière(s) et ${files.length} document(s) importés avec succès !`);
         await loadCourses();
       } catch (err: any) {
-        notify('Erreur lors de l’enregistrement : ' + err.message, true);
+        notify('Erreur lors de l’enregistrement : ' + formatSupabaseError(err), true);
       }
     }
 
@@ -992,7 +1007,7 @@ const localPresetCourses = getCourses().map((s) => {
         notify('Cours enregistré dans Supabase !');
         await loadCourses();
       } catch (err: any) {
-        notify(err.message, true);
+        notify(formatSupabaseError(err), true);
       }
     });
 
@@ -1036,7 +1051,7 @@ const localPresetCourses = getCourses().map((s) => {
         if (badgeSchedule) badgeSchedule.textContent = String(cachedSchedule.length);
         renderSchedule();
       } catch (err: any) {
-        notify('Erreur planning: ' + err.message, true);
+        notify('Erreur planning: ' + formatSupabaseError(err), true);
       } finally {
         if (scheduleLoading) scheduleLoading.style.display = 'none';
       }
@@ -1155,7 +1170,7 @@ const localPresetCourses = getCourses().map((s) => {
         notify('Créneau ajouté à l’emploi du temps.');
         await loadSchedule();
       } catch (err: any) {
-        notify(err.message, true);
+        notify(formatSupabaseError(err), true);
       }
     });
 
@@ -1170,7 +1185,7 @@ const localPresetCourses = getCourses().map((s) => {
         if (badgeReminders) badgeReminders.textContent = String(cachedReminders.length);
         renderReminders();
       } catch (err: any) {
-        notify('Erreur rappels: ' + err.message, true);
+        notify('Erreur rappels: ' + formatSupabaseError(err), true);
       } finally {
         if (remindersLoading) remindersLoading.style.display = 'none';
       }

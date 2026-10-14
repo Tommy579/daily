@@ -1,10 +1,10 @@
 import { createClient, type SupabaseClient, type User, type Session } from '@supabase/supabase-js';
 import { STORAGE_KEYS, deleteCookie } from './persistence';
 
-// Clés par défaut (configurables via localStorage dans la page de configuration ou l'interface de connexion)
+// Clés officielles du projet Supabase Marges
 export const DEFAULT_SUPABASE_CONFIG = {
-  URL: 'https://xxxx.supabase.co',
-  ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy',
+  URL: 'https://aejqzkoyxhzxavprgyxd.supabase.co',
+  ANON_KEY: 'sb_publishable_64uddUzZQyNVozlAS7ZYAg_mwl9Hci-',
 };
 
 const STORAGE_KEY_URL = 'marges_supabase_url';
@@ -12,18 +12,28 @@ const STORAGE_KEY_ANON = 'marges_supabase_anon_key';
 
 export function getSupabaseCredentials(): { url: string; anonKey: string; isConfigured: boolean } {
   if (typeof window === 'undefined') {
-    return { url: DEFAULT_SUPABASE_CONFIG.URL, anonKey: DEFAULT_SUPABASE_CONFIG.ANON_KEY, isConfigured: false };
+    return { url: DEFAULT_SUPABASE_CONFIG.URL, anonKey: DEFAULT_SUPABASE_CONFIG.ANON_KEY, isConfigured: true };
   }
 
-  const storedUrl = localStorage.getItem(STORAGE_KEY_URL);
-  const storedKey = localStorage.getItem(STORAGE_KEY_ANON);
+  let storedUrl = localStorage.getItem(STORAGE_KEY_URL);
+  let storedKey = localStorage.getItem(STORAGE_KEY_ANON);
 
-  const url =
+  // Nettoyage automatique des valeurs factices ou obsolètes restées dans le navigateur
+  if (storedUrl && (storedUrl.includes('xxxx.supabase.co') || storedUrl.includes('votre-projet') || !storedUrl.startsWith('http'))) {
+    localStorage.removeItem(STORAGE_KEY_URL);
+    storedUrl = null;
+  }
+  if (storedKey && (storedKey.includes('dummy') || storedKey.length < 15)) {
+    localStorage.removeItem(STORAGE_KEY_ANON);
+    storedKey = null;
+  }
+
+  const rawUrl =
     storedUrl ||
     (import.meta.env.PUBLIC_SUPABASE_URL as string) ||
     (import.meta.env.SUPABASE_URL as string) ||
     DEFAULT_SUPABASE_CONFIG.URL;
-  const anonKey =
+  const rawKey =
     storedKey ||
     (import.meta.env.PUBLIC_SUPABASE_ANON_KEY as string) ||
     (import.meta.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY as string) ||
@@ -31,9 +41,13 @@ export function getSupabaseCredentials(): { url: string; anonKey: string; isConf
     (import.meta.env.SUPABASE_ANON_KEY as string) ||
     DEFAULT_SUPABASE_CONFIG.ANON_KEY;
 
+  const url = (rawUrl || DEFAULT_SUPABASE_CONFIG.URL).trim().replace(/\/+$/, '');
+  const anonKey = (rawKey || DEFAULT_SUPABASE_CONFIG.ANON_KEY).trim();
+
   const isConfigured = Boolean(
     url &&
     !url.includes('xxxx.supabase.co') &&
+    !url.includes('votre-projet') &&
     anonKey &&
     !anonKey.includes('dummy')
   );
@@ -43,18 +57,55 @@ export function getSupabaseCredentials(): { url: string; anonKey: string; isConf
 
 export function saveSupabaseCredentials(url: string, anonKey: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY_URL, url.trim());
+  localStorage.setItem(STORAGE_KEY_URL, url.trim().replace(/\/+$/, ''));
   localStorage.setItem(STORAGE_KEY_ANON, anonKey.trim());
   // Réinitialiser l'instance client
   supabaseInstance = null;
 }
 
+export function resetSupabaseCredentialsToDefault(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(STORAGE_KEY_URL);
+  localStorage.removeItem(STORAGE_KEY_ANON);
+  supabaseInstance = null;
+}
+
+/**
+ * Traduit les erreurs réseau Supabase (CORS, adblocker, domaine injoignable)
+ * en explications limpides pour l'utilisateur.
+ */
+export function formatSupabaseError(err: any): string {
+  if (!err) return 'Erreur inconnue';
+  const msg = err.message || String(err);
+  if (
+    msg.includes('Failed to fetch') ||
+    msg.includes('NetworkError') ||
+    msg.includes('Load failed') ||
+    msg.includes('ERR_BLOCKED_BY_CLIENT') ||
+    msg.includes('ERR_CONNECTION_REFUSED')
+  ) {
+    const creds = getSupabaseCredentials();
+    return `Impossible de joindre le serveur Supabase (${creds.url}). Causes courantes : 1) Un bloqueur de publicité ou protection de navigation (Brave Shields, uBlock Origin, Privacy Badger) bloque les requêtes vers supabase.co : désactivez-le pour ce site ; 2) Connexion Internet interrompue ; 3) Anciens identifiants corrompus en mémoire locale.`;
+  }
+  return msg;
+}
+
 let supabaseInstance: SupabaseClient | null = null;
 
 export function getSupabase(): SupabaseClient {
+  const { url, anonKey } = getSupabaseCredentials();
+
+  // Si l'instance existe déjà mais ciblait une mauvaise URL factice, on la recrée
+  if (supabaseInstance) {
+    // @ts-ignore
+    const cur: string = supabaseInstance.supabaseUrl || '';
+    if (cur.includes('xxxx.supabase.co') || (url && !cur.startsWith(url))) {
+      supabaseInstance = null;
+    }
+  }
+
   if (supabaseInstance) return supabaseInstance;
 
-  const { url, anonKey } = getSupabaseCredentials();
   supabaseInstance = createClient(url, anonKey, {
     auth: {
       persistSession: true,
@@ -187,10 +238,14 @@ export async function fetchUserCourses(): Promise<DbCourse[]> {
 }
 
 export async function createUserCourse(course: Omit<DbCourse, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<DbCourse> {
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error('Vous devez être connecté à votre compte pour enregistrer un cours.');
+  }
   const sb = getSupabase();
   const { data, error } = await sb
     .from('courses')
-    .insert([course])
+    .insert([{ ...course, user_id: user.id }])
     .select()
     .single();
   if (error) throw error;
@@ -199,10 +254,18 @@ export async function createUserCourse(course: Omit<DbCourse, 'id' | 'user_id' |
 
 export async function createBatchUserCourses(courses: Array<Omit<DbCourse, 'id' | 'user_id' | 'created_at' | 'updated_at'>>): Promise<DbCourse[]> {
   if (!courses || courses.length === 0) return [];
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error('Vous devez être connecté à votre compte pour importer des cours.');
+  }
+  const coursesWithUser = courses.map((c) => ({
+    ...c,
+    user_id: user.id,
+  }));
   const sb = getSupabase();
   const { data, error } = await sb
     .from('courses')
-    .insert(courses)
+    .insert(coursesWithUser)
     .select();
   if (error) throw error;
   return data || [];
@@ -238,10 +301,14 @@ export async function fetchUserScheduleEvents(): Promise<DbScheduleEvent[]> {
 }
 
 export async function createUserScheduleEvent(event: Omit<DbScheduleEvent, 'id' | 'user_id' | 'created_at'>): Promise<DbScheduleEvent> {
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error('Vous devez être connecté à votre compte pour enregistrer un créneau.');
+  }
   const sb = getSupabase();
   const { data, error } = await sb
     .from('schedule_events')
-    .insert([event])
+    .insert([{ ...event, user_id: user.id }])
     .select()
     .single();
   if (error) throw error;
@@ -270,10 +337,14 @@ export async function createBatchUserScheduleEvents(
   events: Array<Omit<DbScheduleEvent, 'id' | 'user_id' | 'created_at'>>
 ): Promise<DbScheduleEvent[]> {
   if (!events || events.length === 0) return [];
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error('Vous devez être connecté à votre compte pour enregistrer des créneaux.');
+  }
   const sb = getSupabase();
   const { data, error } = await sb
     .from('schedule_events')
-    .insert(events)
+    .insert(events.map((e) => ({ ...e, user_id: user.id })))
     .select();
   if (error) throw error;
   return data || [];
