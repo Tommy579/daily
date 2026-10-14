@@ -192,6 +192,23 @@ import { url } from '../../utils/url';
       <section id="tab-panel-security" class="tab-panel" style="display: none;">
         <div class="security-grid">
           <div class="panel security-card">
+            <h3>Mon Profil</h3>
+            <p class="meta">Personnalisez votre nom ou prénom affiché sur le site</p>
+
+            <form id="form-update-profile" class="espace-form">
+              <div class="form-group">
+                <label for="profile-full-name" class="field-label">Nom ou prénom affiché :</label>
+                <input type="text" id="profile-full-name" placeholder="Ex: Tom" />
+              </div>
+              <div class="card-actions">
+                <button type="submit" class="btn btn--primary btn--sm" id="btn-submit-profile">
+                  Enregistrer mon nom
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="panel security-card">
             <h3>Changer mon mot de passe</h3>
             <p class="meta">Mettez à jour le mot de passe initial attribué par l'administrateur</p>
 
@@ -376,6 +393,7 @@ import { url } from '../../utils/url';
     logoutUser,
     getCurrentSession,
     updatePassword,
+    updateUserProfile,
     fetchUserCourses,
     createUserCourse,
     deleteUserCourse,
@@ -500,7 +518,14 @@ import { url } from '../../utils/url';
           if (viewLogin) viewLogin.style.display = 'none';
           if (viewDashboard) viewDashboard.style.display = 'block';
           if (userTopActions) userTopActions.style.display = 'flex';
-          if (userDisplayEmail) userDisplayEmail.textContent = session.user.email || 'Connecté';
+          if (userDisplayEmail) {
+            const fullName = session.user.user_metadata?.full_name;
+            userDisplayEmail.textContent = fullName ? `${fullName} (${session.user.email})` : (session.user.email || 'Connecté');
+          }
+          const profileInput = document.getElementById('profile-full-name') as HTMLInputElement | null;
+          if (profileInput && session.user.user_metadata?.full_name) {
+            profileInput.value = session.user.user_metadata.full_name;
+          }
 
           await Promise.all([loadCourses(), loadSchedule(), loadReminders()]);
         } else {
@@ -962,6 +987,27 @@ import { url } from '../../utils/url';
         await loadReminders();
       } catch (err: any) {
         notify(err.message, true);
+      }
+    });
+
+    // -------------------------------------------------------------
+    // PROFIL UTILISATEUR (NOM & PRÉNOM)
+    // -------------------------------------------------------------
+    const formProfile = document.getElementById('form-update-profile') as HTMLFormElement | null;
+    formProfile?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const inputProfile = document.getElementById('profile-full-name') as HTMLInputElement | null;
+      const name = inputProfile?.value.trim() || '';
+      const btn = document.getElementById('btn-submit-profile') as HTMLButtonElement | null;
+      if (btn) btn.disabled = true;
+      try {
+        await updateUserProfile({ full_name: name });
+        notify('Votre nom a été enregistré avec succès.');
+        await refreshSessionState();
+      } catch (err: any) {
+        notify('Erreur: ' + (err.message || 'Impossible d’enregistrer le nom.'), true);
+      } finally {
+        if (btn) btn.disabled = false;
       }
     });
 

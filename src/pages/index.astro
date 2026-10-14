@@ -29,7 +29,6 @@ const shortcuts = [
     <header class="home-hero">
       <p class="crumbs" data-today-date>&nbsp;</p>
       <h1 class="home-greeting"><span data-greeting>Bonjour</span>.</h1>
-      <p class="home-motto">Penser lentement ce que les machines font&nbsp;vite.</p>
     </header>
 
     <div class="home-grid">
@@ -126,6 +125,7 @@ const shortcuts = [
 
 <script>
   import { generateWeekEvents } from '../utils/timetable';
+  import { getCurrentSession } from '../utils/supabase';
 
   type Ev = ReturnType<typeof generateWeekEvents>[number];
 
@@ -185,7 +185,18 @@ const shortcuts = [
     // Salutation & date
     const h = now.getHours();
     const greeting = document.querySelector('[data-greeting]');
-    if (greeting) greeting.textContent = h < 5 ? 'Bonne nuit' : h < 18 ? 'Bonjour' : 'Bonsoir';
+    const salute = h < 5 ? 'Bonne nuit' : h < 18 ? 'Bonjour' : 'Bonsoir';
+    if (greeting) {
+      greeting.textContent = salute;
+      try {
+        getCurrentSession().then((session) => {
+          const name = session?.user?.user_metadata?.full_name;
+          if (name && greeting) {
+            greeting.textContent = `${salute}, ${name}`;
+          }
+        });
+      } catch {}
+    }
     const dateEl = document.querySelector('[data-today-date]');
     if (dateEl) {
       const s = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });

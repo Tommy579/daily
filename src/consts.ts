@@ -3,7 +3,7 @@
  */
 export const SITE = {
   title: 'Marges',
-  tagline: 'Penser lentement ce que les machines font vite',
+  tagline: '',
   description:
     "Essais, questions ouvertes, dialogues et fragments sur la place de l'intelligence artificielle dans nos vies : travail, relations, création, conscience, éthique, pouvoir.",
   lang: 'fr',

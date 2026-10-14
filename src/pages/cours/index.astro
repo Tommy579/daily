@@ -610,6 +610,7 @@ const subjectsList = subjects.map((s) => ({
     async function loadAndRenderSupabaseCourses() {
       try {
         const dbCourses = await fetchUserCourses();
+        const container = document.querySelector('.subjects-grid');
         document.querySelectorAll('.file-item-supabase').forEach((el) => el.remove());
 
         dbCourses.forEach((c) => {

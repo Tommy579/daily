@@ -91,6 +91,12 @@ export async function updatePassword(newPassword: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function updateUserProfile(metadata: { full_name?: string }): Promise<void> {
+  const sb = getSupabase();
+  const { error } = await sb.auth.updateUser({ data: metadata });
+  if (error) throw error;
+}
+
 // -------------------------------------------------------------
 // Modèles de données Supabase (Courses, Events, Reminders)
 // -------------------------------------------------------------
