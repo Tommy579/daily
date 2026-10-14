@@ -170,6 +170,17 @@ export async function createUserCourse(course: Omit<DbCourse, 'id' | 'user_id' |
   return data;
 }
 
+export async function createBatchUserCourses(courses: Array<Omit<DbCourse, 'id' | 'user_id' | 'created_at' | 'updated_at'>>): Promise<DbCourse[]> {
+  if (!courses || courses.length === 0) return [];
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('courses')
+    .insert(courses)
+    .select();
+  if (error) throw error;
+  return data || [];
+}
+
 export async function updateUserCourse(id: string, updates: Partial<Omit<DbCourse, 'id' | 'user_id' | 'created_at'>>): Promise<DbCourse> {
   const sb = getSupabase();
   const { data, error } = await sb

@@ -783,6 +783,7 @@ const subjectsList = subjects.map((s) => ({
     align-items: center;
     gap: .5rem;
     font-size: .88rem;
+    flex-wrap: wrap;
   }
 
   /* Toast notification */
@@ -809,7 +810,7 @@ const subjectsList = subjects.map((s) => ({
     gap: 2rem;
   }
   .subject-card {
-    padding: 1.5rem 1.75rem;
+    padding: clamp(1rem, 0.75rem + 1vw, 1.75rem);
   }
   .subject-header {
     display: flex;
@@ -844,6 +845,8 @@ const subjectsList = subjects.map((s) => ({
     font-family: var(--font-text);
     font-size: 1.5rem;
     letter-spacing: -.02em;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
   .subject-meta {
     margin: 0;
@@ -857,7 +860,7 @@ const subjectsList = subjects.map((s) => ({
   .td-section {
     background: var(--soft);
     border-radius: var(--radius);
-    padding: 1rem 1.25rem;
+    padding: clamp(0.75rem, 0.5rem + 1vw, 1.25rem);
     border: 1px solid var(--line);
   }
   .td-header {
@@ -865,6 +868,7 @@ const subjectsList = subjects.map((s) => ({
     align-items: center;
     gap: 0.5rem;
     margin-bottom: 0.75rem;
+    flex-wrap: wrap;
   }
   .td-folder-icon {
     color: var(--muted);
@@ -935,6 +939,7 @@ const subjectsList = subjects.map((s) => ({
     letter-spacing: 0.05em;
     background: var(--soft);
     color: var(--muted);
+    flex-shrink: 0;
   }
   .file-badge--pdf {
     background: color-mix(in srgb, var(--danger) 10%, var(--surface));
@@ -983,5 +988,46 @@ const subjectsList = subjects.map((s) => ({
     color: var(--bg);
     border-color: var(--fg);
     text-decoration: none;
+  }
+
+  @media (max-width: 48rem) {
+    .courses-hero-top {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+  }
+
+  @media (max-width: 38rem) {
+    .subject-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .subject-initial {
+      width: 2.35rem;
+      height: 2.35rem;
+      font-size: 1rem;
+    }
+    .file-item {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+      padding: 0.65rem 0.75rem;
+    }
+    .file-info {
+      width: 100%;
+    }
+    .file-actions {
+      justify-content: flex-end;
+      padding-top: 0.4rem;
+      border-top: 1px solid var(--line);
+      width: 100%;
+    }
+    .btn-consulter {
+      flex: 1;
+      justify-content: center;
+      padding: 0.35rem 0.65rem;
+    }
   }
 </style>

@@ -175,7 +175,9 @@ import Icon from './Icon.astro';
     border-radius: var(--radius);
     padding: 0;
     max-width: 540px;
-    width: 90%;
+    width: min(calc(100vw - 1.5rem), 540px);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
     margin: auto;
     border: 1px solid var(--line);
     background: var(--surface);
@@ -188,7 +190,7 @@ import Icon from './Icon.astro';
     -webkit-backdrop-filter: blur(4px);
   }
   .modal-inner {
-    padding: 1.5rem 1.75rem;
+    padding: clamp(1rem, 0.75rem + 1vw, 1.75rem);
     display: grid;
     gap: 1.25rem;
   }
@@ -222,15 +224,20 @@ import Icon from './Icon.astro';
 
   .modal-tabs {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.4rem;
     border-bottom: 1px solid var(--line);
     padding-bottom: 0.5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
   }
+  .modal-tabs::-webkit-scrollbar { display: none; }
   .modal-tab {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.4rem 0.85rem;
+    padding: 0.4rem 0.75rem;
     border-radius: var(--r-sm);
     background: transparent;
     border: 1px solid transparent;
@@ -239,6 +246,8 @@ import Icon from './Icon.astro';
     font-size: 0.85rem;
     font-weight: 500;
     cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
     transition: all .15s ease;
   }
   .modal-tab:hover {
@@ -322,5 +331,15 @@ import Icon from './Icon.astro';
     margin-top: 0.5rem;
     padding-top: 1rem;
     border-top: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  @media (max-width: 30rem) {
+    .modal-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .modal-actions .btn {
+      width: 100%;
+    }
   }
 </style>

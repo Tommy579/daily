@@ -124,18 +124,37 @@ const isConfig = path.includes('/configuration');
   .icon-link:hover :global(svg) { transform: rotate(30deg); transition: transform .4s var(--ease); }
   .icon-link[aria-current='page'] { color: var(--fg); background: var(--soft); }
 
-  /* Mobile : la navigation passe sur une 2e ligne défilable horizontalement */
-  @media (max-width: 46rem) {
-    .header-inner { flex-wrap: wrap; padding-top: .5rem; gap: .25rem 1rem; }
+  /* Tablette & Mobile : la navigation passe sur une 2e ligne défilable horizontalement */
+  @media (max-width: 52rem) {
+    .header-inner {
+      flex-wrap: wrap;
+      padding-top: .5rem;
+      padding-bottom: .25rem;
+      gap: .35rem 1rem;
+      min-height: 3.25rem;
+    }
     .header-actions { margin-left: auto; }
     .nav {
       order: 3;
       flex-basis: 100%;
       overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
       scrollbar-width: none;
       margin-inline: calc(-1 * var(--gutter));
       padding: 0 var(--gutter) .5rem;
-      mask-image: linear-gradient(to right, #000 85%, transparent);
+      mask-image: linear-gradient(to right, #000 88%, transparent);
+    }
+    .nav ul {
+      flex-wrap: nowrap;
+      gap: .35rem;
+    }
+    .nav li {
+      flex-shrink: 0;
+    }
+    .nav a {
+      padding: .45rem .85rem;
+      font-size: .9rem;
     }
     .nav::-webkit-scrollbar { display: none; }
   }

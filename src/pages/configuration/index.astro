@@ -569,7 +569,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     gap: 2rem;
   }
   .config-card {
-    padding: 1.75rem 2rem;
+    padding: clamp(1.1rem, 0.8rem + 1vw, 2rem);
   }
   .card-head {
     display: flex;
@@ -578,12 +578,15 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
   }
   .card-head h2 {
     margin: 0 0 0.2rem;
     font-family: var(--font-text);
     font-size: 1.35rem;
     letter-spacing: -.02em;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
   .card-head p {
     margin: 0;
@@ -614,7 +617,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     background: var(--surface);
     color: var(--fg);
     font-family: inherit;
-    font-size: 0.92rem;
+    font-size: max(16px, 0.92rem);
     transition: border-color .15s ease;
   }
   .config-form input:focus,
@@ -643,7 +646,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
   }
   .times-subgrid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
     gap: 1rem;
     background: var(--soft);
     padding: 1rem 1.25rem;
@@ -691,6 +694,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
   .storage-row {
     display: flex;
     justify-content: space-between;
+    gap: 0.5rem;
   }
   .card-actions {
     display: flex;
@@ -698,5 +702,34 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     flex-wrap: wrap;
     align-items: center;
     margin-top: 0.5rem;
+  }
+
+  @media (max-width: 48rem) {
+    .config-hero {
+      padding-block: 1.5rem 1rem;
+    }
+  }
+
+  @media (max-width: 36rem) {
+    .card-head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .times-subgrid {
+      grid-template-columns: 1fr;
+      padding: 0.85rem 1rem;
+    }
+    .card-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .card-actions .btn {
+      width: 100%;
+    }
+    .storage-row {
+      flex-direction: column;
+      gap: 0.2rem;
+    }
   }
 </style>

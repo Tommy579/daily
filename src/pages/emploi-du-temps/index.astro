@@ -2499,7 +2499,10 @@ import { url } from '../../utils/url';
     color: var(--fg);
     padding: 0;
     max-width: 480px;
-    width: 92%;
+    width: min(calc(100vw - 1.5rem), 480px);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    margin: auto;
     box-shadow: var(--shadow-md);
   }
 
@@ -2667,7 +2670,7 @@ import { url } from '../../utils/url';
      RESPONSIVE ADAPTATIONS
      ============================================================== */
 
-  @media (max-width: 48rem) {
+  @media (max-width: 56rem) {
     .timetable-hero {
       flex-direction: column;
       align-items: flex-start;
@@ -2677,15 +2680,39 @@ import { url } from '../../utils/url';
     .timetable-toolbar {
       flex-direction: column;
       align-items: stretch;
+      gap: 0.85rem;
     }
 
     .toolbar-right-group {
       justify-content: space-between;
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 48rem) {
+    .live-status-card {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.85rem;
+      padding: 0.85rem 1rem;
+    }
+
+    .live-status-action {
+      width: 100%;
+    }
+
+    .live-status-action .btn {
+      width: 100%;
+    }
+
+    .week-grid-container {
+      min-width: 680px;
     }
 
     .day-course-card {
       grid-template-columns: 1fr;
       gap: 0.75rem;
+      padding: 1rem;
     }
 
     .card-time-column {
@@ -2710,10 +2737,125 @@ import { url } from '../../utils/url';
     .agenda-card {
       grid-template-columns: 1fr;
       gap: 0.5rem;
+      padding: 0.75rem 1rem;
+    }
+
+    .agenda-time {
+      flex-direction: row;
+      align-items: baseline;
+      gap: 0.4rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--line);
     }
 
     .btn-label-desktop {
       display: none;
+    }
+  }
+
+  @media (max-width: 36rem) {
+    .timetable-title {
+      font-size: 1.85rem;
+    }
+
+    .timetable-hero-actions {
+      width: 100%;
+    }
+
+    .timetable-hero-actions .btn {
+      flex: 1 1 auto;
+    }
+
+    .nav-date-group {
+      width: 100%;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+
+    .current-date-heading {
+      width: 100%;
+      margin-left: 0;
+      margin-top: 0.35rem;
+    }
+
+    .toolbar-right-group {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.65rem;
+    }
+
+    .view-segmented {
+      width: 100%;
+      display: flex;
+    }
+
+    .view-segmented .view-chip {
+      flex: 1;
+      text-align: center;
+      padding: 0.35rem 0.5rem;
+    }
+
+    .filter-pills {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .filter-chip {
+      flex: 1;
+      text-align: center;
+      padding: 0.3rem 0.4rem;
+    }
+
+    .week-grid-container {
+      min-width: 560px;
+    }
+
+    .day-pills-row {
+      -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x mandatory;
+    }
+
+    .day-pill-btn {
+      scroll-snap-align: start;
+      min-width: 60px;
+      padding: 0.45rem 0.35rem;
+    }
+
+    .day-pill-btn .pill-num {
+      font-size: 1rem;
+    }
+
+    .day-view-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+    }
+
+    .cal-dialog {
+      width: calc(100vw - 1.5rem);
+      max-height: calc(100dvh - 2rem);
+      overflow-y: auto;
+      margin: auto;
+    }
+
+    .cal-dialog-content {
+      padding: 1rem;
+    }
+
+    .form-row-2 {
+      grid-template-columns: 1fr;
+      gap: 0.65rem;
+    }
+
+    .cal-dialog-actions {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+    }
+
+    .cal-dialog-actions .btn {
+      width: 100%;
     }
   }
 </style>

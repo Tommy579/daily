@@ -1,14 +1,46 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
+import { getCourses } from '../../utils/courses';
 import { url } from '../../utils/url';
+
+const localPresetCourses = getCourses().map((s) => {
+  let md = `## Supports de cours & organisation\n\n`;
+  if (s.folder.subfolders && s.folder.subfolders.length > 0) {
+    s.folder.subfolders.forEach((sub) => {
+      md += `### ${sub.name}\n\n`;
+      if (sub.files && sub.files.length > 0) {
+        sub.files.forEach((f) => {
+          const mb = (f.size / (1024 * 1024)).toFixed(1);
+          md += `- [${f.name}](${f.viewerUrl}) (${mb} Mo)\n`;
+        });
+      } else {
+        md += `*Aucun fichier dans ce sous-dossier.*\n`;
+      }
+      md += `\n`;
+    });
+  }
+  if (s.folder.files && s.folder.files.length > 0) {
+    md += `### Documents généraux\n\n`;
+    s.folder.files.forEach((f) => {
+      const mb = (f.size / (1024 * 1024)).toFixed(1);
+      md += `- [${f.name}](${f.viewerUrl}) (${mb} Mo)\n`;
+    });
+    md += `\n`;
+  }
+  return {
+    title: s.name,
+    body_md: md,
+    tags: ['Université', s.name],
+  };
+});
 ---
 
 <Base
   title="Mon Espace Personnel"
   description="Accédez à vos cours privés, votre emploi du temps et vos rappels synchronisés en toute sécurité."
 >
-  <div class="container container--wide app-page espace-page" data-espace-root>
+  <div class="container container--wide app-page espace-page" data-espace-root data-local-presets={JSON.stringify(localPresetCourses)}>
     <header class="page-header espace-hero">
       <div class="espace-hero-top">
         <div>
@@ -152,18 +184,40 @@ import { url } from '../../utils/url';
             <h2>Mes Cours et Notes Personnels</h2>
             <p class="meta">Rédigez et consultez vos fiches au format Markdown, stockées de manière privée</p>
           </div>
-          <button type="button" class="btn btn--primary btn--sm" id="btn-open-course-modal">
-            <Icon name="plus" size={14} />
-            Nouveau cours
-          </button>
+          <div class="courses-actions-group" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button type="button" class="btn btn--sm" id="btn-import-local-preset" title="Importer automatiquement les 6 matières locales détectées">
+              <Icon name="folder" size={14} />
+              Importer mes 6 matières locales
+            </button>
+            <label class="btn btn--sm" style="margin: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;" title="Choisir un dossier sur votre ordinateur avec arborescence automatique">
+              <Icon name="file" size={14} />
+              Importer un dossier de cours...
+              <input type="file" id="input-import-folder" webkitdirectory directory multiple style="display: none;" />
+            </label>
+            <button type="button" class="btn btn--primary btn--sm" id="btn-open-course-modal">
+              <Icon name="plus" size={14} />
+              Nouveau cours
+            </button>
+          </div>
         </div>
 
         <div id="courses-list-loading" class="meta loading-state">Chargement de vos cours...</div>
         <div id="courses-list-empty" class="panel empty-state" style="display: none;">
           <p>Aucun cours privé enregistré pour le moment.</p>
-          <button type="button" class="btn btn--sm" id="btn-create-first-course">
-            Créer votre premier cours
-          </button>
+          <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem;">
+            <button type="button" class="btn btn--primary btn--sm" id="btn-import-local-preset-empty">
+              <Icon name="folder" size={14} />
+              Importer mes 6 matières locales
+            </button>
+            <label class="btn btn--sm" style="margin: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;">
+              <Icon name="file" size={14} />
+              Importer un dossier complet...
+              <input type="file" id="input-import-folder-empty" webkitdirectory directory multiple style="display: none;" />
+            </label>
+            <button type="button" class="btn btn--sm" id="btn-create-first-course">
+              Créer manuellement
+            </button>
+          </div>
         </div>
         <div id="courses-grid" class="cards-grid"></div>
       </section>
@@ -423,6 +477,7 @@ import { url } from '../../utils/url';
     updateUserProfile,
     fetchUserCourses,
     createUserCourse,
+    createBatchUserCourses,
     deleteUserCourse,
     fetchUserScheduleEvents,
     createUserScheduleEvent,
@@ -449,6 +504,7 @@ import { url } from '../../utils/url';
       .replace(/^## (.*$)/gim, '<h2>$1</h2>')
       .replace(/^# (.*$)/gim, '<h1>$1</h1>')
       .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: var(--color-accent, #0066cc); text-decoration: underline;">$1</a>')
       .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/gim, '<em>$1</em>')
       .replace(/`([^`]+)`/gim, '<code>$1</code>')
@@ -720,6 +776,151 @@ import { url } from '../../utils/url';
         coursesGrid.appendChild(card);
       });
     }
+
+    // Importation des 6 matières locales pré-configurées
+    async function importLocalPresetCourses() {
+      const root = document.querySelector('[data-local-presets]') as HTMLElement | null;
+      if (!root) return;
+      const raw = root.getAttribute('data-local-presets');
+      if (!raw) return;
+      let presets: Array<{ title: string; body_md: string; tags: string[] }> = [];
+      try {
+        presets = JSON.parse(raw);
+      } catch (e) {
+        return;
+      }
+      if (presets.length === 0) {
+        notify('Aucune matière locale détectée.', true);
+        return;
+      }
+
+      // Filtrer les cours déjà présents pour éviter les doublons accidentels
+      const existingTitles = new Set(cachedCourses.map((c) => c.title.toLowerCase().trim()));
+      let toImport = presets.filter((p) => !existingTitles.has(p.title.toLowerCase().trim()));
+
+      if (toImport.length === 0) {
+        if (!confirm('Toutes les 6 matières sont déjà enregistrées dans votre compte. Souhaitez-vous quand même les réimporter ?')) {
+          return;
+        }
+        toImport = [...presets];
+      }
+
+      try {
+        notify('Importation en cours...');
+        await createBatchUserCourses(toImport);
+        notify(`${toImport.length} matière(s) locale(s) importée(s) avec succès dans votre espace !`);
+        await loadCourses();
+      } catch (err: any) {
+        notify('Erreur lors de l’import : ' + err.message, true);
+      }
+    }
+
+    const btnImportPreset = document.getElementById('btn-import-local-preset');
+    const btnImportPresetEmpty = document.getElementById('btn-import-local-preset-empty');
+    btnImportPreset?.addEventListener('click', importLocalPresetCourses);
+    btnImportPresetEmpty?.addEventListener('click', importLocalPresetCourses);
+
+    // Importation d'un dossier complet depuis le disque (arborescence automatique)
+    async function handleFolderUpload(fileList: FileList | null) {
+      if (!fileList || fileList.length === 0) return;
+
+      const files = Array.from(fileList);
+      notify(`Lecture du dossier (${files.length} fichiers détectés)...`);
+
+      // Détecter la hiérarchie relative (ex: "Dossier/Matiere/SousDossier/fichier.pdf")
+      const subjectsMap: Record<string, { subfolders: Record<string, string[]>; rootFiles: string[] }> = {};
+
+      const paths = files.map((f) => f.webkitRelativePath.split('/').filter(Boolean));
+      const topSegments = new Set(paths.map((p) => p[0]));
+      // Si un seul dossier racine entoure plusieurs sous-dossiers (ex: "Mes Cours/EDO/CM/...")
+      const isWrappedInTopFolder = topSegments.size === 1 && paths.some((p) => p.length >= 3);
+
+      paths.forEach((parts) => {
+        let subjectName = '';
+        let category = 'Documents';
+        const fileName = parts[parts.length - 1];
+
+        if (isWrappedInTopFolder) {
+          subjectName = parts[1] || parts[0];
+          if (parts.length >= 4) {
+            category = parts.slice(2, -1).join(' / ');
+          }
+        } else {
+          subjectName = parts[0];
+          if (parts.length >= 3) {
+            category = parts.slice(1, -1).join(' / ');
+          }
+        }
+
+        if (!subjectsMap[subjectName]) {
+          subjectsMap[subjectName] = { subfolders: {}, rootFiles: [] };
+        }
+
+        if (category === 'Documents') {
+          subjectsMap[subjectName].rootFiles.push(fileName);
+        } else {
+          if (!subjectsMap[subjectName].subfolders[category]) {
+            subjectsMap[subjectName].subfolders[category] = [];
+          }
+          subjectsMap[subjectName].subfolders[category].push(fileName);
+        }
+      });
+
+      const newCourses: Array<{ title: string; body_md: string; tags: string[] }> = [];
+
+      Object.entries(subjectsMap).forEach(([subjectName, data]) => {
+        let md = `## Arborescence et documents de ${subjectName}\n\n`;
+        const subCats = Object.entries(data.subfolders);
+        if (subCats.length > 0) {
+          subCats.forEach(([catName, fileNames]) => {
+            md += `### ${catName}\n\n`;
+            fileNames.forEach((fn) => {
+              md += `- ${fn}\n`;
+            });
+            md += `\n`;
+          });
+        }
+        if (data.rootFiles.length > 0) {
+          md += `### Documents généraux\n\n`;
+          data.rootFiles.forEach((fn) => {
+            md += `- ${fn}\n`;
+          });
+          md += `\n`;
+        }
+
+        newCourses.push({
+          title: subjectName,
+          body_md: md,
+          tags: ['Dossier importé', subjectName],
+        });
+      });
+
+      if (newCourses.length === 0) {
+        notify('Aucun document valide trouvé dans le dossier.', true);
+        return;
+      }
+
+      try {
+        notify(`Enregistrement de ${newCourses.length} matière(s) sur votre compte...`);
+        await createBatchUserCourses(newCourses);
+        notify(`${newCourses.length} matière(s) et ${files.length} document(s) importés avec succès !`);
+        await loadCourses();
+      } catch (err: any) {
+        notify('Erreur lors de l’enregistrement : ' + err.message, true);
+      }
+    }
+
+    const inputFolder = document.getElementById('input-import-folder') as HTMLInputElement | null;
+    const inputFolderEmpty = document.getElementById('input-import-folder-empty') as HTMLInputElement | null;
+
+    inputFolder?.addEventListener('change', () => {
+      handleFolderUpload(inputFolder.files);
+      inputFolder.value = '';
+    });
+    inputFolderEmpty?.addEventListener('change', () => {
+      handleFolderUpload(inputFolderEmpty.files);
+      inputFolderEmpty.value = '';
+    });
 
     // Modals Cours
     const modalCourse = document.getElementById('modal-course');

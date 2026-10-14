@@ -443,9 +443,18 @@ const shortcuts = [
 
   @media (max-width: 62rem) {
     .home-grid { grid-template-columns: 1fr; }
-    .home-aside { position: static; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+    .home-aside { position: static; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
   }
-  @media (max-width: 40rem) {
+  @media (max-width: 52rem) {
     .shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 28rem) {
+    .shortcuts { grid-template-columns: 1fr; }
+    .today-head { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+    .timeline :global(.tl-item) {
+      grid-template-columns: 3.25rem minmax(0, 1fr);
+      gap: 0.65rem;
+      padding: 0.65rem 0.75rem;
+    }
   }
 </style>
