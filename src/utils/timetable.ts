@@ -5,9 +5,7 @@ import {
   getCurrentUser,
   fetchTimetableFromSupabase,
   syncTimetableToSupabase,
-  fetchUserScheduleEvents,
-  createBatchUserScheduleEvents,
-  type DbScheduleEvent,
+  clearUserScheduleEvents,
 } from './supabase';
 
 export interface TimetableEvent {
@@ -381,16 +379,27 @@ export async function fetchCalendarFromUrl(rawUrl: string): Promise<string> {
   );
 }
 
-/**
- * Décompose un contenu iCalendar (.ics) en événements hebdomadaires récurrents
- * pour insertion dans la table Supabase `schedule_events`.
- */
-export function parseIcsToScheduleEvents(
-  icsContent: string
-): Array<Omit<DbScheduleEvent, 'id' | 'user_id' | 'created_at'>> {
-  if (!icsContent || !icsContent.includes('BEGIN:VCALENDAR')) return [];
+export interface ParsedCalendarEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  location?: string;
+  description?: string;
+  category: 'cm' | 'td' | 'tp' | 'habit' | 'other';
+}
 
-  const results: Array<Omit<DbScheduleEvent, 'id' | 'user_id' | 'created_at'>> = [];
+/**
+ * Extrait les événements d'un contenu iCalendar (.ics) strictement compris dans une fenêtre temporelle
+ * (en respectant les dates réelles, les fuseaux horaires et les récurrences RRULE éventuelles).
+ */
+export function parseIcsEvents(
+  icsContent: string,
+  rangeStart: Date,
+  rangeEnd: Date
+): ParsedCalendarEvent[] {
+  if (!icsContent || !icsContent.includes('BEGIN:VCALENDAR')) return [];
+  const events: ParsedCalendarEvent[] = [];
   const seen = new Set<string>();
 
   try {
@@ -406,49 +415,64 @@ export function parseIcsToScheduleEvents(
       const title = (ev.summary || 'Cours').trim();
       if (!title) continue;
 
+      let category: 'cm' | 'td' | 'tp' | 'other' = 'cm';
+      const t = title.toUpperCase();
+      if (t.includes('TD')) category = 'td';
+      else if (t.includes('TP')) category = 'tp';
+
       const location = ev.location ? ev.location.trim() : undefined;
-      const notes = ev.description ? ev.description.trim() : undefined;
+      const description = ev.description ? ev.description.trim() : undefined;
 
-      const jsDate = ev.startDate.toJSDate();
-      const jsDay = jsDate.getDay(); // 0 = Dimanche, 1 = Lundi, 6 = Samedi
-      const day_of_week = jsDay === 0 ? 7 : jsDay;
-
-      let sH = ev.startDate.hour;
-      let sM = ev.startDate.minute;
-      let eH = ev.endDate ? ev.endDate.hour : sH + 1;
-      let eM = ev.endDate ? ev.endDate.minute : sM;
-
-      if (typeof sH !== 'number' || isNaN(sH)) {
-        sH = jsDate.getHours();
-        sM = jsDate.getMinutes();
-        const endJs = ev.endDate ? ev.endDate.toJSDate() : new Date(jsDate.getTime() + 60 * 60 * 1000);
-        eH = endJs.getHours();
-        eM = endJs.getMinutes();
-      }
-
-      const start_time = `${String(sH).padStart(2, '0')}:${String(sM).padStart(2, '0')}:00`;
-      const end_time = `${String(eH).padStart(2, '0')}:${String(eM).padStart(2, '0')}:00`;
-
-      const dedupeKey = `${day_of_week}|${start_time}|${end_time}|${title.toLowerCase()}`;
-      if (!seen.has(dedupeKey)) {
-        seen.add(dedupeKey);
-        results.push({
-          title,
-          day_of_week,
-          start_time,
-          end_time,
-          location: location || undefined,
-          notes: notes || undefined,
-        });
+      if (ev.isRecurring()) {
+        const iter = ev.iterator();
+        let next;
+        while ((next = iter.next())) {
+          const evStart = next.toJSDate();
+          if (evStart > rangeEnd) break;
+          const dur = ev.duration;
+          const evEnd = new Date(evStart.getTime() + (dur ? dur.toSeconds() * 1000 : 3600 * 1000));
+          if (evEnd >= rangeStart && evStart <= rangeEnd) {
+            const key = `${title}|${evStart.getTime()}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              events.push({
+                id: ev.uid ? `${ev.uid}-${evStart.getTime()}` : `ics-${Math.random()}`,
+                title,
+                start: evStart,
+                end: evEnd,
+                location,
+                description,
+                category,
+              });
+            }
+          }
+        }
+      } else {
+        const evStart = ev.startDate.toJSDate();
+        const evEnd = ev.endDate ? ev.endDate.toJSDate() : new Date(evStart.getTime() + 3600 * 1000);
+        if (evEnd >= rangeStart && evStart <= rangeEnd) {
+          const key = `${title}|${evStart.getTime()}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            events.push({
+              id: ev.uid || `ics-${Math.random()}`,
+              title,
+              start: evStart,
+              end: evEnd,
+              location,
+              description,
+              category,
+            });
+          }
+        }
       }
     }
   } catch (err) {
-    console.warn('[Calendar Parse] Erreur décomposition ICS:', err);
+    console.warn('[Calendar Parse] Erreur parseIcsEvents:', err);
   }
 
-  // Trier par jour et heure
-  results.sort((a, b) => a.day_of_week - b.day_of_week || a.start_time.localeCompare(b.start_time));
-  return results;
+  events.sort((a, b) => a.start.getTime() - b.start.getTime());
+  return events;
 }
 
 /**
@@ -462,7 +486,6 @@ export async function syncTimetableState(options?: {
   source: 'local' | 'cloud' | 'none';
   icsContent?: string;
   icsUrl?: string;
-  eventsCount?: number;
 }> {
   if (typeof window === 'undefined') {
     return { synced: false, source: 'none' };
@@ -509,15 +532,8 @@ export async function syncTimetableState(options?: {
         icsUrl: localUrl || undefined,
       });
 
-      if (localIcs) {
-        const existing = await fetchUserScheduleEvents().catch(() => []);
-        if (existing.length === 0) {
-          const parsed = parseIcsToScheduleEvents(localIcs);
-          if (parsed.length > 0) {
-            await createBatchUserScheduleEvents(parsed).catch(console.warn);
-          }
-        }
-      }
+      // Nettoyer les faux créneaux auto-générés dans schedule_events pour éviter les doublons
+      await clearUserScheduleEvents().catch(() => {});
 
       return {
         synced: true,
