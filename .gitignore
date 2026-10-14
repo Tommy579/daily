@@ -11,6 +11,7 @@ npm-debug.log*
 # environnement
 .env
 .env.*
+!.env.example
 
 # système
 .DS_Store

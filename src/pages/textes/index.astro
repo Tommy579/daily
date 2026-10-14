@@ -296,7 +296,7 @@ const searchText = (t: Texte) =>
     background: none;
     border: 0;
     font-family: var(--font-text);
-    font-size: 1.15rem;
+    font-size: max(16px, 1.15rem);
     outline: none;
   }
   .search-field input::placeholder { color: var(--muted); opacity: 1; font-style: italic; }
@@ -311,12 +311,15 @@ const searchText = (t: Texte) =>
     padding: .05rem .4rem;
   }
   .search-field:focus-within .shortcut { opacity: 0; }
+  @media (max-width: 36rem) {
+    .shortcut { display: none; }
+  }
 
   .filters {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
-    gap: .25rem .9rem;
+    align-items: center;
+    gap: .4rem .6rem;
     font-family: var(--font-ui);
     font-size: .85rem;
   }
@@ -324,24 +327,36 @@ const searchText = (t: Texte) =>
   .filters button {
     background: none;
     border: 0;
-    padding: .2rem 0;
+    padding: .2rem .4rem;
     cursor: pointer;
     color: var(--muted);
+    border-radius: var(--r-sm);
     text-decoration: underline;
     text-decoration-color: transparent;
     text-decoration-thickness: 1px;
     text-underline-offset: .3em;
-    transition: color .15s ease, text-decoration-color .15s ease;
+    transition: color .15s ease, background-color .15s ease, text-decoration-color .15s ease;
   }
-  .filters button:hover { color: var(--fg); }
+  .filters button:hover { color: var(--fg); background: var(--soft); text-decoration: none; }
   .filters button[aria-pressed='true'] {
     color: var(--fg);
-    text-decoration-color: currentColor;
-    font-weight: 500;
+    background: var(--soft);
+    text-decoration: none;
+    font-weight: 600;
   }
 
   @media (max-width: 34rem) {
-    .filter-label { width: 100%; }
+    .filter-label { width: 100%; margin-bottom: .2rem; }
+    .filters button {
+      padding: .35rem .65rem;
+      border: 1px solid var(--line);
+      font-size: .82rem;
+    }
+    .filters button[aria-pressed='true'] {
+      background: var(--fg);
+      color: var(--bg);
+      border-color: var(--fg);
+    }
   }
 
   .status { margin: 0 0 .5rem; }

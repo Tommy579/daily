@@ -30,7 +30,7 @@ const {
   jsonLd,
 } = Astro.props;
 
-const fullTitle = title ? `${title} — ${SITE.title}` : `${SITE.title} — ${SITE.tagline}`;
+const fullTitle = title ? `${title} — ${SITE.title}` : (SITE.tagline ? `${SITE.title} — ${SITE.tagline}` : SITE.title);
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = new URL(image, Astro.site);
 
@@ -42,10 +42,12 @@ const websiteLd = {
   url: Astro.site?.href,
   inLanguage: 'fr-FR',
 };
+
+const isEspace = Astro.url.pathname.includes('/espace');
 ---
 
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-is-espace={isEspace ? 'true' : undefined}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -96,7 +98,7 @@ const websiteLd = {
     <meta property="og:image" content={ogImage} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content={`${SITE.title} — ${SITE.tagline}`} />
+    <meta property="og:image:alt" content={SITE.tagline ? `${SITE.title} — ${SITE.tagline}` : SITE.title} />
     {publishedTime && <meta property="article:published_time" content={publishedTime.toISOString()} />}
     {modifiedTime && <meta property="article:modified_time" content={modifiedTime.toISOString()} />}
     {tags.map((tag) => <meta property="article:tag" content={tag} />)}
@@ -109,6 +111,79 @@ const websiteLd = {
 
     <!-- Données structurées -->
     <script type="application/ld+json" set:html={JSON.stringify(jsonLd ?? websiteLd)} />
+
+    <!-- Verrouillage d'accès au site si non connecté -->
+    <script is:inline define:vars={{ espaceUrl: url('/espace/') }}>
+      (function () {
+        try {
+          var p = window.location.pathname.replace(/\/$/, '');
+          var isEspace = p.endsWith('/espace');
+          if (!isEspace) {
+            var hasToken = false;
+            for (var i = 0; i < localStorage.length; i++) {
+              var k = localStorage.key(i);
+              if (k && (k.indexOf('-auth-token') !== -1 || k === 'supabase.auth.token')) {
+                hasToken = true;
+                break;
+              }
+            }
+            if (!hasToken) {
+              var isConfig = window.location.pathname.indexOf('/configuration') !== -1;
+              var target = isConfig
+                ? espaceUrl + '?setup=1'
+                : espaceUrl + '?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+              window.location.replace(target);
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <script>
+      import { getCurrentSession, getSupabase } from '../utils/supabase';
+      import { url } from '../utils/url';
+
+      async function verifySession() {
+        const p = window.location.pathname.replace(/\/$/, '');
+        const isEspace = p.endsWith('/espace');
+        try {
+          const session = await getCurrentSession();
+          if (!session || !session.user) {
+            if (!isEspace) {
+              const isConfig = window.location.pathname.includes('/configuration');
+              const target = isConfig
+                ? url('/espace/?setup=1')
+                : url('/espace/?redirect=' + encodeURIComponent(window.location.pathname + window.location.search));
+              window.location.replace(target);
+              return;
+            }
+          } else {
+            document.documentElement.classList.add('is-authenticated');
+          }
+        } catch (err) {
+          if (!isEspace) {
+            window.location.replace(url('/espace/'));
+          }
+        }
+      }
+
+      verifySession();
+      document.addEventListener('astro:page-load', verifySession);
+
+      try {
+        const sb = getSupabase();
+        sb.auth.onAuthStateChange((_event, session) => {
+          const p = window.location.pathname.replace(/\/$/, '');
+          const isEspace = p.endsWith('/espace');
+          if (!session && !isEspace) {
+            document.documentElement.classList.remove('is-authenticated');
+            window.location.replace(url('/espace/'));
+          } else if (session) {
+            document.documentElement.classList.add('is-authenticated');
+          }
+        });
+      } catch (e) {}
+    </script>
 
     <ClientRouter />
   </head>
@@ -124,4 +199,16 @@ const websiteLd = {
 
 <style>
   main:focus { outline: none; }
+
+  /* Verrouillage du rendu tant que la session n'est pas vérifiée (sauf sur la page /espace/) */
+  html:not([data-is-espace="true"]):not(.is-authenticated) body {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s ease;
+  }
+  html.is-authenticated body,
+  html[data-is-espace="true"] body {
+    opacity: 1;
+    pointer-events: auto;
+  }
 </style>

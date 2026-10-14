@@ -29,7 +29,6 @@ const shortcuts = [
     <header class="home-hero">
       <p class="crumbs" data-today-date>&nbsp;</p>
       <h1 class="home-greeting"><span data-greeting>Bonjour</span>.</h1>
-      <p class="home-motto">Penser lentement ce que les machines font&nbsp;vite.</p>
     </header>
 
     <div class="home-grid">
@@ -125,9 +124,16 @@ const shortcuts = [
 </Base>
 
 <script>
-  import { generateWeekEvents } from '../utils/timetable';
+  import ICAL from 'ical.js';
+  import { STORAGE_KEYS, loadPersistent } from '../utils/persistence';
+  import { getCurrentSession, fetchUserScheduleEvents } from '../utils/supabase';
 
-  type Ev = ReturnType<typeof generateWeekEvents>[number];
+  interface HomeEvent {
+    title: string;
+    start: Date;
+    end: Date;
+    location?: string;
+  }
 
   const fmtTime = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
@@ -153,7 +159,7 @@ const shortcuts = [
     return node;
   }
 
-  function renderItem(ev: Ev, now: Date, showDay = false): HTMLLIElement {
+  function renderItem(ev: HomeEvent, now: Date, showDay = false): HTMLLIElement {
     const li = el('li', 'tl-item');
     const state = now > ev.end ? 'past' : now >= ev.start ? 'live' : 'next';
     li.dataset.state = state;
@@ -177,7 +183,7 @@ const shortcuts = [
     return li;
   }
 
-  function initHome() {
+  async function initHome() {
     const root = document.querySelector<HTMLElement>('[data-today]');
     if (!root) return;
     const now = new Date();
@@ -185,20 +191,117 @@ const shortcuts = [
     // Salutation & date
     const h = now.getHours();
     const greeting = document.querySelector('[data-greeting]');
-    if (greeting) greeting.textContent = h < 5 ? 'Bonne nuit' : h < 18 ? 'Bonjour' : 'Bonsoir';
+    const salute = h < 5 ? 'Bonne nuit' : h < 18 ? 'Bonjour' : 'Bonsoir';
+    if (greeting) {
+      greeting.textContent = salute;
+      try {
+        getCurrentSession().then((session) => {
+          const name = session?.user?.user_metadata?.full_name;
+          if (name && greeting) {
+            greeting.textContent = `${salute}, ${name}`;
+          }
+        });
+      } catch {}
+    }
     const dateEl = document.querySelector('[data-today-date]');
     if (dateEl) {
       const s = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
       dateEl.textContent = s.charAt(0).toUpperCase() + s.slice(1);
     }
 
-    // Cours du jour (hors habitudes)
+    // Cours du jour chargés depuis les 3 sources : Supabase > Calendrier ICS importé > LocalStorage
     const monday = mondayOf(now);
-    const nextMonday = new Date(monday);
-    nextMonday.setDate(monday.getDate() + 7);
-    const all = [...generateWeekEvents(monday), ...generateWeekEvents(nextMonday)]
-      .filter((e) => e.category !== 'habit')
-      .sort((a, b) => a.start.getTime() - b.start.getTime());
+    const maxDate = new Date(monday);
+    maxDate.setDate(monday.getDate() + 28); // Couvre 4 semaines pour anticiper les prochains cours
+
+    const all: HomeEvent[] = [];
+    const seen = new Set<string>();
+
+    function addEvent(ev: HomeEvent) {
+      const key = `${ev.title}|${ev.start.getTime()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        all.push(ev);
+      }
+    }
+
+    // 1. Tenter de charger depuis Supabase (cours de l'utilisateur)
+    try {
+      const dbEvents = await fetchUserScheduleEvents();
+      if (dbEvents && dbEvents.length > 0) {
+        dbEvents.forEach((dbEv) => {
+          const dayOffset = (dbEv.day_of_week || 1) - 1;
+          const [sH, sM] = (dbEv.start_time || '08:30').split(':').map(Number);
+          const [eH, eM] = (dbEv.end_time || '10:30').split(':').map(Number);
+
+          for (let w = 0; w < 4; w++) {
+            const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + dayOffset + w * 7);
+            const start = new Date(d);
+            start.setHours(sH, sM, 0, 0);
+            const end = new Date(d);
+            end.setHours(eH, eM, 0, 0);
+            addEvent({ title: dbEv.title, start, end, location: dbEv.location });
+          }
+        });
+      }
+    } catch {}
+
+    // 2. Fichier ICS personnalisé importé par l'étudiant
+    try {
+      const savedIcs = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
+      if (savedIcs && savedIcs.trim().length > 30) {
+        const icalLib = (ICAL as any).default || ICAL;
+        if (icalLib && icalLib.parse) {
+          const jcal = icalLib.parse(savedIcs);
+          const comp = new icalLib.Component(jcal);
+          const vevents = comp.getAllSubcomponents('vevent');
+          for (const vevent of vevents) {
+            const ev = new icalLib.Event(vevent);
+            const start = ev.startDate.toJSDate();
+            const end = ev.endDate.toJSDate();
+            if (end >= now && start <= maxDate) {
+              addEvent({
+                title: ev.summary || 'Cours',
+                start,
+                end,
+                location: ev.location || '',
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Erreur lecture ICS accueil:', e);
+    }
+
+    // 3. Événements personnalisés sauvegardés localement (localStorage fallback)
+    try {
+      const localCustom = localStorage.getItem('marges_custom_schedule_events');
+      if (localCustom) {
+        const parsedCustom: Array<{
+          title: string;
+          dayOffset: number;
+          startH: number;
+          startM: number;
+          endH: number;
+          endM: number;
+          location?: string;
+        }> = JSON.parse(localCustom);
+
+        parsedCustom.forEach((c) => {
+          for (let w = 0; w < 4; w++) {
+            const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + (c.dayOffset || 0) + w * 7);
+            const start = new Date(d);
+            start.setHours(c.startH || 8, c.startM || 0, 0, 0);
+            const end = new Date(d);
+            end.setHours(c.endH || 10, c.endM || 0, 0, 0);
+            addEvent({ title: c.title, start, end, location: c.location });
+          }
+        });
+      }
+    } catch {}
+
+    all.sort((a, b) => a.start.getTime() - b.start.getTime());
 
     const today = all.filter((e) => e.start.toDateString() === now.toDateString());
     const list = root.querySelector<HTMLOListElement>('[data-today-list]');
@@ -219,6 +322,8 @@ const shortcuts = [
       if (next) {
         list.append(el('li', 'tl-caption', 'Prochain cours'));
         list.append(renderItem(next, now, true));
+      } else {
+        list.innerHTML = '<li class="meta" style="padding: 0.75rem 0;">Aucun cours planifié pour cette journée.</li>';
       }
     }
 
@@ -250,6 +355,11 @@ const shortcuts = [
     } catch {}
   }
 
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initHome);
+  } else {
+    initHome();
+  }
   document.addEventListener('astro:page-load', initHome);
 </script>
 
@@ -401,9 +511,18 @@ const shortcuts = [
 
   @media (max-width: 62rem) {
     .home-grid { grid-template-columns: 1fr; }
-    .home-aside { position: static; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+    .home-aside { position: static; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
   }
-  @media (max-width: 40rem) {
+  @media (max-width: 52rem) {
     .shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 28rem) {
+    .shortcuts { grid-template-columns: 1fr; }
+    .today-head { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+    .timeline :global(.tl-item) {
+      grid-template-columns: 3.25rem minmax(0, 1fr);
+      gap: 0.65rem;
+      padding: 0.65rem 0.75rem;
+    }
   }
 </style>

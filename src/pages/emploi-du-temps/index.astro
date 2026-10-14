@@ -1,127 +1,298 @@
 ---
 import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
 import { url } from '../../utils/url';
 ---
 
 <Base
   title="Emploi du temps"
-  description="Emploi du temps universitaire hebdomadaire au design moderne et épuré."
+  description="Emploi du temps universitaire clair, épuré et lisible. Consultez vos cours de la semaine, du jour ou en liste."
 >
-  <div class="calendar-app-root" data-timetable-root>
-    <!-- Barre de contrôle supérieure -->
-    <header class="cal-top-bar">
-      <div class="cal-top-left">
-        <div class="cal-nav-group">
-          <button type="button" class="btn-cal-nav" id="cal-prev" title="Semaine précédente" aria-label="Semaine précédente">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <h1 class="cal-month-title" id="cal-month-display">Octobre 2026</h1>
-          <button type="button" class="btn-cal-nav" id="cal-next" title="Semaine suivante" aria-label="Semaine suivante">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-        </div>
+  <div class="container container--wide app-page timetable-page" data-timetable-root>
+    <!-- En-tête de page -->
+    <header class="page-header timetable-hero">
+      <div class="timetable-hero-main">
+        <p class="crumbs"><a href={url('/')}>Accueil</a> / Emploi du temps</p>
+        <h1 class="timetable-title">Emploi du temps</h1>
+        <p class="timetable-sub">Planning universitaire · Semestre en cours</p>
       </div>
 
-      <div class="cal-top-actions">
-        <div class="view-switch-group">
-          <button type="button" class="icon-btn active" id="btn-view-week" title="Vue Semaine" aria-label="Vue Semaine">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
-            <span class="btn-label-desktop">Semaine</span>
-          </button>
-          <button type="button" class="icon-btn" id="btn-view-agenda" title="Vue Liste" aria-label="Vue Liste">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            <span class="btn-label-desktop">Liste</span>
-          </button>
-        </div>
-        <a href={url('/configuration/#calendar-settings')} class="icon-btn icon-btn-solo" title="Paramètres & Import" aria-label="Paramètres & Import">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <div class="timetable-hero-actions">
+        <button type="button" class="btn btn--primary btn--sm" id="btn-open-add-event">
+          <Icon name="plus" size={14} />
+          <span>Ajouter un cours</span>
+        </button>
+        <button type="button" class="btn btn--sm" id="btn-export-ics" title="Exporter au format .ics (Apple, Google, Outlook)">
+          <Icon name="calendar" size={14} />
+          <span>Exporter (.ics)</span>
+        </button>
+        <a href={url('/configuration/#calendar-settings')} class="btn btn--sm" title="Paramètres et synchronisation">
+          <Icon name="settings" size={14} />
+          <span class="btn-label-desktop">Réglages</span>
         </a>
       </div>
     </header>
 
-    <!-- Vue Grille Calendrier Hebdomadaire (7 jours) -->
-    <div class="calendar-scroll-viewport" data-week-view>
-      <div class="cal-grid-frame">
-        <!-- En-têtes de colonnes des 7 jours (ex: mar. - 13 oct.) -->
-        <div class="cal-columns-header" id="cal-columns-header">
-          <!-- Rempli en JS -->
+    <!-- Carte contextuelle "En direct / Prochain cours" -->
+    <section class="panel live-status-card" id="live-status-card" aria-label="Statut du jour">
+      <div class="live-status-indicator">
+        <span class="live-pulse" id="live-pulse"></span>
+        <span class="live-badge" id="live-badge">Aujourd'hui</span>
+      </div>
+      <div class="live-status-content" id="live-status-text">
+        <strong id="live-title">Chargement des cours du jour…</strong>
+        <span class="meta" id="live-meta">Calcul de votre planning en temps réel</span>
+      </div>
+      <div class="live-status-action" id="live-action-wrap" style="display: none;">
+        <a href={url('/cours/')} class="btn btn--sm" id="live-course-link">
+          Supports du cours <Icon name="arrow-right" size={13} />
+        </a>
+      </div>
+    </section>
+
+    <!-- Barre de contrôle (Navigation semaine, vues & filtres) -->
+    <nav class="timetable-toolbar" aria-label="Contrôles du planning">
+      <!-- Groupe Navigation temporelle -->
+      <div class="nav-date-group">
+        <button type="button" class="btn-nav-arrow" id="btn-prev-week" title="Semaine précédente" aria-label="Semaine précédente">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <button type="button" class="btn-today-pill" id="btn-today" title="Revenir à la semaine actuelle">
+          Aujourd’hui
+        </button>
+        <button type="button" class="btn-nav-arrow" id="btn-next-week" title="Semaine suivante" aria-label="Semaine suivante">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+        <span class="current-date-heading" id="current-date-heading">Chargement…</span>
+      </div>
+
+      <!-- Groupe Vues & Filtres -->
+      <div class="toolbar-right-group">
+        <!-- Filtre par type -->
+        <div class="filter-pills" role="radiogroup" aria-label="Filtrer par type de cours">
+          <button type="button" class="filter-chip active" data-filter="all">Tous</button>
+          <button type="button" class="filter-chip chip-cm" data-filter="cm">CM</button>
+          <button type="button" class="filter-chip chip-td" data-filter="td">TD</button>
+          <button type="button" class="filter-chip chip-tp" data-filter="tp">TP</button>
         </div>
 
-        <!-- Section des tâches / habitudes toute la journée (ex: 20 pompes mini) -->
-        <div class="cal-allday-row" id="cal-allday-row">
-          <!-- Rempli en JS -->
+        <!-- Bascule Week-end -->
+        <button type="button" class="btn-weekend-toggle" id="btn-toggle-weekend" title="Afficher ou masquer le samedi et dimanche">
+          <span class="weekend-toggle-check" id="weekend-toggle-check"></span>
+          <span>Week-end</span>
+        </button>
+
+        <!-- Sélecteur de vue (Semaine / Jour / Liste) -->
+        <div class="view-segmented-control" role="tablist">
+          <button type="button" class="view-tab-btn active" id="tab-view-week" role="tab" aria-selected="true" aria-controls="view-week">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            <span>Semaine</span>
+          </button>
+          <button type="button" class="view-tab-btn" id="tab-view-day" role="tab" aria-selected="false" aria-controls="view-day">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>Jour</span>
+          </button>
+          <button type="button" class="view-tab-btn" id="tab-view-list" role="tab" aria-selected="false" aria-controls="view-list">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            <span>Liste</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ========================================================
+         VUE 1 : GRILLE SEMAINE (ÉPURÉE & SANS CHEVAUCHEMENT)
+         ======================================================== -->
+    <section class="timetable-view view-week" id="view-week" role="tabpanel" aria-labelledby="tab-view-week">
+      <div class="week-grid-container" id="week-grid-container">
+        <!-- En-têtes des jours (ex: LUNDI 12 OCT.) -->
+        <div class="week-columns-header" id="week-columns-header">
+          <!-- Injecté dynamiquement en JS -->
         </div>
 
-        <!-- Corps principal avec axe des heures et les 7 colonnes -->
-        <div class="cal-grid-body">
-          <!-- Axe vertical des heures (08:00 à 20:00) -->
-          <div class="cal-time-axis" aria-hidden="true">
-            <div class="time-label">08:00</div>
-            <div class="time-label">09:00</div>
-            <div class="time-label">10:00</div>
-            <div class="time-label">11:00</div>
-            <div class="time-label">12:00</div>
-            <div class="time-label">13:00</div>
-            <div class="time-label">14:00</div>
-            <div class="time-label">15:00</div>
-            <div class="time-label">16:00</div>
-            <div class="time-label">17:00</div>
-            <div class="time-label">18:00</div>
-            <div class="time-label">19:00</div>
-            <div class="time-label">20:00</div>
+        <!-- Corps de la grille avec axe temporel et colonnes des jours -->
+        <div class="week-grid-body" id="week-grid-body">
+          <!-- Axe des heures (08:00 à 20:00) -->
+          <div class="time-axis" aria-hidden="true" id="time-axis">
+            <!-- Rempli en JS -->
+          </div>
 
-            <!-- Pastille de l'heure courante (ex: 19:06) -->
-            <div class="current-time-badge" id="current-time-badge" style="display: none;">
-              <span id="current-time-text">19:06</span>
+          <!-- Lignes horizontales des heures -->
+          <div class="grid-hour-lines" aria-hidden="true" id="grid-hour-lines">
+            <!-- Rempli en JS -->
+          </div>
+
+          <!-- Colonnes de cours -->
+          <div class="day-columns-container" id="day-columns-container">
+            <!-- Rempli en JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         VUE 2 : JOUR PAR JOUR (FOCUS QUOTIDIEN CONFORTABLE)
+         ======================================================== -->
+    <section class="timetable-view view-day" id="view-day" role="tabpanel" aria-labelledby="tab-view-day" hidden>
+      <!-- Sélecteur rapide de jour (Lun, Mar, Mer, Jeu, Ven, Sam, Dim) -->
+      <div class="day-selector-bar" id="day-selector-bar" role="tablist" aria-label="Choisir le jour">
+        <!-- Rempli en JS -->
+      </div>
+
+      <!-- En-tête du jour sélectionné -->
+      <div class="day-view-header">
+        <div>
+          <h2 class="day-view-title" id="day-view-title">Lundi 12 octobre 2026</h2>
+          <p class="meta" id="day-view-stats">Chargement de la journée…</p>
+        </div>
+      </div>
+
+      <!-- Liste des cours du jour sous forme de cartes aérées -->
+      <div class="day-courses-list" id="day-courses-list">
+        <!-- Rempli en JS -->
+      </div>
+    </section>
+
+    <!-- ========================================================
+         VUE 3 : LISTE / AGENDA (CHRONOLOGIQUE GLOBAL)
+         ======================================================== -->
+    <section class="timetable-view view-list" id="view-list" role="tabpanel" aria-labelledby="tab-view-list" hidden>
+      <div class="agenda-list-wrapper" id="agenda-list-wrapper">
+        <!-- Rempli en JS -->
+      </div>
+    </section>
+
+    <!-- ========================================================
+         MODAL 1 : INSPECTION DÉTAILLÉE D'UN COURS
+         ======================================================== -->
+    <dialog class="cal-dialog" id="event-modal">
+      <div class="cal-dialog-content">
+        <header class="cal-dialog-header">
+          <div class="dialog-type-tag" id="modal-badge">COURS</div>
+          <button type="button" class="btn-close-dialog" id="modal-close" aria-label="Fermer la boîte">✕</button>
+        </header>
+
+        <h2 class="cal-dialog-title" id="modal-title">Intitulé du cours</h2>
+
+        <div class="cal-dialog-details">
+          <div class="detail-row">
+            <span class="detail-icon"><Icon name="clock" size={16} /></span>
+            <div>
+              <span class="detail-label">Horaires</span>
+              <strong class="detail-value" id="modal-time">09:00 — 10:30 (1h30)</strong>
             </div>
           </div>
 
-          <!-- Lignes horizontales séparatrices d'heures -->
-          <div class="cal-hour-lines" aria-hidden="true" id="cal-hour-lines">
-            <!-- Rempli en JS -->
+          <div class="detail-row">
+            <span class="detail-icon"><Icon name="pin" size={16} /></span>
+            <div style="flex: 1;">
+              <span class="detail-label">Salle / Lieu</span>
+              <strong class="detail-value" id="modal-location">Salle non spécifiée</strong>
+            </div>
+            <button type="button" class="btn btn--sm btn-copy-loc" id="btn-copy-loc" title="Copier la salle">
+              Copier
+            </button>
           </div>
 
-          <!-- Les 7 colonnes de jours pour les cours -->
-          <div class="cal-day-columns" id="cal-day-columns">
-            <!-- Rempli en JS -->
+          <div class="detail-row" id="modal-desc-row">
+            <span class="detail-icon"><Icon name="file" size={16} /></span>
+            <div style="flex: 1;">
+              <span class="detail-label">Description du cours</span>
+              <p class="detail-text" id="modal-desc">Aucune note particulière.</p>
+            </div>
           </div>
         </div>
+
+        <div class="cal-dialog-actions">
+          <button type="button" class="btn btn--danger btn--sm" id="btn-delete-event" style="display: none;">
+            Supprimer ce créneau
+          </button>
+          <a href={url('/cours/')} class="btn btn--primary btn--sm" id="modal-link-course">
+            <span>Voir les supports de cours</span>
+            <Icon name="arrow-right" size={14} />
+          </a>
+        </div>
       </div>
-    </div>
+    </dialog>
 
-    <!-- Vue Liste / Agenda alternatif -->
-    <div class="agenda-view-wrapper" data-agenda-view hidden>
-      <div class="container">
-        <ul class="agenda-card-list" id="agenda-card-list" role="list">
-          <!-- Rempli en JS -->
-        </ul>
-      </div>
-    </div>
-
-    <!-- Barre d'action inférieure flottante type iOS ("Aujourd'hui") -->
-    <aside class="cal-floating-bar" aria-label="Raccourcis calendrier">
-      <button type="button" class="btn-today-pill" id="btn-today-pill">
-        <span class="red-dot"></span>
-        <span>Aujourd’hui</span>
-      </button>
-    </aside>
-
-    <!-- Modal d'inspection détaillée d'un cours au clic -->
-    <dialog class="cal-event-dialog" id="event-modal">
-      <div class="dialog-content">
-        <header class="dialog-header">
-          <span class="dialog-badge" id="modal-category">COURS</span>
-          <button type="button" class="btn-close-modal" id="modal-close" aria-label="Fermer">✕</button>
+    <!-- ========================================================
+         MODAL 2 : AJOUT D'UN CRÉNEAU DE COURS
+         ======================================================== -->
+    <dialog class="cal-dialog" id="dialog-add-event">
+      <div class="cal-dialog-content">
+        <header class="cal-dialog-header">
+          <div class="dialog-type-tag">NOUVEAU CRÉNEAU</div>
+          <button type="button" class="btn-close-dialog" id="btn-close-add-event" aria-label="Fermer la boîte">✕</button>
         </header>
-        <h2 class="dialog-title" id="modal-title">Titre du cours</h2>
-        <div class="dialog-meta-list">
-          <p class="dialog-meta" id="modal-time">Horaires</p>
-          <p class="dialog-meta" id="modal-location">Salle</p>
-          <p class="dialog-desc" id="modal-desc"></p>
-        </div>
-        <div class="dialog-actions">
-          <a href={url('/cours/')} class="btn-modal-action" id="modal-link-course">Consulter les supports de cours →</a>
-        </div>
+
+        <h2 class="cal-dialog-title">Ajouter un créneau à l'emploi du temps</h2>
+
+        <form id="form-add-event" class="dialog-form">
+          <div class="form-field">
+            <label for="new-ev-title">Intitulé du cours <span class="required">*</span></label>
+            <input
+              type="text"
+              id="new-ev-title"
+              name="title"
+              placeholder="Ex : Analyse numérique 1"
+              required
+            />
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-field">
+              <label for="new-ev-type">Type de cours</label>
+              <select id="new-ev-type" name="category">
+                <option value="cm">CM (Cours Magistral)</option>
+                <option value="td" selected>TD (Travaux Dirigés)</option>
+                <option value="tp">TP (Travaux Pratiques)</option>
+                <option value="other">Autre / Examen</option>
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label for="new-ev-day">Jour de la semaine</label>
+              <select id="new-ev-day" name="day">
+                <option value="1">Lundi</option>
+                <option value="2">Mardi</option>
+                <option value="3">Mercredi</option>
+                <option value="4">Jeudi</option>
+                <option value="5">Vendredi</option>
+                <option value="6">Samedi</option>
+                <option value="7">Dimanche</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row-2">
+            <div class="form-field">
+              <label for="new-ev-start">Heure de début <span class="required">*</span></label>
+              <input type="time" id="new-ev-start" name="start" value="09:00" required />
+            </div>
+
+            <div class="form-field">
+              <label for="new-ev-end">Heure de fin <span class="required">*</span></label>
+              <input type="time" id="new-ev-end" name="end" value="10:30" required />
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="new-ev-loc">Salle / Lieu</label>
+            <input type="text" id="new-ev-loc" name="location" placeholder="Ex : Salle E109, Amphi C..." />
+          </div>
+
+          <div class="form-field">
+            <label for="new-ev-notes">Notes complémentaires</label>
+            <input type="text" id="new-ev-notes" name="notes" placeholder="Ex : Groupe 2, apporter calculatrice..." />
+          </div>
+
+          <div class="cal-dialog-actions" style="margin-top: 1.5rem;">
+            <button type="button" class="btn btn--sm" id="btn-cancel-add-event">Annuler</button>
+            <button type="submit" class="btn btn--primary btn--sm" id="btn-submit-add-event">
+              Enregistrer le créneau
+            </button>
+          </div>
+        </form>
       </div>
     </dialog>
   </div>
@@ -131,6 +302,13 @@ import { url } from '../../utils/url';
   import ICAL from 'ical.js';
   import { generateWeekEvents } from '../../utils/timetable';
   import { STORAGE_KEYS, loadPersistent } from '../../utils/persistence';
+  import {
+    fetchUserScheduleEvents,
+    createUserScheduleEvent,
+    deleteUserScheduleEvent,
+  } from '../../utils/supabase';
+  import { toast } from '../../utils/toast';
+  import { url } from '../../utils/url';
 
   interface CalendarEvent {
     id: string;
@@ -140,19 +318,35 @@ import { url } from '../../utils/url';
     location?: string;
     description?: string;
     category?: 'cm' | 'td' | 'tp' | 'habit' | 'other';
+    isCustom?: boolean;
+    dbId?: string;
+  }
+
+  interface CleanCourseInfo {
+    kind: 'CM' | 'TD' | 'TP' | 'Autre';
+    cleanTitle: string;
+    group: string;
+    folderSlug: string;
   }
 
   const START_HOUR = 8;
   const END_HOUR = 20;
-  const TOTAL_HOURS = END_HOUR - START_HOUR; // 12 heures
+  const TOTAL_HOURS = END_HOUR - START_HOUR; // 12h (08:00 à 20:00)
 
   let activeDate = new Date();
   let currentEvents: CalendarEvent[] = [];
+  let currentFilter: 'all' | 'cm' | 'td' | 'tp' = 'all';
+  let showWeekend = false;
+  let activeDayIndex = (new Date().getDay() + 6) % 7; // 0 = Lundi, 6 = Dimanche
+  let selectedEvent: CalendarEvent | null = null;
+
+  // -------------------------------------------------------------
+  // Helpers Dates & Heures
+  // -------------------------------------------------------------
 
   function getStartOfWeek(d: Date): Date {
     const date = new Date(d);
     const day = date.getDay();
-    // Lundi comme 1er jour de semaine (0 = Dimanche -> recul de 6j)
     const diff = date.getDate() - day + (day === 0 ? -6 : 1);
     date.setDate(diff);
     date.setHours(0, 0, 0, 0);
@@ -163,83 +357,204 @@ import { url } from '../../utils/url';
     return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   }
 
-  function parseIcs(rawIcs: string): CalendarEvent[] {
-    try {
-      const icalLib = (ICAL as any).default || ICAL;
-      if (!icalLib || !icalLib.parse) return [];
-      const jcal = icalLib.parse(rawIcs);
-      if (!jcal) return [];
-      const comp = new icalLib.Component(jcal);
-      const vevents = comp.getAllSubcomponents('vevent');
-      const list: CalendarEvent[] = [];
-
-      for (const vevent of vevents) {
-        const ev = new icalLib.Event(vevent);
-        const title = ev.summary || 'Cours sans titre';
-        let category: 'cm' | 'td' | 'tp' | 'habit' | 'other' = 'cm';
-        if (title.toUpperCase().includes('TD')) category = 'td';
-        else if (title.toUpperCase().includes('TP')) category = 'tp';
-        else if (title.toUpperCase().includes('POMPE') || title.toUpperCase().includes('HABIT')) category = 'habit';
-
-        list.push({
-          id: ev.uid || Math.random().toString(),
-          title,
-          start: ev.startDate.toJSDate(),
-          end: ev.endDate.toJSDate(),
-          location: ev.location || '',
-          description: ev.description || '',
-          category,
-        });
-      }
-      return list;
-    } catch (e) {
-      console.warn('Erreur parsing ICS:', e);
-      return [];
-    }
+  function formatDuration(start: Date, end: Date): string {
+    const diffMin = Math.round((end.getTime() - start.getTime()) / (60 * 1000));
+    const h = Math.floor(diffMin / 60);
+    const m = diffMin % 60;
+    if (h === 0) return `${m} min`;
+    if (m === 0) return `${h}h`;
+    return `${h}h${String(m).padStart(2, '0')}`;
   }
 
-  function loadEventsForCurrentWeek(): CalendarEvent[] {
+  /**
+   * Analyse et nettoie le titre d'un cours universitaire
+   * Exemple: "CM - ECUE Analyse numérique 1 G01" -> { kind: 'CM', cleanTitle: 'Analyse numérique 1', group: 'G01' }
+   */
+  function parseCourse(title: string, category?: string): CleanCourseInfo {
+    let clean = (title || '').trim();
+    let kind: 'CM' | 'TD' | 'TP' | 'Autre' = 'CM';
+
+    if (category === 'td' || /^TD\b/i.test(clean)) kind = 'TD';
+    else if (category === 'tp' || /^TP\b/i.test(clean)) kind = 'TP';
+    else if (category === 'cm' || /^CM\b/i.test(clean)) kind = 'CM';
+    else kind = 'Autre';
+
+    // Retirer préfixes "CM -", "TD -", "TP -"
+    clean = clean.replace(/^(CM|TD|TP)\s*[-—:]\s*/i, '');
+
+    // Retirer codes type "ECUE ", "MA3 "
+    clean = clean.replace(/^(ECUE|MA3)\s+/i, '');
+
+    // Extraire le groupe s'il existe (ex: "G01", "G02/2")
+    let group = '';
+    const groupMatch = clean.match(/\b(G\d+(\/\d+)?)\b/i);
+    if (groupMatch) {
+      group = groupMatch[1];
+      clean = clean.replace(/\b(G\d+(\/\d+)?)\b/i, '').trim();
+    }
+
+    // Nettoyer ponctuations résiduelles
+    clean = clean.replace(/\s*[-—]\s*$/, '').trim();
+
+    // Slug pour retrouver les supports de cours
+    const folderSlug = clean
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    return {
+      kind,
+      cleanTitle: clean || title,
+      group,
+      folderSlug,
+    };
+  }
+
+  function getSubjectUrl(slug: string): string {
+    const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+    if (slug.includes('analyse')) return `${basePath}/cours/#folder-analyse-numerique`;
+    if (slug.includes('algebre') || slug.includes('matlab') || slug.includes('scilab'))
+      return `${basePath}/cours/#folder-algebre-lineaire-numerique-scilab`;
+    if (slug.includes('edo') || slug.includes('dynamique'))
+      return `${basePath}/cours/#folder-edo`;
+    if (slug.includes('langage') || slug.includes('informatique'))
+      return `${basePath}/cours/#folder-informatique-theorique`;
+    if (slug.includes('maths') || slug.includes('ingenieur'))
+      return `${basePath}/cours/#folder-maths-de-l-ingenieur`;
+    return `${basePath}/cours/`;
+  }
+
+  // -------------------------------------------------------------
+  // Chargement des événements (Supabase > LocalStorage > Template)
+  // -------------------------------------------------------------
+
+  async function loadEvents(): Promise<CalendarEvent[]> {
     const monday = getStartOfWeek(activeDate);
     const sunday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const events: CalendarEvent[] = [];
 
-    // Vérifier si l'utilisateur a importé son fichier .ics dans les cookies/localStorage
+    // 1. Tenter de charger depuis Supabase
+    try {
+      const dbEvents = await fetchUserScheduleEvents();
+      if (dbEvents && dbEvents.length > 0) {
+        dbEvents.forEach((dbEv) => {
+          const dayOffset = (dbEv.day_of_week || 1) - 1;
+          const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + dayOffset);
+          const [sH, sM] = (dbEv.start_time || '08:30').split(':').map(Number);
+          const [eH, eM] = (dbEv.end_time || '10:30').split(':').map(Number);
+          const start = new Date(d);
+          start.setHours(sH, sM, 0, 0);
+          const end = new Date(d);
+          end.setHours(eH, eM, 0, 0);
+
+          let cat: 'cm' | 'td' | 'tp' | 'other' = 'cm';
+          const t = dbEv.title.toUpperCase();
+          if (t.includes('TD')) cat = 'td';
+          else if (t.includes('TP')) cat = 'tp';
+
+          events.push({
+            id: dbEv.id || `db-${Math.random()}`,
+            title: dbEv.title,
+            start,
+            end,
+            location: dbEv.location || '',
+            description: dbEv.notes || '',
+            category: cat,
+            isCustom: true,
+            dbId: dbEv.id,
+          });
+        });
+        return events;
+      }
+    } catch {
+      // Ignorer si pas connecté à Supabase
+    }
+
+    // 2. Fichier ICS personnalisé importé par l'étudiant
     const savedIcs = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
-    if (savedIcs && savedIcs.trim().length > 20) {
+    if (savedIcs && savedIcs.trim().length > 30) {
       try {
-        const parsed = parseIcs(savedIcs);
-        const thisWeekEvents = parsed.filter((e) => e.start >= monday && e.start <= sunday);
-        if (thisWeekEvents.length > 0) {
-          return parsed;
+        const icalLib = (ICAL as any).default || ICAL;
+        if (icalLib && icalLib.parse) {
+          const jcal = icalLib.parse(savedIcs);
+          const comp = new icalLib.Component(jcal);
+          const vevents = comp.getAllSubcomponents('vevent');
+          for (const vevent of vevents) {
+            const ev = new icalLib.Event(vevent);
+            const start = ev.startDate.toJSDate();
+            const end = ev.endDate.toJSDate();
+            if (start >= monday && start <= sunday) {
+              const title = ev.summary || 'Cours';
+              let category: 'cm' | 'td' | 'tp' | 'other' = 'cm';
+              if (title.toUpperCase().includes('TD')) category = 'td';
+              else if (title.toUpperCase().includes('TP')) category = 'tp';
+
+              events.push({
+                id: ev.uid || `ics-${Math.random()}`,
+                title,
+                start,
+                end,
+                location: ev.location || '',
+                description: ev.description || '',
+                category,
+              });
+            }
+          }
+          if (events.length > 0) return events;
         }
-      } catch (err) {
-        console.warn('Erreur lors de la lecture de l’ICS personnalisé:', err);
+      } catch (e) {
+        console.warn('Erreur lecture ICS:', e);
       }
     }
 
-    // Par défaut : cours récurrents du cursus exactement conformes à sa maquette
-    return generateWeekEvents(monday);
+    // 3. Événements personnalisés sauvegardés localement (localStorage fallback)
+    try {
+      const localCustom = localStorage.getItem('marges_custom_schedule_events');
+      if (localCustom) {
+        const parsedCustom: Array<{
+          id: string;
+          title: string;
+          dayOffset: number;
+          startH: number;
+          startM: number;
+          endH: number;
+          endM: number;
+          location?: string;
+          notes?: string;
+          category?: any;
+        }> = JSON.parse(localCustom);
+
+        parsedCustom.forEach((c) => {
+          const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + c.dayOffset);
+          const start = new Date(d);
+          start.setHours(c.startH, c.startM, 0, 0);
+          const end = new Date(d);
+          end.setHours(c.endH, c.endM, 0, 0);
+          events.push({
+            id: c.id,
+            title: c.title,
+            start,
+            end,
+            location: c.location || '',
+            description: c.notes || '',
+            category: c.category || 'cm',
+            isCustom: true,
+          });
+        });
+      }
+    } catch {}
+
+    // Pas de calendrier par défaut : renvoyer uniquement les cours réels de l'utilisateur
+    return events;
   }
 
-  function getEventColorClass(ev: CalendarEvent): string {
-    const t = ev.title.toUpperCase();
-    if (t.includes('POMPE') || ev.category === 'habit') return 'card-habit';
-    if (t.includes('MATLAB') || t.includes('ALGÈBRE') || t.includes('ALGEBRE') || t.includes('PROGRAMMATION')) {
-      return 'card-magenta-vivid';
-    }
-    if (t.startsWith('TD') || ev.category === 'td') return 'card-td';
-    return 'card-cm';
-  }
+  // -------------------------------------------------------------
+  // Algorithme de disposition intelligente sans chevauchement
+  // -------------------------------------------------------------
 
-  function escapeHtml(str: string): string {
-    return (str || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  }
-
-  interface LayoutItem {
+  interface GridDayLayout {
     ev: CalendarEvent;
     startMin: number;
     endMin: number;
@@ -247,39 +562,30 @@ import { url } from '../../utils/url';
     totalCols: number;
   }
 
-  /**
-   * Partitionne les événements d'une même journée en colonnes indépendantes
-   * afin qu'aucun événement ne se chevauche visuellement.
-   */
-  function layoutDayEvents(events: CalendarEvent[]): LayoutItem[] {
-    if (!events || events.length === 0) return [];
+  function layoutDayEvents(events: CalendarEvent[]): GridDayLayout[] {
+    if (!events.length) return [];
 
-    // Convertir les heures en minutes
     const items = events.map((ev) => {
       const startMin = ev.start.getHours() * 60 + ev.start.getMinutes();
       const endMin = ev.end.getHours() * 60 + ev.end.getMinutes();
       return {
         ev,
         startMin,
-        endMin: Math.max(endMin, startMin + 30), // Durée mini de 30 min pour calcul de chevauchement
+        endMin: Math.max(endMin, startMin + 45), // au moins 45 min visuelles pour lisibilité
         col: 0,
         totalCols: 1,
       };
     });
 
-    // Trier chronologiquement puis par durée décroissante
-    items.sort((a, b) => {
-      if (a.startMin !== b.startMin) return a.startMin - b.startMin;
-      return (b.endMin - b.startMin) - (a.endMin - a.startMin);
-    });
+    items.sort((a, b) => a.startMin - b.startMin || (b.endMin - b.startMin) - (a.endMin - a.startMin));
 
-    // Regrouper en clusters d'événements connectés (qui se chevauchent directement ou indirectement)
+    // Regroupement en clusters de chevauchement
     const clusters: (typeof items)[] = [];
     let currentCluster: typeof items = [];
     let clusterEnd = -1;
 
     for (const item of items) {
-      if (currentCluster.length === 0) {
+      if (!currentCluster.length) {
         currentCluster.push(item);
         clusterEnd = item.endMin;
       } else if (item.startMin < clusterEnd) {
@@ -291,29 +597,25 @@ import { url } from '../../utils/url';
         clusterEnd = item.endMin;
       }
     }
-    if (currentCluster.length > 0) {
-      clusters.push(currentCluster);
-    }
+    if (currentCluster.length) clusters.push(currentCluster);
 
-    // Pour chaque cluster, assigner la première colonne libre
-    const result: LayoutItem[] = [];
+    const result: GridDayLayout[] = [];
     for (const cluster of clusters) {
       const colEndTimes: number[] = [];
-
       for (const item of cluster) {
-        let placedCol = -1;
-        for (let c = 0; c < colEndTimes.length; c++) {
-          if (colEndTimes[c] <= item.startMin) {
-            placedCol = c;
-            colEndTimes[c] = item.endMin;
+        let placed = -1;
+        for (let i = 0; i < colEndTimes.length; i++) {
+          if (colEndTimes[i] <= item.startMin) {
+            placed = i;
+            colEndTimes[i] = item.endMin;
             break;
           }
         }
-        if (placedCol === -1) {
-          placedCol = colEndTimes.length;
+        if (placed === -1) {
+          placed = colEndTimes.length;
           colEndTimes.push(item.endMin);
         }
-        item.col = placedCol;
+        item.col = placed;
       }
 
       const totalCols = Math.max(1, colEndTimes.length);
@@ -326,74 +628,130 @@ import { url } from '../../utils/url';
     return result;
   }
 
-  function renderCalendar() {
-    const monday = getStartOfWeek(activeDate);
-    currentEvents = loadEventsForCurrentWeek();
+  // -------------------------------------------------------------
+  // Rendu de la carte "En direct / Prochain cours"
+  // -------------------------------------------------------------
 
-    // 1. Titre du mois en haut
-    const monthDisplay = document.getElementById('cal-month-display');
-    if (monthDisplay) {
-      const monthStr = activeDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-      monthDisplay.textContent = monthStr.charAt(0).toUpperCase() + monthStr.slice(1);
+  function updateLiveStatusCard() {
+    const card = document.getElementById('live-status-card');
+    const badge = document.getElementById('live-badge');
+    const titleEl = document.getElementById('live-title');
+    const metaEl = document.getElementById('live-meta');
+    const actionWrap = document.getElementById('live-action-wrap');
+    const linkEl = document.getElementById('live-course-link') as HTMLAnchorElement | null;
+    const pulse = document.getElementById('live-pulse');
+
+    if (!card || !titleEl || !metaEl) return;
+
+    const now = new Date();
+    const todayEvents = currentEvents
+      .filter((e) => e.start.toDateString() === now.toDateString())
+      .sort((a, b) => a.start.getTime() - b.start.getTime());
+
+    if (todayEvents.length === 0) {
+      badge!.textContent = 'Aujourd’hui';
+      titleEl.textContent = 'Aucun cours programmé aujourd’hui.';
+      metaEl.textContent = 'Profitez-en pour réviser ou lire un texte.';
+      if (pulse) pulse.style.display = 'none';
+      if (actionWrap) actionWrap.style.display = 'none';
+      return;
     }
 
-    // 2. Les 7 dates de la semaine
-    const weekDays: Date[] = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + i);
-      weekDays.push(d);
-    }
+    const currentLive = todayEvents.find((e) => now >= e.start && now <= e.end);
+    const upcoming = todayEvents.filter((e) => e.start > now);
 
-    const todayDate = new Date();
-    const todayDateString = todayDate.toDateString();
-
-    // 3. En-têtes des 7 colonnes (ex: "mar. - 13 oct." en rouge si aujourd'hui)
-    const colHeaderContainer = document.getElementById('cal-columns-header');
-    if (colHeaderContainer) {
-      let html = '<div class="col-header-corner"></div>';
-      for (const day of weekDays) {
-        const isToday = day.toDateString() === todayDateString;
-        const formatted = day.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
-        // Formatage "mar. - 13 oct."
-        const parts = formatted.split(' ');
-        const label = `${parts[0]} - ${parts.slice(1).join(' ')}`;
-        html += `
-          <div class="col-header-cell ${isToday ? 'header-today' : ''}">
-            <span>${label}</span>
-          </div>
-        `;
+    if (currentLive) {
+      const info = parseCourse(currentLive.title, currentLive.category);
+      if (badge) {
+        badge.textContent = 'En cours';
+        badge.className = 'live-badge live-badge--active';
       }
-      colHeaderContainer.innerHTML = html;
-    }
+      if (pulse) pulse.style.display = 'inline-block';
+      titleEl.textContent = `${info.kind} · ${info.cleanTitle}`;
+      metaEl.textContent = `Jusqu’à ${formatTime(currentLive.end)} ${currentLive.location ? '· Salle ' + currentLive.location : ''}`;
 
-    // 5. Bandeau d'habitudes / toute la journée (ex: 20 pompes mini)
-    const allDayRow = document.getElementById('cal-allday-row');
-    if (allDayRow) {
-      let html = '<div class="allday-corner"></div>';
-      for (const day of weekDays) {
-        // Recherche des événements de type habit pour ce jour
-        const habitEv = currentEvents.find(
-          (e) => e.start.toDateString() === day.toDateString() && (e.category === 'habit' || e.title.includes('pompes'))
-        );
-        html += `
-          <div class="allday-cell">
-            ${
-              habitEv
-                ? `<div class="habit-badge" title="${habitEv.title}">
-                    <span class="habit-circle"></span>
-                    <span class="habit-title">${habitEv.title}</span>
-                  </div>`
-                : ''
-            }
-          </div>
-        `;
+      if (actionWrap && linkEl) {
+        linkEl.href = getSubjectUrl(info.folderSlug);
+        actionWrap.style.display = 'block';
       }
-      allDayRow.innerHTML = html;
+    } else if (upcoming.length > 0) {
+      const next = upcoming[0];
+      const info = parseCourse(next.title, next.category);
+      if (badge) {
+        badge.textContent = 'Prochain cours';
+        badge.className = 'live-badge';
+      }
+      if (pulse) pulse.style.display = 'none';
+      titleEl.textContent = `${info.kind} · ${info.cleanTitle} à ${formatTime(next.start)}`;
+      metaEl.textContent = `Durée ${formatDuration(next.start, next.end)} ${next.location ? '· ' + next.location : ''} · ${upcoming.length} cours restant${upcoming.length > 1 ? 's' : ''}`;
+
+      if (actionWrap && linkEl) {
+        linkEl.href = getSubjectUrl(info.folderSlug);
+        actionWrap.style.display = 'block';
+      }
+    } else {
+      if (badge) {
+        badge.textContent = 'Terminé';
+        badge.className = 'live-badge';
+      }
+      if (pulse) pulse.style.display = 'none';
+      titleEl.textContent = 'Tous les cours de la journée sont terminés.';
+      metaEl.textContent = `Bonne fin de journée · ${todayEvents.length} cours suivis aujourd’hui.`;
+      if (actionWrap) actionWrap.style.display = 'none';
+    }
+  }
+
+  // -------------------------------------------------------------
+  // Rendu Vue Semaine (Grille hebdomadaire)
+  // -------------------------------------------------------------
+
+  function renderWeekView(weekDays: Date[]) {
+    const headerContainer = document.getElementById('week-columns-header');
+    const timeAxisContainer = document.getElementById('time-axis');
+    const hourLinesContainer = document.getElementById('grid-hour-lines');
+    const dayColsContainer = document.getElementById('day-columns-container');
+    const gridContainer = document.getElementById('week-grid-container');
+
+    if (!headerContainer || !dayColsContainer || !gridContainer) return;
+
+    const visibleDays = showWeekend ? weekDays : weekDays.slice(0, 5);
+    const dayCount = visibleDays.length;
+    const todayStr = new Date().toDateString();
+
+    gridContainer.style.setProperty('--day-columns-count', String(dayCount));
+
+    // 1. En-têtes des jours
+    let headerHtml = '<div class="header-corner-cell"></div>';
+    visibleDays.forEach((day, idx) => {
+      const isToday = day.toDateString() === todayStr;
+      const dayName = day.toLocaleDateString('fr-FR', { weekday: 'long' });
+      const dayNum = day.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+
+      // Compter le nombre de cours pour ce jour
+      const dayEvs = currentEvents.filter((e) => e.start.toDateString() === day.toDateString());
+      const filteredCount = filterEvents(dayEvs).length;
+
+      headerHtml += `
+        <div class="col-header-day ${isToday ? 'is-today' : ''}" data-day-index="${idx}">
+          <span class="day-name">${dayName.toUpperCase()}</span>
+          <span class="day-num">${dayNum}</span>
+          ${filteredCount > 0 ? `<span class="day-count-badge">${filteredCount} cours</span>` : ''}
+        </div>
+      `;
+    });
+    headerContainer.innerHTML = headerHtml;
+
+    // 2. Axe temporel (08:00 à 20:00)
+    if (timeAxisContainer) {
+      let axisHtml = '';
+      for (let h = START_HOUR; h <= END_HOUR; h++) {
+        const timeStr = `${String(h).padStart(2, '0')}:00`;
+        axisHtml += `<div class="time-axis-tick"><span>${timeStr}</span></div>`;
+      }
+      timeAxisContainer.innerHTML = axisHtml;
     }
 
-    // 6. Lignes horizontales d'heures (arborescence d'arrière plan)
-    const hourLinesContainer = document.getElementById('cal-hour-lines');
+    // 3. Lignes horizontales des heures
     if (hourLinesContainer) {
       let linesHtml = '';
       for (let h = 0; h < TOTAL_HOURS; h++) {
@@ -402,217 +760,696 @@ import { url } from '../../utils/url';
       hourLinesContainer.innerHTML = linesHtml;
     }
 
-    // 7. Colonnes de jours et cartes de cours avec détection des chevauchements
-    const columnsContainer = document.getElementById('cal-day-columns');
-    if (columnsContainer) {
-      let colsHtml = '';
+    // 4. Colonnes et cartes de cours
+    let bodyHtml = '';
+    const now = new Date();
+    const curHour = now.getHours() + now.getMinutes() / 60;
+    const nowTopPercent = ((curHour - START_HOUR) / TOTAL_HOURS) * 100;
 
-      weekDays.forEach((day, dayIndex) => {
-        const isToday = day.toDateString() === todayDateString;
-        // Filtrer les événements de ce jour (hors tâches habit toute la journée)
-        const dayEvents = currentEvents.filter(
-          (e) => e.start.toDateString() === day.toDateString() && e.category !== 'habit' && !e.title.includes('pompes')
-        );
+    visibleDays.forEach((day, dayIndex) => {
+      const isToday = day.toDateString() === todayStr;
+      const dayEvs = filterEvents(
+        currentEvents.filter((e) => e.start.toDateString() === day.toDateString())
+      );
 
-        // Positionnement intelligent sans chevauchement (algorithme multi-colonnes)
-        const layoutItems = layoutDayEvents(dayEvents);
+      const layoutItems = layoutDayEvents(dayEvs);
+      let cardsHtml = '';
 
-        let eventsHtml = '';
-        layoutItems.forEach(({ ev, col, totalCols }) => {
-          const startH = ev.start.getHours() + ev.start.getMinutes() / 60;
-          const endH = ev.end.getHours() + ev.end.getMinutes() / 60;
+      layoutItems.forEach(({ ev, col, totalCols }) => {
+        const startH = ev.start.getHours() + ev.start.getMinutes() / 60;
+        const endH = ev.end.getHours() + ev.end.getMinutes() / 60;
 
-          const clampedStart = Math.max(START_HOUR, Math.min(END_HOUR, startH));
-          const clampedEnd = Math.max(START_HOUR, Math.min(END_HOUR, endH));
-          const duration = Math.max(0.65, clampedEnd - clampedStart);
+        const clampedStart = Math.max(START_HOUR, Math.min(END_HOUR, startH));
+        const clampedEnd = Math.max(START_HOUR, Math.min(END_HOUR, endH));
+        const durationH = Math.max(0.75, clampedEnd - clampedStart);
 
-          const topPercent = ((clampedStart - START_HOUR) / TOTAL_HOURS) * 100;
-          const heightPercent = (duration / TOTAL_HOURS) * 100;
+        const topPercent = ((clampedStart - START_HOUR) / TOTAL_HOURS) * 100;
+        const heightPercent = (durationH / TOTAL_HOURS) * 100;
 
-          const widthPercent = 100 / totalCols;
-          const leftPercent = col * widthPercent;
+        const widthPercent = 100 / totalCols;
+        const leftPercent = col * widthPercent;
 
-          const cardTypeClass = getEventColorClass(ev);
-          const isTight = totalCols > 1;
+        const info = parseCourse(ev.title, ev.category);
+        const kindClass = `card-kind--${info.kind.toLowerCase()}`;
+        const isTight = totalCols > 1;
 
-          eventsHtml += `
-            <div
-              class="course-card ${cardTypeClass} ${isTight ? 'is-condensed' : ''}"
-              style="top: ${topPercent}%; height: ${heightPercent}%; left: calc(${leftPercent}% + 2px); width: calc(${widthPercent}% - 4px);"
-              data-ev-id="${ev.id}"
-              title="${escapeHtml(ev.title)}${ev.location ? ' — ' + escapeHtml(ev.location) : ''}"
-            >
-              <div class="card-inner">
-                <div class="card-header-line">
-                  <span class="card-badge">${ev.category ? ev.category.toUpperCase() : 'COURS'}</span>
-                  <span class="card-time-pill">${formatTime(ev.start)}</span>
-                </div>
-                <h3 class="card-title">${escapeHtml(ev.title)}</h3>
-                ${ev.location ? `<div class="card-meta"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>${escapeHtml(ev.location)}</span></div>` : ''}
+        cardsHtml += `
+          <article
+            class="course-card ${kindClass} ${isTight ? 'is-tight' : ''}"
+            style="top: ${topPercent}%; height: ${heightPercent}%; left: calc(${leftPercent}% + 3px); width: calc(${widthPercent}% - 6px);"
+            data-event-id="${ev.id}"
+            tabindex="0"
+            role="button"
+            aria-label="${info.kind} ${info.cleanTitle}, de ${formatTime(ev.start)} à ${formatTime(ev.end)}${ev.location ? ', ' + ev.location : ''}"
+          >
+            <div class="card-inner">
+              <header class="card-top-row">
+                <span class="card-tag tag-${info.kind.toLowerCase()}">${info.kind}</span>
+                <span class="card-time">${formatTime(ev.start)} – ${formatTime(ev.end)}</span>
+              </header>
+              <h3 class="card-course-title">${info.cleanTitle}</h3>
+              <div class="card-bottom-row">
+                ${
+                  ev.location
+                    ? `<span class="card-loc"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${ev.location}</span>`
+                    : ''
+                }
+                ${info.group ? `<span class="card-group-pill">${info.group}</span>` : ''}
               </div>
             </div>
-          `;
-        });
-
-        colsHtml += `
-          <div class="cal-day-col ${isToday ? 'col-today' : ''}" data-col-day="${dayIndex}">
-            ${eventsHtml}
-            ${isToday ? '<div class="now-indicator-line" id="now-line"></div>' : ''}
-          </div>
+          </article>
         `;
       });
 
-      columnsContainer.innerHTML = colsHtml;
+      bodyHtml += `
+        <div class="day-col ${isToday ? 'is-today-col' : ''}" data-day-col="${dayIndex}">
+          ${cardsHtml}
+          ${
+            isToday && curHour >= START_HOUR && curHour <= END_HOUR
+              ? `<div class="current-time-line" style="top: ${nowTopPercent}%;" title="Heure actuelle (${formatTime(now)})"><span class="line-dot"></span></div>`
+              : ''
+          }
+        </div>
+      `;
+    });
 
-      // Clic sur une carte pour ouvrir le modal
-      columnsContainer.querySelectorAll('[data-ev-id]').forEach((card) => {
-        card.addEventListener('click', () => {
-          const id = card.getAttribute('data-ev-id');
-          const ev = currentEvents.find((e) => e.id === id);
-          if (ev) openEventModal(ev);
-        });
+    dayColsContainer.innerHTML = bodyHtml;
+
+    // Événements de clic sur les cartes pour ouvrir la modale
+    dayColsContainer.querySelectorAll<HTMLElement>('[data-event-id]').forEach((card) => {
+      card.addEventListener('click', () => {
+        const id = card.getAttribute('data-event-id');
+        const ev = currentEvents.find((e) => e.id === id);
+        if (ev) openCourseModal(ev);
       });
-    }
-
-    // 8. Rendu de l'indicateur temporel rouge en direct
-    updateCurrentTimeIndicator();
-
-    // 9. Mise à jour vue liste agenda
-    renderAgendaView();
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          const id = card.getAttribute('data-event-id');
+          const ev = currentEvents.find((e) => e.id === id);
+          if (ev) openCourseModal(ev);
+        }
+      });
+    });
   }
 
-  function updateCurrentTimeIndicator() {
-    const now = new Date();
-    const nowLine = document.getElementById('now-line');
-    const badge = document.getElementById('current-time-badge');
-    const textEl = document.getElementById('current-time-text');
+  // -------------------------------------------------------------
+  // Rendu Vue Jour (Focus Quotidien)
+  // -------------------------------------------------------------
 
-    const curH = now.getHours() + now.getMinutes() / 60;
-    if (curH >= START_HOUR && curH <= END_HOUR) {
-      const topPercent = ((curH - START_HOUR) / TOTAL_HOURS) * 100;
-      if (nowLine) {
-        nowLine.style.top = `${topPercent}%`;
-        nowLine.style.display = 'block';
-      }
-      if (badge && textEl) {
-        badge.style.top = `${topPercent}%`;
-        badge.style.display = 'flex';
-        textEl.textContent = formatTime(now);
-      }
-    } else {
-      if (nowLine) nowLine.style.display = 'none';
-      if (badge) badge.style.display = 'none';
-    }
-  }
+  function renderDayView(weekDays: Date[]) {
+    const selectorBar = document.getElementById('day-selector-bar');
+    const dayTitle = document.getElementById('day-view-title');
+    const dayStats = document.getElementById('day-view-stats');
+    const listEl = document.getElementById('day-courses-list');
 
-  function renderAgendaView() {
-    const listEl = document.getElementById('agenda-card-list');
-    if (!listEl) return;
+    if (!selectorBar || !dayTitle || !dayStats || !listEl) return;
 
-    if (currentEvents.length === 0) {
-      listEl.innerHTML = '<li class="no-events meta">Aucun cours trouvé pour cette semaine.</li>';
+    const visibleDays = showWeekend ? weekDays : weekDays.slice(0, 5);
+    const todayStr = new Date().toDateString();
+
+    // 1. Boutons sélecteurs de jours
+    let barHtml = '';
+    visibleDays.forEach((day, idx) => {
+      const isSelected = idx === activeDayIndex;
+      const isToday = day.toDateString() === todayStr;
+      const name = day.toLocaleDateString('fr-FR', { weekday: 'short' });
+      const num = day.getDate();
+
+      barHtml += `
+        <button
+          type="button"
+          class="day-pill-btn ${isSelected ? 'active' : ''} ${isToday ? 'is-today' : ''}"
+          data-day-select="${idx}"
+        >
+          <span class="pill-name">${name}</span>
+          <span class="pill-num">${num}</span>
+          ${isToday ? '<span class="pill-today-dot" title="Aujourd\'hui"></span>' : ''}
+        </button>
+      `;
+    });
+    selectorBar.innerHTML = barHtml;
+
+    selectorBar.querySelectorAll<HTMLButtonElement>('[data-day-select]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        activeDayIndex = parseInt(btn.getAttribute('data-day-select') || '0', 10);
+        renderDayView(weekDays);
+      });
+    });
+
+    // 2. Jour actif
+    const selectedDate = visibleDays[activeDayIndex] || visibleDays[0];
+    const fullDateStr = selectedDate.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    dayTitle.textContent = fullDateStr.charAt(0).toUpperCase() + fullDateStr.slice(1);
+
+    const dayEvs = filterEvents(
+      currentEvents.filter((e) => e.start.toDateString() === selectedDate.toDateString())
+    ).sort((a, b) => a.start.getTime() - b.start.getTime());
+
+    const totalMinutes = dayEvs.reduce(
+      (acc, e) => acc + Math.round((e.end.getTime() - e.start.getTime()) / 60000),
+      0
+    );
+    const totH = Math.floor(totalMinutes / 60);
+    const totM = totalMinutes % 60;
+    const durationLabel = totH > 0 ? `${totH}h${totM ? String(totM).padStart(2, '0') : ''} de cours` : '';
+
+    dayStats.textContent =
+      dayEvs.length > 0
+        ? `${dayEvs.length} cours programmé${dayEvs.length > 1 ? 's' : ''} · ${durationLabel}`
+        : 'Aucun cours programmé ce jour-là.';
+
+    // 3. Liste des cartes confortables
+    if (dayEvs.length === 0) {
+      listEl.innerHTML = `
+        <div class="empty-day-panel">
+          <div class="empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></div>
+          <h3>Aucun cours ce jour-là</h3>
+          <p class="meta">Votre planning est totalement libre. Profitez-en pour réviser ou explorer les fiches de cours.</p>
+          <a href="${url('/cours/')}" class="btn btn--sm" style="margin-top: 1rem;">Accéder aux supports de cours</a>
+        </div>
+      `;
       return;
     }
 
-    const sorted = [...currentEvents].sort((a, b) => a.start.getTime() - b.start.getTime());
+    const now = new Date();
+    let coursesHtml = '';
 
-    listEl.innerHTML = sorted
-      .map((ev) => {
-        const colorClass = getEventColorClass(ev);
-        return `
-        <li class="agenda-item ${colorClass}">
-          <div class="agenda-date">
-            <strong>${ev.start.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</strong>
-            <span>${formatTime(ev.start)} – ${formatTime(ev.end)}</span>
+    dayEvs.forEach((ev) => {
+      const info = parseCourse(ev.title, ev.category);
+      const isPast = now > ev.end;
+      const isLive = now >= ev.start && now <= ev.end;
+      const statusLabel = isLive ? 'En cours' : isPast ? 'Terminé' : 'À venir';
+      const statusClass = isLive ? 'status-live' : isPast ? 'status-past' : 'status-upcoming';
+
+      coursesHtml += `
+        <div class="day-course-card card-kind--${info.kind.toLowerCase()} ${statusClass}" data-event-id="${ev.id}" role="button" tabindex="0" title="Cliquer pour afficher la description et les détails">
+          <div class="card-time-column">
+            <span class="time-start">${formatTime(ev.start)}</span>
+            <span class="time-sep">↓</span>
+            <span class="time-end">${formatTime(ev.end)}</span>
+            <span class="duration-badge">${formatDuration(ev.start, ev.end)}</span>
           </div>
-          <div class="agenda-info">
-            <h3 class="agenda-title">${ev.title}</h3>
-            ${ev.location ? `<p class="agenda-loc">${ev.location}</p>` : ''}
+
+          <div class="card-content-column">
+            <div class="card-header-tags">
+              <span class="card-tag tag-${info.kind.toLowerCase()}">${info.kind}</span>
+              <span class="card-status-pill ${statusClass}">${statusLabel}</span>
+              ${ev.location ? `<span class="location-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${ev.location}</span>` : ''}
+              ${info.group ? `<span class="group-pill">${info.group}</span>` : ''}
+            </div>
+
+            <h3 class="day-card-title">${info.cleanTitle}</h3>
+
+            <div class="day-card-actions">
+              <a href="${getSubjectUrl(info.folderSlug)}" class="btn btn--sm btn-course-docs" onclick="event.stopPropagation()">
+                <span>Consulter les supports</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </a>
+              <button type="button" class="btn btn--sm btn-inspect-details" data-inspect-id="${ev.id}">
+                <span>Détails & description</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
           </div>
-        </li>
+        </div>
       `;
-      })
-      .join('');
+    });
+
+    listEl.innerHTML = coursesHtml;
+
+    listEl.querySelectorAll<HTMLElement>('.day-course-card').forEach((card) => {
+      card.addEventListener('click', (e) => {
+        if ((e.target as HTMLElement).closest('a')) return;
+        const id = card.getAttribute('data-event-id');
+        const ev = currentEvents.find((item) => item.id === id);
+        if (ev) openCourseModal(ev);
+      });
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          const id = card.getAttribute('data-event-id');
+          const ev = currentEvents.find((item) => item.id === id);
+          if (ev) openCourseModal(ev);
+        }
+      });
+    });
   }
 
-  function openEventModal(ev: CalendarEvent) {
-    const modal = document.getElementById('event-modal') as HTMLDialogElement;
+  // -------------------------------------------------------------
+  // Rendu Vue Liste (Agenda Chronologique)
+  // -------------------------------------------------------------
+
+  function renderListView(weekDays: Date[]) {
+    const listWrapper = document.getElementById('agenda-list-wrapper');
+    if (!listWrapper) return;
+
+    const visibleDays = showWeekend ? weekDays : weekDays.slice(0, 5);
+    const filteredAll = filterEvents(currentEvents);
+
+    if (filteredAll.length === 0) {
+      listWrapper.innerHTML = `
+        <div class="empty-day-panel">
+          <p class="meta">Aucun cours trouvé pour cette sélection.</p>
+        </div>
+      `;
+      return;
+    }
+
+    let agendaHtml = '';
+    visibleDays.forEach((day) => {
+      const dayEvs = filterEvents(
+        currentEvents.filter((e) => e.start.toDateString() === day.toDateString())
+      ).sort((a, b) => a.start.getTime() - b.start.getTime());
+
+      if (dayEvs.length === 0) return;
+
+      const dateLabel = day.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      });
+
+      agendaHtml += `
+        <div class="agenda-day-block">
+          <h3 class="agenda-day-header">
+            <span>${dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)}</span>
+            <span class="meta">${dayEvs.length} cours</span>
+          </h3>
+          <div class="agenda-cards-grid">
+            ${dayEvs
+              .map((ev) => {
+                const info = parseCourse(ev.title, ev.category);
+                return `
+                <div class="agenda-card card-kind--${info.kind.toLowerCase()}" data-event-id="${ev.id}" role="button" tabindex="0" title="Cliquer pour afficher la description et les détails">
+                  <div class="agenda-time">
+                    <strong>${formatTime(ev.start)}</strong>
+                    <span class="meta">${formatTime(ev.end)}</span>
+                  </div>
+                  <div class="agenda-body">
+                    <div class="agenda-meta-row">
+                      <span class="card-tag tag-${info.kind.toLowerCase()}">${info.kind}</span>
+                      ${ev.location ? `<span class="card-loc"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${ev.location}</span>` : ''}
+                      ${info.group ? `<span class="group-pill">${info.group}</span>` : ''}
+                    </div>
+                    <h4 class="agenda-title">${info.cleanTitle}</h4>
+                  </div>
+                </div>
+              `;
+              })
+              .join('')}
+          </div>
+        </div>
+      `;
+    });
+
+    listWrapper.innerHTML = agendaHtml || '<p class="meta">Aucun cours cette semaine.</p>';
+
+    listWrapper.querySelectorAll<HTMLElement>('[data-event-id]').forEach((card) => {
+      card.addEventListener('click', () => {
+        const id = card.getAttribute('data-event-id');
+        const ev = currentEvents.find((e) => e.id === id);
+        if (ev) openCourseModal(ev);
+      });
+    });
+  }
+
+  // -------------------------------------------------------------
+  // Filtres
+  // -------------------------------------------------------------
+
+  function filterEvents(events: CalendarEvent[]): CalendarEvent[] {
+    if (currentFilter === 'all') return events;
+    return events.filter((e) => {
+      const info = parseCourse(e.title, e.category);
+      return info.kind.toLowerCase() === currentFilter;
+    });
+  }
+
+  // -------------------------------------------------------------
+  // Rendu Global de l'Emploi du Temps
+  // -------------------------------------------------------------
+
+  async function renderAll() {
+    const monday = getStartOfWeek(activeDate);
+    const sunday = new Date(monday.getTime() + 6 * 24 * 60 * 60 * 1000);
+
+    // Titre de la semaine active
+    const headingEl = document.getElementById('current-date-heading');
+    if (headingEl) {
+      const monthStr = activeDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+      const mDay = monday.getDate();
+      const sDay = sunday.getDate();
+      headingEl.textContent = `${mDay} — ${sDay} ${monthStr}`;
+    }
+
+    currentEvents = await loadEvents();
+
+    // Vérifier si le weekend a des cours
+    const hasWeekendEvents = currentEvents.some((e) => {
+      const day = e.start.getDay();
+      return day === 0 || day === 6; // Dimanche ou Samedi
+    });
+    if (hasWeekendEvents && !showWeekend) {
+      showWeekend = true;
+      const checkEl = document.getElementById('weekend-toggle-check');
+      if (checkEl) checkEl.classList.add('checked');
+    }
+
+    // 7 jours de la semaine
+    const weekDays: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      weekDays.push(d);
+    }
+
+    // Mettre à jour le statut en direct
+    updateLiveStatusCard();
+
+    // Rendu des 3 vues
+    renderWeekView(weekDays);
+    renderDayView(weekDays);
+    renderListView(weekDays);
+  }
+
+  // -------------------------------------------------------------
+  // Modale Détails du cours
+  // -------------------------------------------------------------
+
+  function openCourseModal(ev: CalendarEvent) {
+    selectedEvent = ev;
+    const modal = document.getElementById('event-modal') as HTMLDialogElement | null;
     if (!modal) return;
 
-    const catEl = document.getElementById('modal-category');
+    const info = parseCourse(ev.title, ev.category);
+    const badgeEl = document.getElementById('modal-badge');
     const titleEl = document.getElementById('modal-title');
     const timeEl = document.getElementById('modal-time');
     const locEl = document.getElementById('modal-location');
     const descEl = document.getElementById('modal-desc');
+    const descRow = document.getElementById('modal-desc-row');
+    const linkCourse = document.getElementById('modal-link-course') as HTMLAnchorElement | null;
+    const btnDelete = document.getElementById('btn-delete-event');
 
-    if (catEl) catEl.textContent = ev.title.toUpperCase().startsWith('TD') ? 'TD' : 'CM';
-    if (titleEl) titleEl.textContent = ev.title;
-    if (timeEl) timeEl.textContent = `${formatTime(ev.start)} – ${formatTime(ev.end)}`;
-    if (locEl) locEl.textContent = ev.location ? ev.location : 'Salle non spécifiée';
-    if (descEl) descEl.textContent = ev.description || '';
+    if (badgeEl) {
+      badgeEl.textContent = info.kind;
+      badgeEl.className = `dialog-type-tag tag-${info.kind.toLowerCase()}`;
+    }
+    if (titleEl) {
+      titleEl.textContent = info.group ? `${info.cleanTitle} (${info.group})` : info.cleanTitle;
+    }
+    if (timeEl) timeEl.textContent = `${formatTime(ev.start)} — ${formatTime(ev.end)} (${formatDuration(ev.start, ev.end)})`;
+    if (locEl) locEl.textContent = ev.location || 'Salle non spécifiée';
+
+    if (descEl && descRow) {
+      const desc = (ev.description || '').trim();
+      descEl.textContent = desc || 'Aucune description spécifique renseignée pour ce cours.';
+      descRow.style.display = 'flex';
+    }
+
+    if (linkCourse) {
+      linkCourse.href = getSubjectUrl(info.folderSlug);
+    }
+
+    // Bouton de suppression (créneaux custom / DB)
+    if (btnDelete) {
+      if (ev.isCustom) {
+        btnDelete.style.display = 'inline-flex';
+      } else {
+        btnDelete.style.display = 'none';
+      }
+    }
 
     modal.showModal();
   }
 
-  function initTimetable() {
-    renderCalendar();
+  // -------------------------------------------------------------
+  // Export .ICS dynamique
+  // -------------------------------------------------------------
 
-    // Boutons de navigation semaines
-    document.getElementById('cal-prev')?.addEventListener('click', () => {
+  function exportScheduleToIcs() {
+    if (!currentEvents.length) {
+      toast('Aucun cours à exporter.', 'error');
+      return;
+    }
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const toIcsDate = (d: Date) =>
+      `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+
+    let icsContent = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marges Universitaire//FR\r\nCALSCALE:GREGORIAN\r\n`;
+
+    currentEvents.forEach((ev, idx) => {
+      icsContent += `BEGIN:VEVENT\r\n`;
+      icsContent += `UID:marges-${idx}-${ev.start.getTime()}@marges.app\r\n`;
+      icsContent += `DTSTAMP:${toIcsDate(new Date())}Z\r\n`;
+      icsContent += `DTSTART:${toIcsDate(ev.start)}\r\n`;
+      icsContent += `DTEND:${toIcsDate(ev.end)}\r\n`;
+      icsContent += `SUMMARY:${ev.title.replace(/\r?\n/g, ' ')}\r\n`;
+      if (ev.location) icsContent += `LOCATION:${ev.location}\r\n`;
+      if (ev.description) icsContent += `DESCRIPTION:${ev.description.replace(/\r?\n/g, ' ')}\r\n`;
+      icsContent += `END:VEVENT\r\n`;
+    });
+
+    icsContent += `END:VCALENDAR\r\n`;
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'mon-emploi-du-temps.ics';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast('Emploi du temps téléchargé au format .ics !', 'success');
+  }
+
+  // -------------------------------------------------------------
+  // Initialisation des événements et contrôleurs
+  // -------------------------------------------------------------
+
+  function initTimetable() {
+    renderAll();
+
+    // Navigation semaines
+    document.getElementById('btn-prev-week')?.addEventListener('click', async () => {
       const prev = new Date(activeDate);
       prev.setDate(prev.getDate() - 7);
       activeDate = prev;
-      renderCalendar();
+      await renderAll();
     });
 
-    document.getElementById('cal-next')?.addEventListener('click', () => {
+    document.getElementById('btn-next-week')?.addEventListener('click', async () => {
       const next = new Date(activeDate);
       next.setDate(next.getDate() + 7);
       activeDate = next;
-      renderCalendar();
+      await renderAll();
     });
 
-    // Bouton Aujourd'hui (Pill flottante iOS)
-    document.getElementById('btn-today-pill')?.addEventListener('click', () => {
+    document.getElementById('btn-today')?.addEventListener('click', async () => {
       activeDate = new Date();
-      renderCalendar();
-      // Scroll doux vers aujourd'hui sur mobile
-      const todayCol = document.querySelector('.col-today');
-      todayCol?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      activeDayIndex = (new Date().getDay() + 6) % 7;
+      await renderAll();
     });
 
-    // Bascule vues Semaine / Liste
-    const weekView = document.querySelector('[data-week-view]') as HTMLElement;
-    const agendaView = document.querySelector('[data-agenda-view]') as HTMLElement;
-    const btnWeek = document.getElementById('btn-view-week');
-    const btnAgenda = document.getElementById('btn-view-agenda');
-
-    btnWeek?.addEventListener('click', () => {
-      btnWeek.classList.add('active');
-      btnAgenda?.classList.remove('active');
-      if (weekView) weekView.hidden = false;
-      if (agendaView) agendaView.hidden = true;
+    // Bascule Week-end
+    const btnWeekend = document.getElementById('btn-toggle-weekend');
+    const checkWeekend = document.getElementById('weekend-toggle-check');
+    btnWeekend?.addEventListener('click', async () => {
+      showWeekend = !showWeekend;
+      checkWeekend?.classList.toggle('checked', showWeekend);
+      await renderAll();
     });
 
-    btnAgenda?.addEventListener('click', () => {
-      btnAgenda.classList.add('active');
-      btnWeek?.classList.remove('active');
-      if (weekView) weekView.hidden = true;
-      if (agendaView) agendaView.hidden = false;
+    // Filtres par type (Tous, CM, TD, TP)
+    document.querySelectorAll<HTMLButtonElement>('.filter-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.filter-chip').forEach((c) => c.classList.remove('active'));
+        chip.classList.add('active');
+        currentFilter = (chip.getAttribute('data-filter') as any) || 'all';
+        renderAll();
+      });
     });
 
-    // Fermeture modal
+    // Bascule des vues (Semaine / Jour / Liste)
+    const tabWeek = document.getElementById('tab-view-week');
+    const tabDay = document.getElementById('tab-view-day');
+    const tabList = document.getElementById('tab-view-list');
+
+    const viewWeek = document.getElementById('view-week');
+    const viewDay = document.getElementById('view-day');
+    const viewList = document.getElementById('view-list');
+
+    function switchView(viewName: 'week' | 'day' | 'list') {
+      [tabWeek, tabDay, tabList].forEach((t) => {
+        t?.classList.remove('active');
+        t?.setAttribute('aria-selected', 'false');
+      });
+      [viewWeek, viewDay, viewList].forEach((v) => {
+        if (v) v.hidden = true;
+      });
+
+      if (viewName === 'week') {
+        tabWeek?.classList.add('active');
+        tabWeek?.setAttribute('aria-selected', 'true');
+        if (viewWeek) viewWeek.hidden = false;
+      } else if (viewName === 'day') {
+        tabDay?.classList.add('active');
+        tabDay?.setAttribute('aria-selected', 'true');
+        if (viewDay) viewDay.hidden = false;
+      } else if (viewName === 'list') {
+        tabList?.classList.add('active');
+        tabList?.setAttribute('aria-selected', 'true');
+        if (viewList) viewList.hidden = false;
+      }
+    }
+
+    tabWeek?.addEventListener('click', () => switchView('week'));
+    tabDay?.addEventListener('click', () => switchView('day'));
+    tabList?.addEventListener('click', () => switchView('list'));
+
+    // Export ICS
+    document.getElementById('btn-export-ics')?.addEventListener('click', exportScheduleToIcs);
+
+    // Copie de la salle dans le presse-papier
+    document.getElementById('btn-copy-loc')?.addEventListener('click', () => {
+      const locText = document.getElementById('modal-location')?.textContent;
+      if (locText && locText !== 'Salle non spécifiée') {
+        navigator.clipboard?.writeText(locText);
+        toast(`Salle "${locText}" copiée !`, 'success');
+      }
+    });
+
+    // Fermeture modale d'inspection
+    const modalInspection = document.getElementById('event-modal') as HTMLDialogElement | null;
     document.getElementById('modal-close')?.addEventListener('click', () => {
-      (document.getElementById('event-modal') as HTMLDialogElement)?.close();
+      modalInspection?.close();
+    });
+    modalInspection?.addEventListener('click', (e) => {
+      if (e.target === modalInspection) modalInspection.close();
     });
 
-    document.getElementById('event-modal')?.addEventListener('click', (e) => {
-      const modal = document.getElementById('event-modal') as HTMLDialogElement;
-      if (e.target === modal) modal.close();
+    // Suppression d'un cours custom
+    document.getElementById('btn-delete-event')?.addEventListener('click', async () => {
+      if (!selectedEvent) return;
+      if (!confirm(`Supprimer le cours "${selectedEvent.title}" ?`)) return;
+
+      if (selectedEvent.dbId) {
+        try {
+          await deleteUserScheduleEvent(selectedEvent.dbId);
+        } catch (e: any) {
+          toast(e.message || 'Erreur lors de la suppression.', 'error');
+        }
+      } else {
+        try {
+          const raw = localStorage.getItem('marges_custom_schedule_events');
+          if (raw) {
+            let list = JSON.parse(raw);
+            list = list.filter((item: any) => item.id !== selectedEvent?.id);
+            localStorage.setItem('marges_custom_schedule_events', JSON.stringify(list));
+          }
+        } catch {}
+      }
+
+      modalInspection?.close();
+      toast('Cours supprimé.', 'success');
+      await renderAll();
     });
 
-    // Actualisation de l'indicateur de temps toutes les minutes
-    setInterval(updateCurrentTimeIndicator, 30000);
+    // Modale Ajout de créneau
+    const dialogAdd = document.getElementById('dialog-add-event') as HTMLDialogElement | null;
+    const btnOpenAdd = document.getElementById('btn-open-add-event');
+    const btnCloseAdd = document.getElementById('btn-close-add-event');
+    const btnCancelAdd = document.getElementById('btn-cancel-add-event');
+    const formAdd = document.getElementById('form-add-event') as HTMLFormElement | null;
+
+    btnOpenAdd?.addEventListener('click', () => dialogAdd?.showModal());
+    btnCloseAdd?.addEventListener('click', () => dialogAdd?.close());
+    btnCancelAdd?.addEventListener('click', () => dialogAdd?.close());
+    dialogAdd?.addEventListener('click', (e) => {
+      if (e.target === dialogAdd) dialogAdd.close();
+    });
+
+    formAdd?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const titleInput = document.getElementById('new-ev-title') as HTMLInputElement | null;
+      const typeInput = document.getElementById('new-ev-type') as HTMLSelectElement | null;
+      const dayInput = document.getElementById('new-ev-day') as HTMLSelectElement | null;
+      const startInput = document.getElementById('new-ev-start') as HTMLInputElement | null;
+      const endInput = document.getElementById('new-ev-end') as HTMLInputElement | null;
+      const locInput = document.getElementById('new-ev-loc') as HTMLInputElement | null;
+      const notesInput = document.getElementById('new-ev-notes') as HTMLInputElement | null;
+
+      if (!titleInput || !dayInput || !startInput || !endInput) return;
+
+      const rawTitle = titleInput.value.trim();
+      const cat = typeInput?.value || 'td';
+      const dayOfWeek = parseInt(dayInput.value, 10); // 1 = Lundi, 7 = Dimanche
+      const startStr = startInput.value;
+      const endStr = endInput.value;
+      const locStr = locInput?.value.trim() || '';
+      const notesStr = notesInput?.value.trim() || '';
+
+      const [sH, sM] = startStr.split(':').map(Number);
+      const [eH, eM] = endStr.split(':').map(Number);
+
+      // Préfixe propre si manquant
+      const title =
+        rawTitle.toUpperCase().startsWith('CM') ||
+        rawTitle.toUpperCase().startsWith('TD') ||
+        rawTitle.toUpperCase().startsWith('TP')
+          ? rawTitle
+          : `${cat.toUpperCase()} - ${rawTitle}`;
+
+      // Tenter Supabase
+      let savedToDb = false;
+      try {
+        await createUserScheduleEvent({
+          title,
+          day_of_week: dayOfWeek,
+          start_time: `${startStr}:00`,
+          end_time: `${endStr}:00`,
+          location: locStr || undefined,
+          notes: notesStr || undefined,
+        });
+        savedToDb = true;
+      } catch {
+        // Fallback localStorage
+      }
+
+      if (!savedToDb) {
+        try {
+          const raw = localStorage.getItem('marges_custom_schedule_events') || '[]';
+          const list = JSON.parse(raw);
+          list.push({
+            id: `custom-${Date.now()}`,
+            title,
+            dayOffset: dayOfWeek - 1,
+            startH: sH,
+            startM: sM,
+            endH: eH,
+            endM: eM,
+            location: locStr,
+            notes: notesStr,
+            category: cat,
+          });
+          localStorage.setItem('marges_custom_schedule_events', JSON.stringify(list));
+        } catch {}
+      }
+
+      dialogAdd?.close();
+      formAdd.reset();
+      toast('Nouveau créneau enregistré !', 'success');
+      await renderAll();
+    });
+
+    // Actualisation du statut direct toutes les 30 secondes
+    setInterval(updateLiveStatusCard, 30000);
   }
 
   if (typeof window !== 'undefined') {
@@ -627,886 +1464,1398 @@ import { url } from '../../utils/url';
 
 <style>
   /* ==============================================================
-     TOKENS CALENDRIER THEMATIQUES (CLAIR / SOMBRE)
-     Harmonisés avec la D.A. globale Marges
+     DESIGN SYSTÈME ÉPURÉ · EMPLOI DU TEMPS MARGES
+     Un planning aéré, haute lisibilité, typographique et soigné.
      ============================================================== */
 
-  /* THÈME CLAIR (par défaut si data-theme="light" ou système clair) */
-  :root,
-  :root[data-theme='light'] {
-    --cal-bg: var(--bg);
-    --cal-surface: var(--surface);
-    --cal-border: var(--line);
-    --cal-text: var(--fg);
-    --cal-text-muted: var(--muted);
-    --cal-hour-line: var(--line);
-    --cal-today-col: color-mix(in srgb, var(--accent) 3.5%, transparent);
-
-    --cal-btn-bg: var(--surface);
-    --cal-btn-border: var(--line);
-    --cal-btn-hover: var(--soft);
-    --cal-btn-fg: var(--fg);
-
-    --cal-pill-bg: var(--surface);
-    --cal-pill-border: var(--line-strong);
-    --cal-pill-text: var(--fg);
-    --cal-pill-shadow: var(--shadow-sm);
-
-    --cal-modal-bg: var(--surface);
-    --cal-modal-border: var(--line-strong);
-    --cal-modal-text: var(--fg);
-
-    /* Cartes cours : Fonds opaques solides & bordures précises */
-    --card-magenta-bg: #fff1f2;
-    --card-magenta-border: #fecdd3;
-    --card-magenta-bar: #e11d48;
-    --card-magenta-title: #881337;
-    --card-magenta-meta: #9f1239;
-    --card-magenta-badge-bg: #ffe4e6;
-    --card-magenta-badge-fg: #be123c;
-
-    --card-td-bg: #f5f3ff;
-    --card-td-border: #ddd6fe;
-    --card-td-bar: #7c3aed;
-    --card-td-title: #3b0764;
-    --card-td-meta: #5b21b6;
-    --card-td-badge-bg: #ede9fe;
-    --card-td-badge-fg: #6d28d9;
-
-    --card-cm-bg: #eff6ff;
-    --card-cm-border: #bfdbfe;
-    --card-cm-bar: #2563eb;
-    --card-cm-title: #1e3a8a;
-    --card-cm-meta: #1d4ed8;
-    --card-cm-badge-bg: #dbeafe;
-    --card-cm-badge-fg: #1e40af;
-
-    --card-habit-bg: #ecfdf5;
-    --card-habit-border: #a7f3d0;
-    --card-habit-bar: #059669;
-    --card-habit-title: #064e3b;
-    --card-habit-meta: #047857;
-    --card-habit-badge-bg: #d1fae5;
-    --card-habit-badge-fg: #065f46;
-  }
-
-  /* THÈME SOMBRE */
-  :root[data-theme='dark'] {
-    --cal-bg: var(--bg);
-    --cal-surface: var(--surface);
-    --cal-border: var(--line);
-    --cal-text: var(--fg);
-    --cal-text-muted: var(--muted);
-    --cal-hour-line: var(--line);
-    --cal-today-col: color-mix(in srgb, var(--accent) 5%, transparent);
-
-    --cal-btn-bg: var(--surface);
-    --cal-btn-border: var(--line);
-    --cal-btn-hover: var(--soft);
-    --cal-btn-fg: var(--fg);
-
-    --cal-pill-bg: var(--surface);
-    --cal-pill-border: var(--line-strong);
-    --cal-pill-text: var(--fg);
-    --cal-pill-shadow: var(--shadow-sm);
-
-    --cal-modal-bg: var(--surface);
-    --cal-modal-border: var(--line-strong);
-    --cal-modal-text: var(--fg);
-
-    /* Cartes cours sombres : surfaces #18181b / #1f1f23 bien contrastées */
-    --card-magenta-bg: #211218;
-    --card-magenta-border: rgba(244, 63, 94, 0.35);
-    --card-magenta-bar: #f43f5e;
-    --card-magenta-title: #ffe4e6;
-    --card-magenta-meta: #fda4af;
-    --card-magenta-badge-bg: rgba(244, 63, 94, 0.18);
-    --card-magenta-badge-fg: #fecdd3;
-
-    --card-td-bg: #1c152a;
-    --card-td-border: rgba(168, 85, 247, 0.35);
-    --card-td-bar: #a855f7;
-    --card-td-title: #f5d0fe;
-    --card-td-meta: #d8b4fe;
-    --card-td-badge-bg: rgba(168, 85, 247, 0.18);
-    --card-td-badge-fg: #e9d5ff;
-
-    --card-cm-bg: #131b2e;
-    --card-cm-border: rgba(96, 165, 250, 0.35);
-    --card-cm-bar: #3b82f6;
-    --card-cm-title: #dbeafe;
-    --card-cm-meta: #93c5fd;
-    --card-cm-badge-bg: rgba(59, 130, 246, 0.18);
-    --card-cm-badge-fg: #bfdbfe;
-
-    --card-habit-bg: #10231d;
-    --card-habit-border: rgba(52, 211, 153, 0.35);
-    --card-habit-bar: #10b981;
-    --card-habit-title: #d1fae5;
-    --card-habit-meta: #6ee7b7;
-    --card-habit-badge-bg: rgba(16, 185, 129, 0.18);
-    --card-habit-badge-fg: #a7f3d0;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme='light']) {
-      --cal-bg: var(--bg);
-      --cal-surface: var(--surface);
-      --cal-border: var(--line);
-      --cal-text: var(--fg);
-      --cal-text-muted: var(--muted);
-      --cal-hour-line: var(--line);
-      --cal-today-col: color-mix(in srgb, var(--accent) 5%, transparent);
-
-      --cal-btn-bg: var(--surface);
-      --cal-btn-border: var(--line);
-      --cal-btn-hover: var(--soft);
-      --cal-btn-fg: var(--fg);
-
-      --cal-pill-bg: var(--surface);
-      --cal-pill-border: var(--line-strong);
-      --cal-pill-text: var(--fg);
-      --cal-pill-shadow: var(--shadow-sm);
-
-      --cal-modal-bg: var(--surface);
-      --cal-modal-border: var(--line-strong);
-      --cal-modal-text: var(--fg);
-
-      --card-magenta-bg: #211218;
-      --card-magenta-border: rgba(244, 63, 94, 0.35);
-      --card-magenta-bar: #f43f5e;
-      --card-magenta-title: #ffe4e6;
-      --card-magenta-meta: #fda4af;
-      --card-magenta-badge-bg: rgba(244, 63, 94, 0.18);
-      --card-magenta-badge-fg: #fecdd3;
-
-      --card-td-bg: #1c152a;
-      --card-td-border: rgba(168, 85, 247, 0.35);
-      --card-td-bar: #a855f7;
-      --card-td-title: #f5d0fe;
-      --card-td-meta: #d8b4fe;
-      --card-td-badge-bg: rgba(168, 85, 247, 0.18);
-      --card-td-badge-fg: #e9d5ff;
-
-      --card-cm-bg: #131b2e;
-      --card-cm-border: rgba(96, 165, 250, 0.35);
-      --card-cm-bar: #3b82f6;
-      --card-cm-title: #dbeafe;
-      --card-cm-meta: #93c5fd;
-      --card-cm-badge-bg: rgba(59, 130, 246, 0.18);
-      --card-cm-badge-fg: #bfdbfe;
-
-      --card-habit-bg: #10231d;
-      --card-habit-border: rgba(52, 211, 153, 0.35);
-      --card-habit-bar: #10b981;
-      --card-habit-title: #d1fae5;
-      --card-habit-meta: #6ee7b7;
-      --card-habit-badge-bg: rgba(16, 185, 129, 0.18);
-      --card-habit-badge-fg: #a7f3d0;
-    }
-  }
-
-  :root {
-    --ios-red: #ff3b30;
-  }
-
-  .calendar-app-root {
-    background: var(--cal-bg);
-    color: var(--cal-text);
-    min-height: calc(100vh - 120px);
-    font-family: var(--font-ui);
+  .timetable-page {
     padding-bottom: 5rem;
-    position: relative;
-    user-select: none;
-    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  /* 1. BARRE SUPERIEURE */
-  .cal-top-bar {
+  /* 1. HERO & ACTIONS PRINCIPALES */
+  .timetable-hero {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 1.25rem;
-    background: var(--cal-bg);
-    border-bottom: 1px solid var(--cal-border);
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-    gap: 1rem;
+    align-items: flex-end;
+    gap: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 1.5rem;
     flex-wrap: wrap;
   }
-  .cal-top-left {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-  .cal-nav-group {
-    display: inline-flex;
-    align-items: center;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    padding: 0.15rem;
-    gap: 0.2rem;
-  }
-  .btn-cal-nav {
-    background: transparent;
-    border: none;
-    color: var(--fg);
-    width: 28px;
-    height: 28px;
-    border-radius: calc(var(--radius-sm) - 2px);
-    cursor: pointer;
-    display: grid;
-    place-items: center;
-    transition: background-color 0.15s ease, color 0.15s ease;
-  }
-  .btn-cal-nav:hover {
-    background: var(--soft);
-  }
-  .cal-month-title {
-    margin: 0;
-    padding: 0 0.65rem;
-    font-family: var(--font-ui);
-    font-size: 0.95rem;
+
+  .timetable-title {
+    margin: 0.15rem 0 0.35rem;
+    font-family: var(--font-text);
+    font-size: clamp(2rem, 1.8rem + 1vw, 2.75rem);
+    letter-spacing: -0.02em;
     font-weight: 600;
-    color: var(--fg);
-    letter-spacing: -0.01em;
-    min-width: 130px;
-    text-align: center;
   }
 
-  .cal-top-actions {
+  .timetable-sub {
+    margin: 0;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 0.95rem;
+  }
+
+  .timetable-hero-actions {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    flex-wrap: wrap;
   }
-  .view-switch-group {
-    display: inline-flex;
+
+  /* 2. CARTE "EN DIRECT / PROCHAIN COURS" */
+  .live-status-card {
+    display: flex;
     align-items: center;
+    gap: 1.25rem;
+    padding: 1rem 1.4rem;
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    padding: 0.15rem;
-    gap: 0.15rem;
+    border-radius: var(--radius);
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
   }
-  .view-switch-group .icon-btn {
-    border: none;
-    border-radius: calc(var(--radius-sm) - 2px);
-    height: 28px;
-    padding: 0 0.6rem;
-    gap: 0.35rem;
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: var(--muted);
-    background: transparent;
-    display: inline-flex;
+
+  .live-status-indicator {
+    display: flex;
     align-items: center;
-    cursor: pointer;
-    transition: all 0.15s ease;
+    gap: 0.5rem;
+    flex-shrink: 0;
   }
-  .view-switch-group .icon-btn:hover {
-    color: var(--fg);
-    background: var(--soft);
+
+  .live-pulse {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 0 0 rgba(76, 195, 138, 0.7);
+    animation: pulse-ring 2s infinite cubic-bezier(0.45, 0, 0.2, 1);
   }
-  .view-switch-group .icon-btn.active {
-    background: var(--soft);
-    color: var(--fg);
-    font-weight: 600;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  }
-  .icon-btn-solo {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    color: var(--muted);
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-sm);
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-    text-decoration: none;
-    transition: all 0.15s ease;
-  }
-  .icon-btn-solo:hover {
-    background: var(--soft);
-    color: var(--fg);
-    border-color: var(--line-strong);
-  }
-  .btn-label-desktop {
-    display: inline;
-  }
-  @media (max-width: 35rem) {
-    .btn-label-desktop {
-      display: none;
+
+  @keyframes pulse-ring {
+    0% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 70%, transparent);
     }
-    .view-switch-group .icon-btn {
-      padding: 0 0.4rem;
+    70% {
+      transform: scale(1.1);
+      box-shadow: 0 0 0 6px transparent;
+    }
+    100% {
+      transform: scale(0.95);
+      box-shadow: 0 0 0 0 transparent;
     }
   }
 
-  /* 3. VUE GRILLE SEMAINE */
-  .calendar-scroll-viewport {
-    overflow-x: auto;
-    overflow-y: visible;
-    background: var(--cal-bg);
-    width: 100%;
-    transition: background-color 0.2s ease;
+  .live-badge {
+    font-family: var(--font-ui);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.2rem 0.55rem;
+    border-radius: var(--r-sm);
+    background: var(--soft);
+    color: var(--muted);
   }
-  .cal-grid-frame {
+
+  .live-badge--active {
+    background: color-mix(in srgb, var(--success) 14%, var(--surface));
+    color: var(--success);
+    border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+  }
+
+  .live-status-content {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    min-width: 900px;
-    width: 100%;
+    gap: 0.15rem;
+    min-width: 0;
   }
 
-  /* En-têtes de colonnes (ex: mar. - 13 oct.) */
-  .cal-columns-header {
-    display: grid;
-    grid-template-columns: 58px repeat(7, 1fr);
-    background: var(--cal-bg);
-    border-bottom: 1px solid var(--cal-border);
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-  }
-  .col-header-corner {
-    border-right: 1px solid var(--cal-border);
-  }
-  .col-header-cell {
-    padding: 0.65rem 0.5rem;
-    text-align: center;
-    font-size: 0.8rem;
-    font-weight: 600;
+  .live-status-content strong {
     font-family: var(--font-ui);
+    font-size: 1rem;
+    font-weight: 600;
     color: var(--fg);
-    border-right: 1px solid var(--cal-border);
-    letter-spacing: -0.01em;
-  }
-  .col-header-cell:last-child {
-    border-right: none;
-  }
-  .col-header-cell.header-today {
-    color: var(--accent);
-    font-weight: 700;
-  }
-
-  /* Ligne des habitudes toute la journée */
-  .cal-allday-row {
-    display: grid;
-    grid-template-columns: 58px repeat(7, 1fr);
-    background: var(--cal-bg);
-    border-bottom: 1px solid var(--cal-border);
-    min-height: 40px;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
-  }
-  .allday-corner {
-    border-right: 1px solid var(--cal-border);
-  }
-  .allday-cell {
-    padding: 0.4rem 0.35rem;
-    border-right: 1px solid var(--cal-border);
-    display: flex;
-    align-items: center;
-  }
-  .allday-cell:last-child {
-    border-right: none;
-  }
-  .habit-badge {
-    background: var(--card-habit-bg);
-    border: 1px solid var(--card-habit-border);
-    color: var(--card-habit-title);
-    border-radius: var(--radius-sm);
-    padding: 0.25rem 0.5rem;
-    font-size: 0.74rem;
-    font-weight: 600;
-    font-family: var(--font-ui);
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    width: 100%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .habit-circle {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    border: 2px solid var(--card-habit-bar);
-    flex: none;
-  }
-  .habit-title {
-    overflow: hidden;
-    text-overflow: ellipsis;
+
+  .live-status-action {
+    flex-shrink: 0;
   }
 
-  /* 4. CORPS PRINCIPAL DE LA GRILLE */
-  .cal-grid-body {
+  /* 3. BARRE DE CONTRÔLE (NAVIGATION, VUES, FILTRES) */
+  .timetable-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .nav-date-group {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .btn-nav-arrow {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--fg);
     display: grid;
-    grid-template-columns: 58px 1fr;
-    height: 900px;
-    position: relative;
-    background: var(--cal-bg);
-    transition: background-color 0.2s ease;
+    place-items: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
   }
 
-  /* Axe temporel gauche */
-  .cal-time-axis {
+  .btn-nav-arrow:hover {
+    background: var(--soft);
+    border-color: var(--line-strong);
+  }
+
+  .btn-today-pill {
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--fg);
+    font-family: var(--font-ui);
+    font-size: 0.82rem;
+    font-weight: 550;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .btn-today-pill:hover {
+    background: var(--soft);
+    border-color: var(--line-strong);
+  }
+
+  .current-date-heading {
+    font-family: var(--font-ui);
+    font-size: 0.95rem;
+    font-weight: 650;
+    color: var(--fg);
+    margin-left: 0.4rem;
+    letter-spacing: -0.01em;
+  }
+
+  .toolbar-right-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  /* Filtres type de cours */
+  .filter-pills {
+    display: inline-flex;
+    align-items: center;
+    background: var(--soft);
+    padding: 2px;
+    border-radius: var(--r-sm);
+    gap: 2px;
+  }
+
+  .filter-chip {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.6rem;
+    border-radius: calc(var(--r-sm) - 2px);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .filter-chip:hover {
+    color: var(--fg);
+  }
+
+  .filter-chip.active {
+    background: var(--surface);
+    color: var(--fg);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Bascule Week-end */
+  .btn-weekend-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 0.8rem;
+    font-weight: 550;
+    padding: 0.3rem 0.65rem;
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .btn-weekend-toggle:hover {
+    background: var(--soft);
+    color: var(--fg);
+  }
+
+  .weekend-toggle-check {
+    width: 12px;
+    height: 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 3px;
+    display: inline-block;
+    position: relative;
+    transition: all 0.15s ease;
+  }
+
+  .weekend-toggle-check.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .weekend-toggle-check.checked::after {
+    content: '';
+    position: absolute;
+    top: 1px;
+    left: 3px;
+    width: 4px;
+    height: 7px;
+    border: solid #ffffff;
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg);
+  }
+
+  /* Sélecteur de vue (Semaine, Jour, Liste) */
+  .view-segmented-control {
+    display: inline-flex;
+    background: var(--soft);
+    padding: 2px;
+    border-radius: var(--r-sm);
+    gap: 2px;
+  }
+
+  .view-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 0.8rem;
+    font-weight: 550;
+    padding: 0.35rem 0.75rem;
+    border-radius: calc(var(--r-sm) - 2px);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .view-tab-btn:hover {
+    color: var(--fg);
+  }
+
+  .view-tab-btn.active {
+    background: var(--surface);
+    color: var(--fg);
+    font-weight: 650;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  /* ==============================================================
+     VUE 1 : GRILLE SEMAINE (LARGES COLONNES & RESPONSIVE)
+     ============================================================== */
+
+  .view-week {
+    width: 100%;
+    overflow-x: auto;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .week-grid-container {
+    --day-columns-count: 5;
+    min-width: 860px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* En-têtes des jours */
+  .week-columns-header {
+    display: grid;
+    grid-template-columns: 60px repeat(var(--day-columns-count), 1fr);
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .header-corner-cell {
+    border-right: 1px solid var(--line);
+  }
+
+  .col-header-day {
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    font-family: var(--font-ui);
+  }
+
+  .col-header-day:last-child {
+    border-right: none;
+  }
+
+  .col-header-day.is-today {
+    background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+  }
+
+  .col-header-day .day-name {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+
+  .col-header-day.is-today .day-name {
+    color: var(--accent);
+  }
+
+  .col-header-day .day-num {
+    font-size: 0.92rem;
+    font-weight: 650;
+    color: var(--fg);
+  }
+
+  .col-header-day.is-today .day-num {
+    color: var(--accent);
+  }
+
+  .day-count-badge {
+    font-size: 0.68rem;
+    color: var(--muted);
+    background: var(--soft);
+    padding: 0.05rem 0.4rem;
+    border-radius: var(--r-sm);
+    margin-top: 0.15rem;
+  }
+
+  /* Corps de la grille */
+  .week-grid-body {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    height: 840px; /* 12h x 70px/h = beaucoup d'espace vertical ! */
+    position: relative;
+    background: var(--surface);
+  }
+
+  .time-axis {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    border-right: 1px solid var(--cal-border);
-    padding: 0.15rem 0.4rem;
+    border-right: 1px solid var(--line);
+    padding: 0.2rem 0.5rem 0.2rem 0;
     position: relative;
     z-index: 5;
     font-family: var(--font-ui);
   }
-  .time-label {
-    font-size: 0.7rem;
+
+  .time-axis-tick {
+    font-size: 0.72rem;
     font-weight: 500;
-    color: var(--cal-text-muted);
+    color: var(--muted);
     font-variant-numeric: tabular-nums;
     text-align: right;
     line-height: 1;
     transform: translateY(-50%);
   }
-  .time-label:first-child {
+
+  .time-axis-tick:first-child {
     transform: translateY(0);
   }
-  .time-label:last-child {
+
+  .time-axis-tick:last-child {
     transform: translateY(-100%);
   }
 
-  /* Badge heure actuelle */
-  .current-time-badge {
-    position: absolute;
-    left: 2px;
-    right: 2px;
-    transform: translateY(-50%);
-    background: var(--accent);
-    color: #ffffff;
-    border-radius: var(--radius-full, 999px);
-    padding: 2px 4px;
-    font-size: 0.65rem;
-    font-weight: 700;
-    font-family: var(--font-ui);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 40%, transparent);
-    z-index: 10;
-  }
-
-  /* Lignes horizontales d'heures */
-  .cal-hour-lines {
+  .grid-hour-lines {
     position: absolute;
     top: 0;
     bottom: 0;
-    left: 58px;
+    left: 60px;
     right: 0;
     pointer-events: none;
   }
+
   .hour-line {
     position: absolute;
     left: 0;
     right: 0;
-    border-top: 1px solid var(--cal-hour-line);
+    border-top: 1px solid var(--line);
+    opacity: 0.8;
   }
 
-  /* 7 Colonnes de jours */
-  .cal-day-columns {
+  .day-columns-container {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(var(--day-columns-count), 1fr);
     position: relative;
     height: 100%;
   }
-  .cal-day-col {
+
+  .day-col {
     position: relative;
     height: 100%;
-    border-right: 1px solid var(--cal-border);
+    border-right: 1px solid var(--line);
   }
-  .cal-day-col:last-child {
+
+  .day-col:last-child {
     border-right: none;
   }
-  .cal-day-col.col-today {
-    background: var(--cal-today-col);
+
+  .day-col.is-today-col {
+    background: color-mix(in srgb, var(--accent) 2.5%, transparent);
   }
 
-  /* Ligne rouge "Now" */
-  .now-indicator-line {
+  /* Ligne heure courante */
+  .current-time-line {
     position: absolute;
     left: 0;
     right: 0;
     height: 2px;
-    background: var(--ios-red);
-    z-index: 8;
+    background: var(--danger);
+    z-index: 15;
     pointer-events: none;
-    box-shadow: 0 0 6px rgba(255, 59, 48, 0.6);
   }
-  .now-indicator-line::before {
-    content: '';
+
+  .current-time-line .line-dot {
     position: absolute;
     left: -4px;
     top: -3px;
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--ios-red);
+    background: var(--danger);
+    box-shadow: 0 0 6px rgba(255, 107, 102, 0.8);
   }
 
-  /* 5. CARTES DE COURS MODERNISÉES */
+  /* ==============================================================
+     CARTES DE COURS DANS LA GRILLE SEMAINE
+     Conçues pour une lisibilité totale sans aucun chevauchement !
+     ============================================================== */
+
   .course-card {
     position: absolute;
-    border-radius: var(--radius-sm);
+    border-radius: var(--r-sm);
     overflow: hidden;
     cursor: pointer;
-    box-shadow: var(--shadow-sm);
-    transition: transform 0.15s ease, z-index 0.15s ease, box-shadow 0.15s ease;
-    z-index: 2;
     box-sizing: border-box;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, z-index 0.15s ease;
+    z-index: 2;
+    min-height: 52px;
+    box-shadow: var(--shadow-sm);
   }
-  :root[data-theme='dark'] .course-card {
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
-  }
+
   .course-card:hover {
-    transform: translateY(-1px) scale(1.02);
-    z-index: 20;
+    transform: translateY(-2px);
+    z-index: 30;
     box-shadow: var(--shadow-md);
-    filter: brightness(1.04);
   }
+
+  .course-card:focus-visible {
+    outline: 2px solid var(--fg);
+    outline-offset: 2px;
+    z-index: 30;
+  }
+
   .card-inner {
-    padding: 0.25rem 0.35rem;
+    padding: 0.5rem 0.65rem;
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    overflow: hidden;
-    gap: 0.12rem;
+    gap: 0.25rem;
     box-sizing: border-box;
+    overflow: hidden;
   }
-  .card-header-line {
+
+  .card-top-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.2rem;
+    gap: 0.35rem;
     line-height: 1;
-    margin-bottom: 0.05rem;
   }
-  .card-badge {
-    font-size: 0.52rem;
+
+  .card-tag {
+    font-family: var(--font-ui);
+    font-size: 0.65rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
-    padding: 0.08rem 0.25rem;
+    letter-spacing: 0.04em;
+    padding: 0.12rem 0.35rem;
     border-radius: 3px;
-    line-height: 1;
     flex-shrink: 0;
   }
-  .card-time-pill {
-    font-size: 0.56rem;
+
+  .card-time {
+    font-family: var(--font-ui);
+    font-size: 0.72rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    opacity: 0.85;
+    color: var(--muted);
     white-space: nowrap;
-    line-height: 1;
+    opacity: 0.9;
   }
 
-  /* Style par type de cours */
-  .card-magenta-vivid {
-    background: var(--card-magenta-bg) !important;
-    border: 1px solid var(--card-magenta-border) !important;
-    border-left: 3px solid var(--card-magenta-bar) !important;
-  }
-  .card-magenta-vivid .card-badge {
-    background: var(--card-magenta-badge-bg);
-    color: var(--card-magenta-badge-fg);
-  }
-  .card-magenta-vivid .card-title,
-  .card-magenta-vivid .card-time-pill {
-    color: var(--card-magenta-title) !important;
-  }
-  .card-magenta-vivid .card-meta {
-    color: var(--card-magenta-meta) !important;
-  }
-
-  .card-td {
-    background: var(--card-td-bg) !important;
-    border: 1px solid var(--card-td-border) !important;
-    border-left: 3px solid var(--card-td-bar) !important;
-  }
-  .card-td .card-badge {
-    background: var(--card-td-badge-bg);
-    color: var(--card-td-badge-fg);
-  }
-  .card-td .card-title,
-  .card-td .card-time-pill {
-    color: var(--card-td-title) !important;
-  }
-  .card-td .card-meta {
-    color: var(--card-td-meta) !important;
-  }
-
-  .card-cm {
-    background: var(--card-cm-bg) !important;
-    border: 1px solid var(--card-cm-border) !important;
-    border-left: 3px solid var(--card-cm-bar) !important;
-  }
-  .card-cm .card-badge {
-    background: var(--card-cm-badge-bg);
-    color: var(--card-cm-badge-fg);
-  }
-  .card-cm .card-title,
-  .card-cm .card-time-pill {
-    color: var(--card-cm-title) !important;
-  }
-  .card-cm .card-meta {
-    color: var(--card-cm-meta) !important;
-  }
-
-  .card-habit {
-    background: var(--card-habit-bg) !important;
-    border: 1px solid var(--card-habit-border) !important;
-    border-left: 3px solid var(--card-habit-bar) !important;
-  }
-  .card-habit .card-badge {
-    background: var(--card-habit-badge-bg);
-    color: var(--card-habit-badge-fg);
-  }
-  .card-habit .card-title,
-  .card-habit .card-time-pill {
-    color: var(--card-habit-title) !important;
-  }
-  .card-habit .card-meta {
-    color: var(--card-habit-meta) !important;
-  }
-
-  .card-title {
-    margin: 0 !important;
-    font-family: var(--font-ui) !important;
-    font-size: 0.65rem !important;
-    font-weight: 600 !important;
-    line-height: 1.15 !important;
+  .card-course-title {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 0.82rem;
+    font-weight: 650;
+    line-height: 1.25;
     letter-spacing: -0.01em;
-    overflow: hidden;
+    color: var(--fg);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+    overflow: hidden;
     word-break: break-word;
   }
-  .card-meta {
-    font-family: var(--font-ui) !important;
-    font-size: 0.56rem !important;
-    font-weight: 500 !important;
-    line-height: 1.1 !important;
+
+  .card-bottom-row {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
+    font-family: var(--font-ui);
+    font-size: 0.7rem;
+    color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
-    display: flex;
-    align-items: center;
-    gap: 0.2rem;
-    margin-top: auto;
-    opacity: 0.85;
-  }
-  .card-meta svg {
-    width: 9px;
-    height: 9px;
-    flex-shrink: 0;
-    opacity: 0.85;
   }
 
-  /* Mode condensé (quand 2 cours ou plus se chevauchent) */
-  .course-card.is-condensed .card-inner {
-    padding: 0.18rem 0.25rem;
-    gap: 0.08rem;
-  }
-  .course-card.is-condensed .card-title {
-    font-size: 0.60rem !important;
-    line-height: 1.12 !important;
-    -webkit-line-clamp: 2;
-  }
-  .course-card.is-condensed .card-badge {
-    font-size: 0.50rem;
-    padding: 0.06rem 0.18rem;
-  }
-  .course-card.is-condensed .card-time-pill {
-    display: none;
-  }
-  .course-card.is-condensed .card-meta {
-    font-size: 0.52rem !important;
-  }
-
-  /* 6. VUE LISTE AGENDA */
-  .agenda-view-wrapper {
-    padding-top: 2rem;
-  }
-  .agenda-card-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 1rem;
-    max-width: 700px;
-    margin: 0 auto;
-  }
-  .agenda-item {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    padding: 1.25rem 1.5rem;
-    border-radius: 8px;
-    border: 1px solid var(--cal-border);
-  }
-  .agenda-date {
-    display: grid;
-    width: 140px;
-    flex: none;
-    font-size: 0.85rem;
-    color: var(--cal-text-muted);
-  }
-  .agenda-info {
-    flex: 1;
-  }
-  .agenda-title {
-    margin: 0 0 0.25rem;
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: var(--cal-text);
-  }
-  .agenda-loc {
-    margin: 0;
-    font-size: 0.85rem;
-    opacity: 0.85;
-    color: var(--cal-text-muted);
-  }
-  .agenda-desc {
-    margin: 0.25rem 0 0;
-    font-size: 0.78rem;
-    color: var(--cal-text-muted);
-  }
-
-  /* 7. BOUTON FLOTTANT "AUJOURD'HUI" */
-  .cal-floating-bar {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 50;
-    pointer-events: none;
-  }
-  .btn-today-pill {
-    pointer-events: auto;
-    background: var(--surface);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--line-strong);
-    color: var(--fg);
-    border-radius: var(--radius-full, 999px);
-    padding: 0.5rem 1.15rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    font-family: var(--font-ui);
+  .card-loc {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    box-shadow: var(--shadow-md);
-    transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+    gap: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .btn-today-pill:hover {
-    transform: translateY(-2px);
+
+  .card-loc svg {
+    flex-shrink: 0;
+    opacity: 0.75;
+  }
+
+  .card-group-pill {
     background: var(--soft);
+    padding: 0.05rem 0.3rem;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    flex-shrink: 0;
   }
-  .red-dot {
-    width: 7px;
-    height: 7px;
+
+  /* Mode serré (quand 2 cours ont lieu au même créneau) */
+  .course-card.is-tight .card-inner {
+    padding: 0.35rem 0.45rem;
+    gap: 0.15rem;
+  }
+
+  .course-card.is-tight .card-course-title {
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+
+  .course-card.is-tight .card-time {
+    display: none;
+  }
+
+  /* Couleurs sémantiques par type de cours */
+  .card-kind--cm {
+    background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+    border-left: 3.5px solid var(--accent);
+  }
+  .tag-cm {
+    background: color-mix(in srgb, var(--accent) 15%, var(--surface));
+    color: var(--accent);
+  }
+
+  .card-kind--td {
+    background: color-mix(in srgb, var(--tone-cours) 7%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--tone-cours) 22%, transparent);
+    border-left: 3.5px solid var(--tone-cours);
+  }
+  .tag-td {
+    background: color-mix(in srgb, var(--tone-cours) 15%, var(--surface));
+    color: var(--tone-cours);
+  }
+
+  .card-kind--tp {
+    background: color-mix(in srgb, var(--tone-philo) 7%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--tone-philo) 22%, transparent);
+    border-left: 3.5px solid var(--tone-philo);
+  }
+  .tag-tp {
+    background: color-mix(in srgb, var(--tone-philo) 15%, var(--surface));
+    color: var(--tone-philo);
+  }
+
+  .card-kind--autre {
+    background: color-mix(in srgb, var(--warning) 7%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--warning) 22%, transparent);
+    border-left: 3.5px solid var(--warning);
+  }
+  .tag-autre {
+    background: color-mix(in srgb, var(--warning) 15%, var(--surface));
+    color: var(--warning);
+  }
+
+  /* ==============================================================
+     VUE 2 : JOUR PAR JOUR (FOCUS QUOTIDIEN)
+     ============================================================== */
+
+  .view-day {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .day-selector-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+
+  .day-pill-btn {
+    flex: 1;
+    min-width: 72px;
+    padding: 0.6rem 0.5rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    cursor: pointer;
+    position: relative;
+    font-family: var(--font-ui);
+    transition: all 0.15s ease;
+  }
+
+  .day-pill-btn:hover {
+    background: var(--soft);
+    border-color: var(--line-strong);
+  }
+
+  .day-pill-btn.active {
+    background: var(--fg);
+    color: var(--bg);
+    border-color: var(--fg);
+  }
+
+  .day-pill-btn .pill-name {
+    font-size: 0.72rem;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+  }
+
+  .day-pill-btn .pill-num {
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .day-pill-btn .pill-today-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: var(--accent);
-    box-shadow: 0 0 6px color-mix(in srgb, var(--accent) 70%, transparent);
   }
 
-  /* 8. MODAL DETAILS DU COURS */
-  .cal-event-dialog {
-    background: var(--cal-modal-bg);
-    color: var(--cal-modal-text);
-    border: 1px solid var(--cal-modal-border);
-    border-radius: 12px;
-    padding: 1.5rem;
-    max-width: 480px;
-    width: 90%;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  .day-pill-btn.active .pill-today-dot {
+    background: var(--bg);
   }
-  :root[data-theme='dark'] .cal-event-dialog {
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
-  }
-  .cal-event-dialog::backdrop {
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-  }
-  .dialog-header {
+
+  .day-view-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-  }
-  .dialog-badge {
-    background: var(--card-cm-bg);
-    color: var(--card-cm-title);
-    border: 1px solid var(--card-cm-border);
-    padding: 0.2rem 0.6rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 700;
-  }
-  .btn-close-modal {
-    background: none;
-    border: none;
-    color: var(--cal-text-muted);
-    font-size: 1.2rem;
-    cursor: pointer;
-  }
-  .btn-close-modal:hover {
-    color: var(--cal-text);
-  }
-  .dialog-title {
-    margin: 0 0 1rem;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--card-magenta-bar);
-  }
-  .dialog-meta-list {
-    display: grid;
-    gap: 0.4rem;
-    margin-bottom: 1.5rem;
-  }
-  .dialog-meta {
-    margin: 0;
-    font-size: 0.9rem;
-    color: var(--cal-text);
-  }
-  .dialog-desc {
-    margin: 0.5rem 0 0;
-    font-size: 0.85rem;
-    color: var(--cal-text-muted);
-    line-height: 1.4;
-  }
-  .dialog-actions {
-    display: flex;
-    justify-content: flex-end;
-  }
-  .btn-modal-action {
-    background: var(--card-magenta-bar);
-    color: #ffffff;
-    padding: 0.55rem 1rem;
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-decoration: none;
-    transition: opacity 0.15s ease;
-  }
-  .btn-modal-action:hover {
-    opacity: 0.85;
+    align-items: baseline;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--line);
   }
 
-  @media (max-width: 60rem) {
-    .cal-grid-frame {
-      min-width: 950px;
+  .day-view-title {
+    margin: 0 0 0.25rem;
+    font-family: var(--font-text);
+    font-size: 1.6rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .day-courses-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .day-course-card {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    gap: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+
+  .day-course-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--line-strong);
+  }
+
+  .card-time-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-right: 1px solid var(--line);
+    padding-right: 1.25rem;
+    font-family: var(--font-ui);
+  }
+
+  .time-start {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--fg);
+    line-height: 1;
+  }
+
+  .time-sep {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin: 0.2rem 0;
+  }
+
+  .time-end {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--muted);
+    line-height: 1;
+  }
+
+  .duration-badge {
+    margin-top: 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 650;
+    color: var(--muted);
+    background: var(--soft);
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--r-sm);
+    align-self: flex-start;
+  }
+
+  .card-content-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .card-header-tags {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .card-status-pill {
+    font-family: var(--font-ui);
+    font-size: 0.7rem;
+    font-weight: 650;
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--r-sm);
+    background: var(--soft);
+    color: var(--muted);
+  }
+
+  .card-status-pill.status-live {
+    background: color-mix(in srgb, var(--success) 15%, var(--surface));
+    color: var(--success);
+    border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+  }
+
+  .card-status-pill.status-past {
+    opacity: 0.7;
+  }
+
+  .location-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    font-weight: 550;
+    color: var(--fg);
+    background: var(--soft);
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--r-sm);
+  }
+
+  .group-pill {
+    font-family: var(--font-ui);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--soft);
+    padding: 0.15rem 0.45rem;
+    border-radius: var(--r-sm);
+  }
+
+  .day-card-title {
+    margin: 0.2rem 0 0;
+    font-family: var(--font-ui);
+    font-size: 1.2rem;
+    font-weight: 650;
+    color: var(--fg);
+    line-height: 1.3;
+  }
+
+  .day-card-desc {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 0.88rem;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .day-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-course-docs {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .empty-day-panel {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    background: var(--surface);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius);
+    color: var(--muted);
+  }
+
+  .empty-icon {
+    margin-bottom: 0.75rem;
+    opacity: 0.5;
+  }
+
+  .empty-day-panel h3 {
+    margin: 0 0 0.35rem;
+    color: var(--fg);
+  }
+
+  /* ==============================================================
+     VUE 3 : LISTE / AGENDA
+     ============================================================== */
+
+  .agenda-list-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .agenda-day-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .agenda-day-header {
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-family: var(--font-text);
+    font-size: 1.25rem;
+    font-weight: 600;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .agenda-cards-grid {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .agenda-card {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0.85rem 1.15rem;
+    gap: 1rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .agenda-card:hover {
+    transform: translateX(3px);
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .agenda-time {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    font-family: var(--font-ui);
+    line-height: 1.2;
+  }
+
+  .agenda-time strong {
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .agenda-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .agenda-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .agenda-title {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .agenda-desc {
+    margin: 0;
+    font-size: 0.8rem;
+  }
+
+  /* ==============================================================
+     MODALES (INSPECTION & AJOUT)
+     ============================================================== */
+
+  .cal-dialog {
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-lg);
+    background: var(--surface);
+    color: var(--fg);
+    padding: 0;
+    max-width: 480px;
+    width: min(calc(100vw - 1.5rem), 480px);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    margin: auto;
+    box-shadow: var(--shadow-md);
+  }
+
+  .cal-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+  }
+
+  .cal-dialog-content {
+    padding: 1.5rem;
+  }
+
+  .cal-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.85rem;
+  }
+
+  .dialog-type-tag {
+    font-family: var(--font-ui);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.55rem;
+    border-radius: var(--r-sm);
+    background: var(--soft);
+    color: var(--muted);
+  }
+
+  .btn-close-dialog {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 1.15rem;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+    border-radius: var(--r-sm);
+    line-height: 1;
+  }
+
+  .btn-close-dialog:hover {
+    color: var(--fg);
+    background: var(--soft);
+  }
+
+  .cal-dialog-title {
+    margin: 0 0 1.25rem;
+    font-family: var(--font-text);
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+  }
+
+  .cal-dialog-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 1rem;
+    background: var(--soft);
+    border-radius: var(--radius);
+    margin-bottom: 1.5rem;
+  }
+
+  .detail-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .detail-icon {
+    color: var(--muted);
+    margin-top: 0.15rem;
+    flex-shrink: 0;
+  }
+
+  .detail-label {
+    display: block;
+    font-family: var(--font-ui);
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    margin-bottom: 0.1rem;
+  }
+
+  .detail-value {
+    font-family: var(--font-ui);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .detail-text {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 0.88rem;
+    color: var(--fg);
+  }
+
+  .btn-copy-loc {
+    align-self: center;
+    font-size: 0.75rem;
+  }
+
+  .cal-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  /* Formulaire d'ajout */
+  .dialog-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .form-field label {
+    font-family: var(--font-ui);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .form-field input,
+  .form-field select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-sm);
+    background: var(--surface);
+    color: var(--fg);
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  .form-field input:focus,
+  .form-field select:focus {
+    border-color: var(--accent);
+  }
+
+  .form-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .required {
+    color: var(--danger);
+  }
+
+  /* ==============================================================
+     RESPONSIVE ADAPTATIONS
+     ============================================================== */
+
+  @media (max-width: 56rem) {
+    .timetable-hero {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .timetable-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.85rem;
+    }
+
+    .toolbar-right-group {
+      justify-content: space-between;
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 48rem) {
+    .live-status-card {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.85rem;
+      padding: 0.85rem 1rem;
+    }
+
+    .live-status-action {
+      width: 100%;
+    }
+
+    .live-status-action .btn {
+      width: 100%;
+    }
+
+    .week-grid-container {
+      min-width: 680px;
+    }
+
+    .day-course-card {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+      padding: 1rem;
+    }
+
+    .card-time-column {
+      border-right: none;
+      border-bottom: 1px solid var(--line);
+      padding-right: 0;
+      padding-bottom: 0.75rem;
+      flex-direction: row;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+
+    .time-sep {
+      margin: 0;
+    }
+
+    .duration-badge {
+      margin-top: 0;
+      margin-left: auto;
+    }
+
+    .agenda-card {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+    }
+
+    .agenda-time {
+      flex-direction: row;
+      align-items: baseline;
+      gap: 0.4rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .btn-label-desktop {
+      display: none;
+    }
+  }
+
+  @media (max-width: 36rem) {
+    .timetable-title {
+      font-size: 1.85rem;
+    }
+
+    .timetable-hero-actions {
+      width: 100%;
+    }
+
+    .timetable-hero-actions .btn {
+      flex: 1 1 auto;
+    }
+
+    .nav-date-group {
+      width: 100%;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+
+    .current-date-heading {
+      width: 100%;
+      margin-left: 0;
+      margin-top: 0.35rem;
+    }
+
+    .toolbar-right-group {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.65rem;
+    }
+
+    .view-segmented {
+      width: 100%;
+      display: flex;
+    }
+
+    .view-segmented .view-chip {
+      flex: 1;
+      text-align: center;
+      padding: 0.35rem 0.5rem;
+    }
+
+    .filter-pills {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .filter-chip {
+      flex: 1;
+      text-align: center;
+      padding: 0.3rem 0.4rem;
+    }
+
+    .week-grid-container {
+      min-width: 560px;
+    }
+
+    .day-pills-row {
+      -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x mandatory;
+    }
+
+    .day-pill-btn {
+      scroll-snap-align: start;
+      min-width: 60px;
+      padding: 0.45rem 0.35rem;
+    }
+
+    .day-pill-btn .pill-num {
+      font-size: 1rem;
+    }
+
+    .day-view-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.25rem;
+    }
+
+    .cal-dialog {
+      width: calc(100vw - 1.5rem);
+      max-height: calc(100dvh - 2rem);
+      overflow-y: auto;
+      margin: auto;
+    }
+
+    .cal-dialog-content {
+      padding: 1rem;
+    }
+
+    .form-row-2 {
+      grid-template-columns: 1fr;
+      gap: 0.65rem;
+    }
+
+    .cal-dialog-actions {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+    }
+
+    .cal-dialog-actions .btn {
+      width: 100%;
     }
   }
 </style>

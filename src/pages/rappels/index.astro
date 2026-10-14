@@ -71,7 +71,10 @@ const serializedCourses = subjects.map((s) => ({
               <span class="dot-status" id="schedule-dot"></span>
               <h2 class="label" id="schedule-state-title">Programme de rappels actif</h2>
             </div>
-            <a href={url('/configuration/')} class="more">Ajuster <span aria-hidden="true">→</span></a>
+            <div style="display: flex; gap: 0.75rem; align-items: center;">
+              <button type="button" class="btn btn--sm" id="btn-toggle-adjust-reminders">Modifier mes réglages</button>
+              <a href={url('/configuration/')} class="more">Paramètres avancés <span aria-hidden="true">→</span></a>
+            </div>
           </div>
 
           <div class="schedule-details">
@@ -89,10 +92,87 @@ const serializedCourses = subjects.map((s) => ({
             </div>
           </div>
 
-          <div class="schedule-footer">
+          <!-- Formulaire de réglage directement accessible -->
+          <div id="panel-adjust-reminders" style="display: none; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--line);">
+            <form id="form-rappels-config" class="config-form" style="display: grid; gap: 1rem;">
+              <div class="form-group">
+                <label class="form-checkbox main-toggle" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                  <input type="checkbox" id="rappels-enabled" checked />
+                  <strong>Activer la programmation automatique des alertes</strong>
+                </label>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <div class="form-group" style="display: grid; gap: 0.35rem;">
+                  <label for="rappels-frequency" class="field-label" style="font-size: 0.85rem; font-weight: 600;">Fréquence :</label>
+                  <select id="rappels-frequency" style="padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--fg);">
+                    <option value="daily">Quotidienne (chaque jour)</option>
+                    <option value="twice_daily">Deux fois par jour (Matin & Soir)</option>
+                    <option value="weekly">Hebdomadaire (un jour précis)</option>
+                  </select>
+                </div>
+
+                <div class="form-group" style="display: grid; gap: 0.35rem;">
+                  <label for="rappels-content" class="field-label" style="font-size: 0.85rem; font-weight: 600;">Type de contenu :</label>
+                  <select id="rappels-content" style="padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--fg);">
+                    <option value="all">Aléatoire (Textes & Cours)</option>
+                    <option value="philo">Textes de philosophie uniquement</option>
+                    <option value="cours">Supports de cours uniquement</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+                <div class="form-group" id="grp-rappels-time-1" style="display: grid; gap: 0.35rem;">
+                  <label for="rappels-time-1" class="field-label" id="lbl-rappels-time-1" style="font-size: 0.85rem; font-weight: 600;">Heure quotidienne :</label>
+                  <input type="time" id="rappels-time-1" value="09:00" style="padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--fg);" />
+                </div>
+
+                <div class="form-group" id="grp-rappels-time-2" style="display: none; grid-gap: 0.35rem;">
+                  <label for="rappels-time-2" class="field-label" style="font-size: 0.85rem; font-weight: 600;">Deuxième heure (soir) :</label>
+                  <input type="time" id="rappels-time-2" value="18:30" style="padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--fg);" />
+                </div>
+
+                <div class="form-group" id="grp-rappels-weekday" style="display: none; grid-gap: 0.35rem;">
+                  <label for="rappels-weekday" class="field-label" style="font-size: 0.85rem; font-weight: 600;">Jour de la semaine :</label>
+                  <select id="rappels-weekday" style="padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--fg);">
+                    <option value="1">Lundi</option>
+                    <option value="2">Mardi</option>
+                    <option value="3">Mercredi</option>
+                    <option value="4">Jeudi</option>
+                    <option value="5">Vendredi</option>
+                    <option value="6">Samedi</option>
+                    <option value="7">Dimanche</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="card-actions" style="display: flex; gap: 0.75rem; margin-top: 0.5rem;">
+                <button type="submit" class="btn btn--primary btn--sm" id="btn-save-rappels-config">Enregistrer et synchroniser</button>
+                <button type="button" class="btn btn--sm" id="btn-cancel-rappels-config">Fermer</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="schedule-footer" style="margin-top: 1rem;">
             <button type="button" class="btn btn--primary btn--sm" id="btn-trigger-now">
               Déclencher un rappel maintenant (test)
             </button>
+          </div>
+        </section>
+
+        <!-- Section des rappels personnels synchronisés (Supabase) -->
+        <section class="panel db-reminders-section" id="section-db-reminders" style="margin-top: 1.5rem;">
+          <div class="list-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div>
+              <h2 class="label" style="margin: 0;">Mes rappels enregistrés dans la base</h2>
+              <p class="meta" style="margin: 0.25rem 0 0; font-size: 0.85rem;">Synchronisés en direct avec votre compte Supabase</p>
+            </div>
+            <span class="meta" id="db-reminders-count">0 rappel</span>
+          </div>
+
+          <div id="db-reminders-list" class="reminders-list" style="display: grid; gap: 0.75rem;">
+            <!-- Rempli en JS -->
           </div>
         </section>
 
@@ -142,6 +222,19 @@ const serializedCourses = subjects.map((s) => ({
     type ReminderScheduleConfig,
     type NotificationLogItem,
   } from '../../utils/persistence';
+  import {
+    getUnifiedReminderConfig,
+    saveUnifiedReminderConfig,
+    formatFrequencyLabel,
+    formatTimesLabel,
+    formatContentLabel,
+  } from '../../utils/reminders';
+  import {
+    fetchUserReminders,
+    toggleUserReminder,
+    deleteUserReminder,
+    type DbReminder,
+  } from '../../utils/supabase';
 
   interface SuggestionItem {
     type: 'philo' | 'cours';
@@ -151,7 +244,7 @@ const serializedCourses = subjects.map((s) => ({
     url: string;
   }
 
-  function initRemindersPage() {
+  async function initRemindersPage() {
     const root = document.querySelector('[data-reminders-root]');
     if (!root) return;
 
@@ -179,40 +272,177 @@ const serializedCourses = subjects.map((s) => ({
     const statusEl = document.getElementById('perm-status');
     const btnReq = document.getElementById('btn-request-perm');
 
-    // 1. Charger configuration des rappels
-    const config: ReminderScheduleConfig = loadPersistentJSON(STORAGE_KEYS.REMINDERS_CONFIG, {
-      enabled: true,
-      frequency: 'daily',
-      times: ['09:00'],
-      weekday: 1,
-      contentType: 'all',
-    });
+    // Éléments du formulaire d'ajustement rapide
+    const btnToggleAdjust = document.getElementById('btn-toggle-adjust-reminders');
+    const panelAdjust = document.getElementById('panel-adjust-reminders');
+    const formConfig = document.getElementById('form-rappels-config') as HTMLFormElement | null;
+    const chkEnabled = document.getElementById('rappels-enabled') as HTMLInputElement | null;
+    const selFreq = document.getElementById('rappels-frequency') as HTMLSelectElement | null;
+    const selContent = document.getElementById('rappels-content') as HTMLSelectElement | null;
+    const time1Input = document.getElementById('rappels-time-1') as HTMLInputElement | null;
+    const time2Input = document.getElementById('rappels-time-2') as HTMLInputElement | null;
+    const weekdayInput = document.getElementById('rappels-weekday') as HTMLSelectElement | null;
+    const grpTime2 = document.getElementById('grp-rappels-time-2');
+    const grpWeekday = document.getElementById('grp-rappels-weekday');
+    const lblTime1 = document.getElementById('lbl-rappels-time-1');
+    const btnCancelConfig = document.getElementById('btn-cancel-rappels-config');
 
-    if (scheduleDot && scheduleStateTitle) {
-      if (config.enabled) {
-        scheduleDot.className = 'dot-status dot-active';
-        scheduleStateTitle.textContent = 'Programme de rappels actif';
+    // 1. Charger la configuration synchronisée (Supabase + localStorage)
+    let config: ReminderScheduleConfig = await getUnifiedReminderConfig();
+
+    function updateSummaryDisplay(cfg: ReminderScheduleConfig) {
+      if (scheduleDot && scheduleStateTitle) {
+        if (cfg.enabled) {
+          scheduleDot.className = 'dot-status dot-active';
+          scheduleStateTitle.textContent = 'Programme de rappels actif';
+        } else {
+          scheduleDot.className = 'dot-status dot-inactive';
+          scheduleStateTitle.textContent = 'Rappels désactivés';
+        }
+      }
+
+      if (scheduleFreqText) scheduleFreqText.textContent = formatFrequencyLabel(cfg);
+      if (scheduleTimesText) scheduleTimesText.textContent = formatTimesLabel(cfg);
+      if (schedulePrefText) schedulePrefText.textContent = formatContentLabel(cfg);
+    }
+
+    function populateFormInputs(cfg: ReminderScheduleConfig) {
+      if (chkEnabled) chkEnabled.checked = cfg.enabled;
+      if (selFreq) selFreq.value = cfg.frequency;
+      if (selContent && cfg.contentType) selContent.value = cfg.contentType;
+      if (time1Input && cfg.times && cfg.times[0]) time1Input.value = cfg.times[0];
+      if (time2Input && cfg.times && cfg.times[1]) time2Input.value = cfg.times[1];
+      if (weekdayInput && cfg.weekday) weekdayInput.value = String(cfg.weekday);
+      updateFreqInputsUI();
+    }
+
+    function updateFreqInputsUI() {
+      if (!selFreq) return;
+      const val = selFreq.value;
+      if (val === 'twice_daily') {
+        if (grpTime2) grpTime2.style.display = 'grid';
+        if (grpWeekday) grpWeekday.style.display = 'none';
+        if (lblTime1) lblTime1.textContent = 'Première heure (matin) :';
+      } else if (val === 'weekly') {
+        if (grpTime2) grpTime2.style.display = 'none';
+        if (grpWeekday) grpWeekday.style.display = 'grid';
+        if (lblTime1) lblTime1.textContent = 'Heure du rappel :';
       } else {
-        scheduleDot.className = 'dot-status dot-inactive';
-        scheduleStateTitle.textContent = 'Rappels désactivés';
+        if (grpTime2) grpTime2.style.display = 'none';
+        if (grpWeekday) grpWeekday.style.display = 'none';
+        if (lblTime1) lblTime1.textContent = 'Heure quotidienne :';
       }
     }
 
-    if (scheduleFreqText) {
-      if (config.frequency === 'daily') scheduleFreqText.textContent = 'Quotidienne (1 fois / jour)';
-      else if (config.frequency === 'twice_daily') scheduleFreqText.textContent = 'Biquotidienne (2 fois / jour)';
-      else if (config.frequency === 'weekly') scheduleFreqText.textContent = 'Hebdomadaire (1 fois / semaine)';
+    updateSummaryDisplay(config);
+    populateFormInputs(config);
+
+    selFreq?.addEventListener('change', updateFreqInputsUI);
+
+    btnToggleAdjust?.addEventListener('click', () => {
+      if (!panelAdjust) return;
+      const isHidden = panelAdjust.style.display === 'none';
+      panelAdjust.style.display = isHidden ? 'block' : 'none';
+      if (isHidden) populateFormInputs(config);
+    });
+
+    btnCancelConfig?.addEventListener('click', () => {
+      if (panelAdjust) panelAdjust.style.display = 'none';
+    });
+
+    formConfig?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!chkEnabled || !selFreq || !selContent || !time1Input) return;
+
+      const times: string[] = [];
+      if (time1Input.value) times.push(time1Input.value);
+      if (selFreq.value === 'twice_daily' && time2Input?.value) times.push(time2Input.value);
+
+      const newConfig: ReminderScheduleConfig = {
+        enabled: chkEnabled.checked,
+        frequency: selFreq.value as any,
+        times,
+        weekday: weekdayInput ? parseInt(weekdayInput.value, 10) : 1,
+        contentType: selContent.value as any,
+      };
+
+      const submitBtn = document.getElementById('btn-save-rappels-config') as HTMLButtonElement | null;
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        await saveUnifiedReminderConfig(newConfig);
+        config = newConfig;
+        updateSummaryDisplay(config);
+        if (panelAdjust) panelAdjust.style.display = 'none';
+        await loadAndRenderDbReminders();
+      } catch (err: any) {
+        alert(err.message || 'Erreur lors de la sauvegarde.');
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+
+    // 2. Afficher la liste des rappels enregistrés dans Supabase
+    async function loadAndRenderDbReminders() {
+      const container = document.getElementById('db-reminders-list');
+      const countEl = document.getElementById('db-reminders-count');
+      if (!container) return;
+
+      try {
+        const reminders = await fetchUserReminders();
+        if (countEl) countEl.textContent = `${reminders.length} rappel${reminders.length > 1 ? 's' : ''}`;
+
+        if (reminders.length === 0) {
+          container.innerHTML = '<p class="meta" style="padding: 0.5rem 0;">Aucun rappel individuel spécifique dans votre compte.</p>';
+          return;
+        }
+
+        container.innerHTML = '';
+        reminders.forEach((r) => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0.85rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); gap: 1rem;';
+          const timeShort = r.time_of_day.slice(0, 5);
+
+          row.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0;">
+              <span class="badge" style="font-size: 0.72rem; text-transform: uppercase;">${r.kind}</span>
+              <strong style="font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${r.label || 'Rappel'}</strong>
+              <span class="meta" style="font-size: 0.82rem;">${timeShort}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <input type="checkbox" class="chk-db-reminder" ${r.enabled ? 'checked' : ''} title="Activer / Désactiver" />
+              <button type="button" class="btn btn--danger btn--sm btn-del-db-reminder" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">Supprimer</button>
+            </div>
+          `;
+
+          row.querySelector('.chk-db-reminder')?.addEventListener('change', async (e) => {
+            const chk = e.target as HTMLInputElement;
+            try {
+              if (r.id) await toggleUserReminder(r.id, chk.checked);
+            } catch (err: any) {
+              alert(err.message || 'Erreur mise à jour');
+              chk.checked = !chk.checked;
+            }
+          });
+
+          row.querySelector('.btn-del-db-reminder')?.addEventListener('click', async () => {
+            if (!confirm(`Supprimer le rappel "${r.label}" ?`)) return;
+            try {
+              if (r.id) await deleteUserReminder(r.id);
+              await loadAndRenderDbReminders();
+            } catch (err: any) {
+              alert(err.message || 'Erreur suppression');
+            }
+          });
+
+          container.appendChild(row);
+        });
+      } catch (err) {
+        console.warn('Erreur chargement db reminders:', err);
+      }
     }
 
-    if (scheduleTimesText) {
-      scheduleTimesText.textContent = config.times && config.times.length > 0 ? config.times.join(' & ') : 'Non définies';
-    }
-
-    if (schedulePrefText) {
-      if (config.contentType === 'philo') schedulePrefText.textContent = 'Textes philosophiques uniquement';
-      else if (config.contentType === 'cours') schedulePrefText.textContent = 'Fiches et cours de révision';
-      else schedulePrefText.textContent = 'Aléatoire (Textes philo & Cours)';
-    }
+    await loadAndRenderDbReminders();
 
     // 2. Sélectionner une suggestion aléatoire
     function getRandomContent(): SuggestionItem {
@@ -390,7 +620,14 @@ const serializedCourses = subjects.map((s) => ({
     }, 15000);
   }
 
-  document.addEventListener('astro:page-load', initRemindersPage);
+  if (typeof window !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initRemindersPage);
+    } else {
+      initRemindersPage();
+    }
+    document.addEventListener('astro:page-load', initRemindersPage);
+  }
 </script>
 
 <style>
@@ -449,7 +686,7 @@ const serializedCourses = subjects.map((s) => ({
 
   /* Planning actif */
   .schedule-summary-card {
-    padding: 1.5rem 1.75rem;
+    padding: clamp(1rem, 0.75rem + 1vw, 1.75rem);
   }
   .schedule-header {
     display: flex;
@@ -458,6 +695,8 @@ const serializedCourses = subjects.map((s) => ({
     border-bottom: 1px solid var(--line);
     padding-bottom: 0.85rem;
     margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
   .status-indicator {
     display: flex;
@@ -477,7 +716,7 @@ const serializedCourses = subjects.map((s) => ({
   }
   .schedule-details {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
     gap: 1.25rem;
     margin-bottom: 1.5rem;
   }
@@ -498,11 +737,12 @@ const serializedCourses = subjects.map((s) => ({
     display: flex;
     gap: 1rem;
     align-items: center;
+    flex-wrap: wrap;
   }
 
   /* Suggestion */
   .suggestion-card {
-    padding: 1.5rem;
+    padding: clamp(1rem, 0.75rem + 1vw, 1.5rem);
   }
   .suggestion-type {
     font-size: 0.75rem;
@@ -516,6 +756,8 @@ const serializedCourses = subjects.map((s) => ({
     font-size: 1.3rem;
     line-height: 1.3;
     letter-spacing: -.02em;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
   .suggestion-desc {
     margin: 0 0 1.25rem;
@@ -531,13 +773,15 @@ const serializedCourses = subjects.map((s) => ({
 
   /* Historique */
   .history-section {
-    padding: 1.5rem 1.75rem;
+    padding: clamp(1rem, 0.75rem + 1vw, 1.75rem);
   }
   .list-header {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
   .history-list {
     list-style: none;
@@ -583,6 +827,7 @@ const serializedCourses = subjects.map((s) => ({
     background: var(--surface);
     border: 1px solid var(--line);
     text-transform: uppercase;
+    flex-shrink: 0;
   }
   .badge-philo { color: var(--tone-philo); }
   .badge-cours { color: var(--accent); }
@@ -607,5 +852,46 @@ const serializedCourses = subjects.map((s) => ({
   @media (max-width: 62rem) {
     .reminders-grid { grid-template-columns: 1fr; }
     .reminders-aside { position: static; }
+  }
+
+  @media (max-width: 48rem) {
+    .reminders-hero-top {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+  }
+
+  @media (max-width: 38rem) {
+    .permission-banner {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.85rem;
+    }
+    .permission-banner .btn {
+      width: 100%;
+    }
+    .schedule-footer {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.6rem;
+    }
+    .schedule-footer .btn {
+      width: 100%;
+    }
+    .history-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.4rem;
+    }
+    .history-time {
+      width: auto;
+    }
+    .history-info {
+      width: 100%;
+    }
+    .suggestion-actions .btn {
+      width: 100%;
+    }
   }
 </style>

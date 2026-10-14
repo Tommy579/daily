@@ -66,14 +66,21 @@ const themes = THEME_SLUGS.map((slug) => ({
     text-decoration-thickness: 1px;
     text-underline-offset: .18em;
     transition: text-decoration-color .15s ease;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
   .desc { color: var(--muted); line-height: 1.55; font-size: .95em; transition: color .2s ease; }
   .theme:hover .name { text-decoration-color: currentColor; }
   .theme:hover .desc { color: var(--fg); }
   .n { white-space: nowrap; }
 
-  @media (max-width: 34rem) {
-    .theme { grid-template-columns: 1fr; gap: .4rem; }
+  @media (max-width: 38rem) {
+    .theme { grid-template-columns: 2rem 1fr; gap: .6rem; }
+    .n { grid-column: 2; }
+  }
+  @media (max-width: 26rem) {
+    .theme { grid-template-columns: 1fr; gap: .35rem; }
     .num { display: none; }
+    .n { grid-column: 1; }
   }
 </style>

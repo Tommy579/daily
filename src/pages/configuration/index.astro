@@ -39,7 +39,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
 
         <div class="storage-info">
           <p>
-            Vos supports de cours et fiches de révisions sont importés directement depuis votre dossier <strong>Semestre 5</strong>. Aucune dépendance externe ni compte en ligne n'est nécessaire : tous vos cours sont disponibles instantanément et consultables dans la visionneuse.
+            Vos supports de cours et fiches de révisions sont disponibles instantanément et consultables dans la visionneuse.
           </p>
           <div class="storage-status-list meta">
             <div class="storage-row">
@@ -48,11 +48,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
             </div>
             <div class="storage-row">
               <span>Fichiers disponibles :</span>
-              <strong>{totalFiles} documents importés</strong>
-            </div>
-            <div class="storage-row">
-              <span>Source :</span>
-              <code>Semestre 5 (Local)</code>
+              <strong>{totalFiles} documents disponibles</strong>
             </div>
           </div>
         </div>
@@ -95,13 +91,13 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
               <strong id="timetable-status-title">Calendrier actif</strong>
             </div>
             <p class="status-desc meta" id="timetable-status-desc">
-              Calendrier par défaut chargé (Licence Philosophie / L2-L3).
+              Synchronisé avec votre compte. Aucun calendrier iCal importé.
             </p>
           </div>
 
           <div class="card-actions">
             <button type="submit" class="btn btn--primary btn--sm">Mettre à jour le calendrier</button>
-            <button type="button" class="btn btn--danger btn--sm" id="btn-reset-timetable">Réinitialiser par défaut</button>
+            <button type="button" class="btn btn--danger btn--sm" id="btn-reset-timetable">Effacer le calendrier importé</button>
           </div>
         </form>
       </section>
@@ -275,8 +271,12 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     deleteCookie,
     type ReminderScheduleConfig,
   } from '../../utils/persistence';
+  import {
+    getUnifiedReminderConfig,
+    saveUnifiedReminderConfig,
+  } from '../../utils/reminders';
 
-  function initConfigPage() {
+  async function initConfigPage() {
     // 1. GESTION DE L'EMPLOI DU TEMPS
     const timetableForm = document.getElementById('form-timetable') as HTMLFormElement;
     const icsFileInput = document.getElementById('ics-file') as HTMLInputElement;
@@ -314,15 +314,15 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     });
 
     btnResetTimetable?.addEventListener('click', () => {
-      if (confirm('Voulez-vous réinitialiser l’emploi du temps avec le calendrier par défaut de la faculté ?')) {
+      if (confirm('Voulez-vous effacer le calendrier importé ?')) {
         savePersistent(STORAGE_KEYS.TIMETABLE_ICS, '');
         savePersistent(STORAGE_KEYS.TIMETABLE_URL, '');
         deleteCookie(STORAGE_KEYS.TIMETABLE_ICS);
         deleteCookie(STORAGE_KEYS.TIMETABLE_URL);
         if (icsFileInput) icsFileInput.value = '';
         if (icsUrlInput) icsUrlInput.value = '';
-        if (timetableDesc) timetableDesc.textContent = 'Calendrier par défaut chargé (Licence Philosophie / L2-L3).';
-        alert('Emploi du temps réinitialisé aux cours standards.');
+        if (timetableDesc) timetableDesc.textContent = 'Synchronisé avec votre compte. Aucun calendrier iCal importé.';
+        alert('Calendrier importé effacé.');
       }
     });
 
@@ -358,13 +358,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
 
     remindersFreq?.addEventListener('change', updateFreqUI);
 
-    const savedConfig: ReminderScheduleConfig = loadPersistentJSON(STORAGE_KEYS.REMINDERS_CONFIG, {
-      enabled: true,
-      frequency: 'daily',
-      times: ['09:00'],
-      weekday: 1,
-      contentType: 'all',
-    });
+    const savedConfig: ReminderScheduleConfig = await getUnifiedReminderConfig();
 
     if (remindersEnabled) remindersEnabled.checked = savedConfig.enabled;
     if (remindersFreq) remindersFreq.value = savedConfig.frequency;
@@ -375,7 +369,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
 
     updateFreqUI();
 
-    remindersForm?.addEventListener('submit', (e) => {
+    remindersForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const times: string[] = [];
       if (time1Input.value) times.push(time1Input.value);
@@ -389,8 +383,17 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
         contentType: remindersContent.value as any,
       };
 
-      savePersistentJSON(STORAGE_KEYS.REMINDERS_CONFIG, newConfig);
-      alert('Préférences de rappels sauvegardées avec succès pour 1 an !');
+      const submitBtn = remindersForm.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        await saveUnifiedReminderConfig(newConfig);
+        alert('Préférences de rappels synchronisées et sauvegardées avec succès !');
+      } catch (err: any) {
+        alert(err.message || 'Erreur lors de la sauvegarde.');
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
     });
 
     // 3. CONFIGURATION SUPABASE
@@ -527,7 +530,14 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     });
   }
 
-  document.addEventListener('astro:page-load', initConfigPage);
+  if (typeof window !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initConfigPage);
+    } else {
+      initConfigPage();
+    }
+    document.addEventListener('astro:page-load', initConfigPage);
+  }
 </script>
 
 <style>
@@ -559,7 +569,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     gap: 2rem;
   }
   .config-card {
-    padding: 1.75rem 2rem;
+    padding: clamp(1.1rem, 0.8rem + 1vw, 2rem);
   }
   .card-head {
     display: flex;
@@ -568,12 +578,15 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
   }
   .card-head h2 {
     margin: 0 0 0.2rem;
     font-family: var(--font-text);
     font-size: 1.35rem;
     letter-spacing: -.02em;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
   .card-head p {
     margin: 0;
@@ -604,7 +617,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     background: var(--surface);
     color: var(--fg);
     font-family: inherit;
-    font-size: 0.92rem;
+    font-size: max(16px, 0.92rem);
     transition: border-color .15s ease;
   }
   .config-form input:focus,
@@ -633,7 +646,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
   }
   .times-subgrid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
     gap: 1rem;
     background: var(--soft);
     padding: 1rem 1.25rem;
@@ -681,6 +694,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
   .storage-row {
     display: flex;
     justify-content: space-between;
+    gap: 0.5rem;
   }
   .card-actions {
     display: flex;
@@ -688,5 +702,34 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     flex-wrap: wrap;
     align-items: center;
     margin-top: 0.5rem;
+  }
+
+  @media (max-width: 48rem) {
+    .config-hero {
+      padding-block: 1.5rem 1rem;
+    }
+  }
+
+  @media (max-width: 36rem) {
+    .card-head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .times-subgrid {
+      grid-template-columns: 1fr;
+      padding: 0.85rem 1rem;
+    }
+    .card-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .card-actions .btn {
+      width: 100%;
+    }
+    .storage-row {
+      flex-direction: column;
+      gap: 0.2rem;
+    }
   }
 </style>

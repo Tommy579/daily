@@ -17,8 +17,18 @@ export function getSupabaseCredentials(): { url: string; anonKey: string; isConf
   const storedUrl = localStorage.getItem(STORAGE_KEY_URL);
   const storedKey = localStorage.getItem(STORAGE_KEY_ANON);
 
-  const url = storedUrl || (import.meta.env.PUBLIC_SUPABASE_URL as string) || DEFAULT_SUPABASE_CONFIG.URL;
-  const anonKey = storedKey || (import.meta.env.PUBLIC_SUPABASE_ANON_KEY as string) || DEFAULT_SUPABASE_CONFIG.ANON_KEY;
+  const url =
+    storedUrl ||
+    (import.meta.env.PUBLIC_SUPABASE_URL as string) ||
+    (import.meta.env.SUPABASE_URL as string) ||
+    DEFAULT_SUPABASE_CONFIG.URL;
+  const anonKey =
+    storedKey ||
+    (import.meta.env.PUBLIC_SUPABASE_ANON_KEY as string) ||
+    (import.meta.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY as string) ||
+    (import.meta.env.SUPABASE_PUBLISHABLE_KEY as string) ||
+    (import.meta.env.SUPABASE_ANON_KEY as string) ||
+    DEFAULT_SUPABASE_CONFIG.ANON_KEY;
 
   const isConfigured = Boolean(
     url &&
@@ -91,6 +101,12 @@ export async function updatePassword(newPassword: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function updateUserProfile(metadata: { full_name?: string }): Promise<void> {
+  const sb = getSupabase();
+  const { error } = await sb.auth.updateUser({ data: metadata });
+  if (error) throw error;
+}
+
 // -------------------------------------------------------------
 // Modèles de données Supabase (Courses, Events, Reminders)
 // -------------------------------------------------------------
@@ -154,6 +170,29 @@ export async function createUserCourse(course: Omit<DbCourse, 'id' | 'user_id' |
   return data;
 }
 
+export async function createBatchUserCourses(courses: Array<Omit<DbCourse, 'id' | 'user_id' | 'created_at' | 'updated_at'>>): Promise<DbCourse[]> {
+  if (!courses || courses.length === 0) return [];
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('courses')
+    .insert(courses)
+    .select();
+  if (error) throw error;
+  return data || [];
+}
+
+export async function updateUserCourse(id: string, updates: Partial<Omit<DbCourse, 'id' | 'user_id' | 'created_at'>>): Promise<DbCourse> {
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('courses')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteUserCourse(id: string): Promise<void> {
   const sb = getSupabase();
   const { error } = await sb.from('courses').delete().eq('id', id);
@@ -176,6 +215,18 @@ export async function createUserScheduleEvent(event: Omit<DbScheduleEvent, 'id' 
   const { data, error } = await sb
     .from('schedule_events')
     .insert([event])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateUserScheduleEvent(id: string, updates: Partial<Omit<DbScheduleEvent, 'id' | 'user_id' | 'created_at'>>): Promise<DbScheduleEvent> {
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('schedule_events')
+    .update(updates)
+    .eq('id', id)
     .select()
     .single();
   if (error) throw error;
