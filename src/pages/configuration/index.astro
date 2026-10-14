@@ -266,8 +266,6 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     STORAGE_KEYS,
     savePersistent,
     loadPersistent,
-    savePersistentJSON,
-    loadPersistentJSON,
     deleteCookie,
     type ReminderScheduleConfig,
   } from '../../utils/persistence';
@@ -275,54 +273,178 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     getUnifiedReminderConfig,
     saveUnifiedReminderConfig,
   } from '../../utils/reminders';
+  import {
+    fetchCalendarFromUrl,
+    parseIcsToScheduleEvents,
+    syncTimetableState,
+  } from '../../utils/timetable';
+  import {
+    getCurrentUser,
+    syncTimetableToSupabase,
+    clearUserScheduleEvents,
+    createBatchUserScheduleEvents,
+  } from '../../utils/supabase';
 
   async function initConfigPage() {
-    // 1. GESTION DE L'EMPLOI DU TEMPS
+    // 1. GESTION DE L'EMPLOI DU TEMPS & SYNCHRONISATION SUPABASE
     const timetableForm = document.getElementById('form-timetable') as HTMLFormElement;
     const icsFileInput = document.getElementById('ics-file') as HTMLInputElement;
     const icsUrlInput = document.getElementById('ics-url') as HTMLInputElement;
     const timetableDesc = document.getElementById('timetable-status-desc');
     const btnResetTimetable = document.getElementById('btn-reset-timetable');
 
+    // Auto-synchronisation Supabase en arrière-plan
+    const syncRes = await syncTimetableState().catch(() => null);
+
     const savedIcsUrl = loadPersistent(STORAGE_KEYS.TIMETABLE_URL);
     if (savedIcsUrl && icsUrlInput) icsUrlInput.value = savedIcsUrl;
 
     const savedIcsRaw = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
     if (savedIcsRaw && timetableDesc) {
-      timetableDesc.textContent = 'Emploi du temps personnalisé actif (importé par vos soins).';
+      if (syncRes?.synced) {
+        timetableDesc.textContent = 'Emploi du temps synchronisé avec votre compte Supabase Cloud (accessible sur votre mobile et PC).';
+      } else {
+        timetableDesc.textContent = 'Emploi du temps personnalisé actif (importé par vos soins).';
+      }
     }
 
-    timetableForm?.addEventListener('submit', (e) => {
+    timetableForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (icsFileInput.files && icsFileInput.files[0]) {
-        const file = icsFileInput.files[0];
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-          const content = evt.target?.result as string;
-          if (content) {
-            savePersistent(STORAGE_KEYS.TIMETABLE_ICS, content);
-            if (timetableDesc) timetableDesc.textContent = `Fichier "${file.name}" importé avec succès.`;
-            alert('Emploi du temps mis à jour à partir de votre fichier .ics !');
+      const submitBtn = timetableForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Traitement en cours...';
+      }
+
+      try {
+        if (icsFileInput.files && icsFileInput.files[0]) {
+          const file = icsFileInput.files[0];
+          if (timetableDesc) timetableDesc.textContent = `Lecture et synchronisation de "${file.name}"...`;
+          const reader = new FileReader();
+          reader.onload = async (evt) => {
+            const content = evt.target?.result as string;
+            if (content) {
+              savePersistent(STORAGE_KEYS.TIMETABLE_ICS, content);
+              let syncMsg = `Fichier "${file.name}" importé avec succès.`;
+
+              try {
+                const user = await getCurrentUser();
+                if (user) {
+                  await syncTimetableToSupabase({
+                    icsContent: content,
+                    icsUrl: icsUrlInput.value.trim() || undefined,
+                  });
+                  const parsed = parseIcsToScheduleEvents(content);
+                  if (parsed.length > 0) {
+                    await clearUserScheduleEvents();
+                    await createBatchUserScheduleEvents(parsed);
+                    syncMsg += ` Synchronisé avec Supabase (${parsed.length} cours enregistrés). Accessible sur votre mobile et tous vos appareils !`;
+                  } else {
+                    syncMsg += ` Synchronisé avec votre compte Supabase.`;
+                  }
+                } else {
+                  syncMsg += ` Sauvegardé en local. Connectez-vous à votre Espace pour synchroniser sur mobile.`;
+                }
+              } catch (err: any) {
+                console.warn('[Sync Config] Erreur sync Supabase:', err);
+                syncMsg += ` (Sauvegardé localement. Note Supabase: ${err.message || 'connexion échouée'})`;
+              }
+
+              if (timetableDesc) timetableDesc.textContent = syncMsg;
+              alert(syncMsg);
+            }
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Mettre à jour le calendrier';
+            }
+          };
+          reader.readAsText(file);
+        } else if (icsUrlInput.value.trim()) {
+          const rawUrl = icsUrlInput.value.trim();
+          savePersistent(STORAGE_KEYS.TIMETABLE_URL, rawUrl);
+          if (timetableDesc) timetableDesc.textContent = `Téléchargement du flux distant en cours... (${rawUrl})`;
+
+          try {
+            const content = await fetchCalendarFromUrl(rawUrl);
+            if (content) {
+              savePersistent(STORAGE_KEYS.TIMETABLE_ICS, content);
+              let syncMsg = `Flux distant synchronisé avec succès.`;
+
+              const user = await getCurrentUser();
+              if (user) {
+                await syncTimetableToSupabase({
+                  icsContent: content,
+                  icsUrl: rawUrl,
+                });
+                const parsed = parseIcsToScheduleEvents(content);
+                if (parsed.length > 0) {
+                  await clearUserScheduleEvents();
+                  await createBatchUserScheduleEvents(parsed);
+                  syncMsg += ` Synchronisé avec Supabase (${parsed.length} cours enregistrés). Accessible sur votre mobile !`;
+                } else {
+                  syncMsg += ` Enregistré sur votre compte Supabase Cloud.`;
+                }
+              } else {
+                syncMsg += ` Sauvegardé en local. Connectez-vous à votre Espace pour synchroniser sur mobile.`;
+              }
+
+              if (timetableDesc) timetableDesc.textContent = syncMsg;
+              alert(syncMsg);
+            }
+          } catch (fetchErr: any) {
+            console.warn('[Sync Config] Fetch distant échoué:', fetchErr);
+            try {
+              const user = await getCurrentUser();
+              if (user) {
+                await syncTimetableToSupabase({ icsUrl: rawUrl });
+              }
+            } catch {}
+
+            const msg = `URL enregistrée, mais impossible de récupérer le flux en direct : ${fetchErr.message || fetchErr}\n\nConseil : Pour les ENT ou agendas universitaires avec restrictions de sécurité (CORS ou mot de passe ENT), téléchargez le fichier .ics depuis votre ENT et déposez-le dans le champ "Importer un fichier iCalendar" ci-dessus.`;
+            if (timetableDesc) timetableDesc.textContent = `URL enregistrée. Téléchargement direct bloqué par l'ENT : utilisez le fichier .ics.`;
+            alert(msg);
+          } finally {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Mettre à jour le calendrier';
+            }
           }
-        };
-        reader.readAsText(file);
-      } else if (icsUrlInput.value.trim()) {
-        savePersistent(STORAGE_KEYS.TIMETABLE_URL, icsUrlInput.value.trim());
-        if (timetableDesc) timetableDesc.textContent = `Flux distant configuré : ${icsUrlInput.value.trim()}`;
-        alert('URL de flux d’emploi du temps enregistrée.');
+        } else {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Mettre à jour le calendrier';
+          }
+        }
+      } catch (err: any) {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Mettre à jour le calendrier';
+        }
+        alert('Erreur: ' + (err.message || err));
       }
     });
 
-    btnResetTimetable?.addEventListener('click', () => {
-      if (confirm('Voulez-vous effacer le calendrier importé ?')) {
+    btnResetTimetable?.addEventListener('click', async () => {
+      if (confirm('Voulez-vous effacer le calendrier importé (sur cet appareil et sur Supabase) ?')) {
         savePersistent(STORAGE_KEYS.TIMETABLE_ICS, '');
         savePersistent(STORAGE_KEYS.TIMETABLE_URL, '');
         deleteCookie(STORAGE_KEYS.TIMETABLE_ICS);
         deleteCookie(STORAGE_KEYS.TIMETABLE_URL);
         if (icsFileInput) icsFileInput.value = '';
         if (icsUrlInput) icsUrlInput.value = '';
-        if (timetableDesc) timetableDesc.textContent = 'Synchronisé avec votre compte. Aucun calendrier iCal importé.';
-        alert('Calendrier importé effacé.');
+
+        try {
+          const user = await getCurrentUser();
+          if (user) {
+            await syncTimetableToSupabase({ icsContent: '', icsUrl: '' });
+            await clearUserScheduleEvents();
+          }
+        } catch (err) {
+          console.warn('[Sync Config] Erreur suppression Supabase:', err);
+        }
+
+        if (timetableDesc) timetableDesc.textContent = 'Aucun calendrier iCal importé.';
+        alert('Calendrier importé effacé avec succès.');
       }
     });
 

@@ -127,6 +127,7 @@ const shortcuts = [
   import ICAL from 'ical.js';
   import { STORAGE_KEYS, loadPersistent } from '../utils/persistence';
   import { getCurrentSession, fetchUserScheduleEvents } from '../utils/supabase';
+  import { syncTimetableState } from '../utils/timetable';
 
   interface HomeEvent {
     title: string;
@@ -208,6 +209,9 @@ const shortcuts = [
       const s = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
       dateEl.textContent = s.charAt(0).toUpperCase() + s.slice(1);
     }
+
+    // 0. Auto-synchronisation Supabase Cloud (PC <-> Mobile)
+    await syncTimetableState().catch(() => {});
 
     // Cours du jour chargés depuis les 3 sources : Supabase > Calendrier ICS importé > LocalStorage
     const monday = mondayOf(now);

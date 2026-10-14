@@ -192,7 +192,7 @@ const localPresetCourses = getCourses().map((s) => {
             <label class="btn btn--sm" style="margin: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;" title="Choisir un dossier sur votre ordinateur avec arborescence automatique">
               <Icon name="file" size={14} />
               Importer un dossier de cours...
-              <input type="file" id="input-import-folder" webkitdirectory directory multiple style="display: none;" />
+              <input type="file" id="input-import-folder" multiple style="display: none;" {...{ webkitdirectory: '', directory: '' }} />
             </label>
             <button type="button" class="btn btn--primary btn--sm" id="btn-open-course-modal">
               <Icon name="plus" size={14} />
@@ -212,7 +212,7 @@ const localPresetCourses = getCourses().map((s) => {
             <label class="btn btn--sm" style="margin: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;">
               <Icon name="file" size={14} />
               Importer un dossier complet...
-              <input type="file" id="input-import-folder-empty" webkitdirectory directory multiple style="display: none;" />
+              <input type="file" id="input-import-folder-empty" multiple style="display: none;" {...{ webkitdirectory: '', directory: '' }} />
             </label>
             <button type="button" class="btn btn--sm" id="btn-create-first-course">
               Créer manuellement
@@ -238,9 +238,15 @@ const localPresetCourses = getCourses().map((s) => {
         <div id="schedule-list-loading" class="meta loading-state">Chargement de votre planning...</div>
         <div id="schedule-list-empty" class="panel empty-state" style="display: none;">
           <p>Aucun créneau personnalisé enregistré.</p>
-          <button type="button" class="btn btn--sm" id="btn-create-first-schedule">
-            Ajouter un créneau de cours
-          </button>
+          <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
+            <a href={url('/configuration/#calendar-settings')} class="btn btn--primary btn--sm">
+              <Icon name="calendar" size={14} />
+              Importer mon emploi du temps (.ics / flux)
+            </a>
+            <button type="button" class="btn btn--sm" id="btn-create-first-schedule">
+              Ajouter manuellement un créneau
+            </button>
+          </div>
         </div>
         <div id="schedule-days-container" class="schedule-days-grid"></div>
       </section>
@@ -490,6 +496,7 @@ const localPresetCourses = getCourses().map((s) => {
     type DbScheduleEvent,
     type DbReminder,
   } from '../../utils/supabase';
+  import { syncTimetableState } from '../../utils/timetable';
 
   // Parser Markdown ultra-léger et sécurisé
   function renderMarkdown(md: string): string {
@@ -1024,6 +1031,7 @@ const localPresetCourses = getCourses().map((s) => {
       if (scheduleLoading) scheduleLoading.style.display = 'block';
       if (scheduleEmpty) scheduleEmpty.style.display = 'none';
       try {
+        await syncTimetableState().catch(() => {});
         cachedSchedule = await fetchUserScheduleEvents();
         if (badgeSchedule) badgeSchedule.textContent = String(cachedSchedule.length);
         renderSchedule();
