@@ -79,12 +79,38 @@ import { url } from '../../utils/url';
             <button type="submit" class="btn btn--primary" id="btn-submit-login">
               Se connecter
             </button>
-            <a href={url('/configuration/#supabase-settings')} class="btn btn--sm">
+            <button type="button" class="btn btn--sm" id="btn-toggle-supabase-config">
               <Icon name="settings" size={14} />
               Paramètres Supabase
-            </a>
+            </button>
           </div>
         </form>
+
+        <!-- Configuration Supabase intégrée (évite les blocages d'accès) -->
+        <div id="box-supabase-inline" class="auth-supabase-inline" style="display: none; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color, #e5e5e5);">
+          <h3 style="font-size: 1rem; margin-bottom: 0.35rem;">Configuration directe de Supabase</h3>
+          <p class="meta" style="font-size: 0.85rem; margin-bottom: 1rem;">
+            Renseignez votre Project URL et clé publique ci-dessous pour connecter l'application à votre instance Supabase.
+          </p>
+          <form id="form-inline-supabase" class="espace-form">
+            <div class="form-group">
+              <label for="inline-supabase-url" class="field-label">Project URL (Supabase) :</label>
+              <input type="url" id="inline-supabase-url" placeholder="https://votre-projet.supabase.co" required />
+            </div>
+            <div class="form-group">
+              <label for="inline-supabase-key" class="field-label">Clé publique (Anon / Publishable) :</label>
+              <input type="text" id="inline-supabase-key" placeholder="sb_publishable_... ou eyJhbGci..." required />
+            </div>
+            <div class="card-actions">
+              <button type="submit" class="btn btn--primary btn--sm" id="btn-save-inline-supabase">
+                Enregistrer et activer
+              </button>
+              <button type="button" class="btn btn--sm" id="btn-close-inline-supabase">
+                Masquer
+              </button>
+            </div>
+          </form>
+        </div>
 
         <div class="auth-security-notice meta">
           <p>
@@ -389,6 +415,7 @@ import { url } from '../../utils/url';
   import {
     getSupabase,
     getSupabaseCredentials,
+    saveSupabaseCredentials,
     loginWithPassword,
     logoutUser,
     getCurrentSession,
@@ -448,6 +475,39 @@ import { url } from '../../utils/url';
     const espaceBanner = document.getElementById('espace-banner');
     const espaceBannerText = document.getElementById('espace-banner-text');
 
+    // Configuration Supabase intégrée
+    const boxSupabaseInline = document.getElementById('box-supabase-inline');
+    const btnToggleSupabase = document.getElementById('btn-toggle-supabase-config');
+    const btnCloseInlineSupabase = document.getElementById('btn-close-inline-supabase');
+    const formInlineSupabase = document.getElementById('form-inline-supabase') as HTMLFormElement | null;
+    const inlineSupabaseUrl = document.getElementById('inline-supabase-url') as HTMLInputElement | null;
+    const inlineSupabaseKey = document.getElementById('inline-supabase-key') as HTMLInputElement | null;
+
+    btnToggleSupabase?.addEventListener('click', () => {
+      if (!boxSupabaseInline) return;
+      const isHidden = boxSupabaseInline.style.display === 'none';
+      boxSupabaseInline.style.display = isHidden ? 'block' : 'none';
+      const creds = getSupabaseCredentials();
+      if (inlineSupabaseUrl && !creds.url.includes('xxxx.supabase.co')) inlineSupabaseUrl.value = creds.url;
+      if (inlineSupabaseKey && !creds.anonKey.includes('dummy')) inlineSupabaseKey.value = creds.anonKey;
+    });
+
+    btnCloseInlineSupabase?.addEventListener('click', () => {
+      if (boxSupabaseInline) boxSupabaseInline.style.display = 'none';
+    });
+
+    formInlineSupabase?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!inlineSupabaseUrl || !inlineSupabaseKey) return;
+      const u = inlineSupabaseUrl.value.trim();
+      const k = inlineSupabaseKey.value.trim();
+      if (!u || !k) return;
+      saveSupabaseCredentials(u, k);
+      notify('Configuration Supabase enregistrée avec succès.');
+      if (boxSupabaseInline) boxSupabaseInline.style.display = 'none';
+      await refreshSessionState();
+    });
+
     // Badges
     const badgeCourses = document.getElementById('badge-courses-count');
     const badgeSchedule = document.getElementById('badge-schedule-count');
@@ -503,13 +563,30 @@ import { url } from '../../utils/url';
 
     // Écoute de session
     async function refreshSessionState() {
-      const { isConfigured } = getSupabaseCredentials();
+      const { url: currentUrl, anonKey: currentKey, isConfigured } = getSupabaseCredentials();
+      const isExplicitSetup = window.location.search.includes('setup=1') || window.location.hash.includes('supabase');
+
       if (!isConfigured) {
         if (loginErrorBox && loginErrorText) {
           loginErrorBox.style.display = 'block';
           loginErrorText.textContent =
-            'Supabase n’est pas encore configuré avec vos clés réelles. Allez dans Configuration pour ajouter votre Project URL et clé publique.';
+            'Supabase n’est pas encore configuré avec vos clés réelles. Renseignez votre Project URL et clé publique ci-dessous pour vous connecter.';
         }
+        if (boxSupabaseInline) boxSupabaseInline.style.display = 'block';
+      } else {
+        if (loginErrorBox && loginErrorText && loginErrorText.textContent?.includes('Supabase n’est pas encore configuré')) {
+          loginErrorBox.style.display = 'none';
+        }
+        if (boxSupabaseInline && !isExplicitSetup) {
+          boxSupabaseInline.style.display = 'none';
+        }
+      }
+
+      if (inlineSupabaseUrl && !inlineSupabaseUrl.value && !currentUrl.includes('xxxx.supabase.co')) {
+        inlineSupabaseUrl.value = currentUrl;
+      }
+      if (inlineSupabaseKey && !inlineSupabaseKey.value && !currentKey.includes('dummy')) {
+        inlineSupabaseKey.value = currentKey;
       }
 
       try {

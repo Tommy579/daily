@@ -128,7 +128,11 @@ const isEspace = Astro.url.pathname.includes('/espace');
               }
             }
             if (!hasToken) {
-              window.location.replace(espaceUrl + '?redirect=' + encodeURIComponent(window.location.pathname + window.location.search));
+              var isConfig = window.location.pathname.indexOf('/configuration') !== -1;
+              var target = isConfig
+                ? espaceUrl + '?setup=1'
+                : espaceUrl + '?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+              window.location.replace(target);
             }
           }
         } catch (e) {}
@@ -146,7 +150,11 @@ const isEspace = Astro.url.pathname.includes('/espace');
           const session = await getCurrentSession();
           if (!session || !session.user) {
             if (!isEspace) {
-              window.location.replace(url('/espace/?redirect=' + encodeURIComponent(window.location.pathname + window.location.search)));
+              const isConfig = window.location.pathname.includes('/configuration');
+              const target = isConfig
+                ? url('/espace/?setup=1')
+                : url('/espace/?redirect=' + encodeURIComponent(window.location.pathname + window.location.search));
+              window.location.replace(target);
               return;
             }
           } else {

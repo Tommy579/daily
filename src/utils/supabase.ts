@@ -17,8 +17,18 @@ export function getSupabaseCredentials(): { url: string; anonKey: string; isConf
   const storedUrl = localStorage.getItem(STORAGE_KEY_URL);
   const storedKey = localStorage.getItem(STORAGE_KEY_ANON);
 
-  const url = storedUrl || (import.meta.env.PUBLIC_SUPABASE_URL as string) || DEFAULT_SUPABASE_CONFIG.URL;
-  const anonKey = storedKey || (import.meta.env.PUBLIC_SUPABASE_ANON_KEY as string) || DEFAULT_SUPABASE_CONFIG.ANON_KEY;
+  const url =
+    storedUrl ||
+    (import.meta.env.PUBLIC_SUPABASE_URL as string) ||
+    (import.meta.env.SUPABASE_URL as string) ||
+    DEFAULT_SUPABASE_CONFIG.URL;
+  const anonKey =
+    storedKey ||
+    (import.meta.env.PUBLIC_SUPABASE_ANON_KEY as string) ||
+    (import.meta.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY as string) ||
+    (import.meta.env.SUPABASE_PUBLISHABLE_KEY as string) ||
+    (import.meta.env.SUPABASE_ANON_KEY as string) ||
+    DEFAULT_SUPABASE_CONFIG.ANON_KEY;
 
   const isConfigured = Boolean(
     url &&
