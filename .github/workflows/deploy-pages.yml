@@ -115,6 +115,9 @@ jobs:
       # ÉTAPE : Build du site statique Astro et indexation Pagefind
       # -------------------------------------------------------------
       - name: 🏗️ Build du site Astro & index Pagefind
+        env:
+          PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: npm run build
 
       - name: ⚙️ Configuration de GitHub Pages
