@@ -295,12 +295,56 @@ export function saveLocalUserCourses(userId: string, courses: DbCourse[]): void 
   }
 }
 
-export async function fetchUserCourses(): Promise<DbCourse[]> {
-  const user = await getCurrentUser().catch(() => null);
-  const userId = user?.id;
-
-  // 1. Tenter la lecture Supabase
+export function getCurrentUserCached(): User | null {
+  if (typeof window === 'undefined') return null;
   try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('sb-') && k.endsWith('-auth-token'))) {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.user?.id) return parsed.user;
+          if (parsed?.currentSession?.user?.id) return parsed.currentSession.user;
+        }
+      }
+    }
+  } catch {}
+  return null;
+}
+
+export function getUserCoursesImmediate(): DbCourse[] {
+  if (typeof window === 'undefined') return [];
+  const user = getCurrentUserCached();
+  if (user?.id) {
+    const list = getLocalUserCourses(user.id);
+    if (list && list.length > 0) return list;
+  }
+  // Si pas de session explicite, récupérer le dernier cache de cours utilisateur valide
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('marges_user_courses_')) {
+      try {
+        const raw = localStorage.getItem(k);
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list) && list.length > 0) return list;
+        }
+      } catch {}
+    }
+  }
+  return [];
+}
+
+export async function fetchUserCourses(): Promise<DbCourse[]> {
+  const cachedUser = getCurrentUserCached();
+  const userId = cachedUser?.id;
+  const localCourses = getUserCoursesImmediate();
+
+  // Tentative réseau avec un timeout court (2.5s) pour ne jamais geler l'interface
+  const remoteFetch = async () => {
+    const user = cachedUser || (await getCurrentUser().catch(() => null));
+    const activeId = user?.id || userId;
     const sb = getSupabase();
     const query = sb
       .from('courses')
@@ -308,8 +352,8 @@ export async function fetchUserCourses(): Promise<DbCourse[]> {
       .neq('title', TIMETABLE_SYNC_TITLE)
       .order('updated_at', { ascending: false });
 
-    if (userId) {
-      query.eq('user_id', userId);
+    if (activeId) {
+      query.eq('user_id', activeId);
     }
 
     const { data, error } = await query;
@@ -319,20 +363,23 @@ export async function fetchUserCourses(): Promise<DbCourse[]> {
       (c) => c.title !== TIMETABLE_SYNC_TITLE && (!c.tags || !c.tags.includes(SYSTEM_TAG))
     );
 
-    // Mettre à jour le cache local du compte
-    if (userId) {
-      saveLocalUserCourses(userId, filtered);
+    if (activeId) {
+      saveLocalUserCourses(activeId, filtered);
     }
 
     return filtered;
+  };
+
+  const timeout = new Promise<DbCourse[]>((_, reject) => {
+    setTimeout(() => reject(new Error('Supabase network timeout')), 2500);
+  });
+
+  try {
+    return await Promise.race([remoteFetch(), timeout]);
   } catch (err) {
-    console.warn('[Supabase Courses] Erreur lecture distante, bascule sur le cache du compte:', err);
-    // 2. Repli immédiat sur le stockage local dédié à cet utilisateur
-    if (userId) {
-      const cached = getLocalUserCourses(userId);
-      if (cached && cached.length > 0) {
-        return cached;
-      }
+    console.warn('[Supabase Courses] Requête réseau expirée ou indisponible, utilisation du cache immédiat:', err);
+    if (localCourses.length > 0) {
+      return localCourses;
     }
     throw err;
   }

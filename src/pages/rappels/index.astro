@@ -233,6 +233,7 @@ const serializedCourses = subjects.map((s) => ({
     fetchUserReminders,
     toggleUserReminder,
     deleteUserReminder,
+    getUserCoursesImmediate,
     type DbReminder,
   } from '../../utils/supabase';
 
@@ -252,6 +253,23 @@ const serializedCourses = subjects.map((s) => ({
     const rawCourses = root.getAttribute('data-courses');
     const textes: Array<{ id: string; title: string; author: string; url: string }> = rawTextes ? JSON.parse(rawTextes) : [];
     const courses: Array<{ id: string; title: string; url: string }> = rawCourses ? JSON.parse(rawCourses) : [];
+
+    const userCourses = getUserCoursesImmediate();
+    userCourses.forEach((c) => {
+      let title = c.title;
+      let s = '';
+      if (c.tags && c.tags.length > 0) {
+        const clean = c.tags.filter((t: string) => t !== 'Université' && t !== 'Dossier importé' && t !== 'Matière');
+        if (clean.length > 0) s = clean[0];
+      }
+      if (!s) s = title;
+      const slugId = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      courses.push({
+        id: c.id || slugId,
+        title: title !== s ? `${title} (${s})` : s,
+        url: `${(import.meta.env.BASE_URL || '/').replace(/\/$/, '')}/cours/#folder-${slugId}`,
+      });
+    });
 
     const scheduleDot = document.getElementById('schedule-dot');
     const scheduleStateTitle = document.getElementById('schedule-state-title');

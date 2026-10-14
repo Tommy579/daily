@@ -125,7 +125,7 @@ const shortcuts = [
 
 <script>
   import { STORAGE_KEYS, loadPersistent } from '../utils/persistence';
-  import { getCurrentSession, fetchUserScheduleEvents, fetchUserCourses } from '../utils/supabase';
+  import { getCurrentSession, fetchUserScheduleEvents, fetchUserCourses, getUserCoursesImmediate } from '../utils/supabase';
   import { syncTimetableState, parseIcsEvents } from '../utils/timetable';
 
   interface HomeEvent {
@@ -292,46 +292,57 @@ const shortcuts = [
       }
     }
 
-    // Matières personnalisées de l'utilisateur (issues de sa base Supabase)
-    try {
+    // Matières personnalisées de l'utilisateur (affichage instantané + synchro Supabase)
+    function renderCustomSubjects(courses: any[]) {
       const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
-      const userCourses = await fetchUserCourses().catch(() => []);
       const subList = document.getElementById('home-subject-list');
-      if (subList && userCourses.length > 0) {
-        const customSubjects = new Set<string>();
-        userCourses.forEach((c) => {
-          if (c.tags && c.tags.length > 0) {
-            const s = c.tags[0];
-            if (s && s !== 'Université' && s !== 'Dossier importé') customSubjects.add(s);
-          } else if (c.title) {
-            customSubjects.add(c.title);
-          }
-        });
+      if (!subList || !courses || courses.length === 0) return;
+      const customSubjects = new Set<string>();
+      courses.forEach((c) => {
+        let s = '';
+        if (c.tags && c.tags.length > 0) {
+          const clean = c.tags.filter((t: string) => t !== 'Université' && t !== 'Dossier importé' && t !== 'Matière' && t !== 'Supports de cours');
+          if (clean.length > 0) s = clean[0];
+        }
+        if (!s && c.title) s = c.title;
+        if (s) customSubjects.add(s);
+      });
 
-        customSubjects.forEach((subName) => {
-          const slugId = subName
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-|-$/g, '');
-          const targetHref = `${basePath}/cours/#folder-${slugId}`;
-          if (!subList.querySelector(`a[href="${targetHref}"]`)) {
-            const li = document.createElement('li');
-            li.innerHTML = `
-              <a href="${targetHref}" class="subject-row">
-                <span class="subject-initial" aria-hidden="true">${subName.charAt(0).toUpperCase()}</span>
-                <span class="subject-text">
-                  <strong>${subName}</strong>
-                  <small>Matière personnelle</small>
-                </span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="subject-arrow"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-              </a>
-            `;
-            subList.appendChild(li);
-          }
-        });
+      customSubjects.forEach((subName) => {
+        const slugId = subName
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+        const targetHref = `${basePath}/cours/#folder-${slugId}`;
+        if (!subList.querySelector(`a[href="${targetHref}"]`)) {
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <a href="${targetHref}" class="subject-row">
+              <span class="subject-initial" aria-hidden="true">${subName.charAt(0).toUpperCase()}</span>
+              <span class="subject-text">
+                <strong>${subName}</strong>
+                <small>Matière personnelle</small>
+              </span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="subject-arrow"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+          `;
+          subList.appendChild(li);
+        }
+      });
+    }
+
+    try {
+      const immediateCourses = getUserCoursesImmediate();
+      if (immediateCourses.length > 0) {
+        renderCustomSubjects(immediateCourses);
       }
+      fetchUserCourses()
+        .then((remote) => {
+          if (remote && remote.length > 0) renderCustomSubjects(remote);
+        })
+        .catch(() => {});
     } catch {}
   }
 
