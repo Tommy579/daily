@@ -1,0 +1,129 @@
+import { saveDocumentBlob } from './fileStorage';
+import { createBatchUserCourses, getCurrentUserCached } from './supabase';
+
+export interface ImportFolderResult {
+  subjectCount: number;
+  fileCount: number;
+  pdfCount: number;
+}
+
+/**
+ * Traite et enregistre l'arborescence complète d'un dossier sélectionné par l'utilisateur.
+ * Sauvegarde les fichiers PDF dans IndexedDB et crée les matières correspondantes dans Supabase.
+ */
+export async function processFolderUpload(
+  fileList: FileList | File[],
+  onProgress?: (message: string) => void
+): Promise<ImportFolderResult> {
+  const files = Array.from(fileList);
+  if (files.length === 0) {
+    throw new Error('Aucun fichier sélectionné.');
+  }
+
+  onProgress?.(`Analyse du dossier (${files.length} fichiers détectés)...`);
+
+  const user = getCurrentUserCached();
+  const userId = user?.id || '';
+
+  // 1. Sauvegarde des fichiers dans IndexedDB pour lecture immédiate
+  let pdfCount = 0;
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    const isPdf = f.name.toLowerCase().endsWith('.pdf');
+    if (isPdf) pdfCount++;
+
+    try {
+      if (userId) await saveDocumentBlob(`doc:${userId}:${f.name}`, f);
+      await saveDocumentBlob(`doc:${f.name}`, f);
+      await saveDocumentBlob(f.name, f);
+    } catch (e) {
+      console.warn('[courseImport] Erreur sauvegarde document:', f.name, e);
+    }
+  }
+
+  // 2. Détection de la hiérarchie relative
+  const subjectsMap: Record<string, { subfolders: Record<string, string[]>; rootFiles: string[] }> = {};
+  const paths = files.map((f) => (f.webkitRelativePath || f.name).split('/').filter(Boolean));
+  const topSegments = new Set(paths.map((p) => p[0]));
+  const isWrappedInTopFolder = topSegments.size === 1 && paths.some((p) => p.length >= 3);
+
+  paths.forEach((parts, idx) => {
+    let subjectName = '';
+    let category = 'Documents';
+    const fileName = parts[parts.length - 1];
+    const fileObj = files[idx];
+
+    if (isWrappedInTopFolder) {
+      subjectName = parts[1] || parts[0];
+      if (parts.length >= 4) {
+        category = parts.slice(2, -1).join(' / ');
+      }
+    } else {
+      subjectName = parts[0];
+      if (parts.length >= 3) {
+        category = parts.slice(1, -1).join(' / ');
+      }
+    }
+
+    // Sauvegarde également avec la clé contextuelle complète
+    if (fileObj) {
+      saveDocumentBlob(`doc:${userId}:${subjectName}:${category}:${fileName}`, fileObj).catch(() => {});
+      saveDocumentBlob(`${subjectName}/${category}/${fileName}`, fileObj).catch(() => {});
+    }
+
+    if (!subjectsMap[subjectName]) {
+      subjectsMap[subjectName] = { subfolders: {}, rootFiles: [] };
+    }
+
+    if (category === 'Documents') {
+      subjectsMap[subjectName].rootFiles.push(fileName);
+    } else {
+      if (!subjectsMap[subjectName].subfolders[category]) {
+        subjectsMap[subjectName].subfolders[category] = [];
+      }
+      subjectsMap[subjectName].subfolders[category].push(fileName);
+    }
+  });
+
+  const newCourses: Array<{ title: string; body_md: string; tags: string[] }> = [];
+
+  Object.entries(subjectsMap).forEach(([subjectName, data]) => {
+    let md = `## Arborescence et documents de ${subjectName}\n\n`;
+    const subCats = Object.entries(data.subfolders);
+    if (subCats.length > 0) {
+      subCats.forEach(([catName, fileNames]) => {
+        md += `### ${catName}\n\n`;
+        fileNames.forEach((fn) => {
+          md += `- ${fn}\n`;
+        });
+        md += `\n`;
+      });
+    }
+    if (data.rootFiles.length > 0) {
+      md += `### Documents généraux\n\n`;
+      data.rootFiles.forEach((fn) => {
+        md += `- ${fn}\n`;
+      });
+      md += `\n`;
+    }
+
+    newCourses.push({
+      title: subjectName,
+      body_md: md,
+      tags: [subjectName, 'Dossier importé'],
+    });
+  });
+
+  if (newCourses.length === 0) {
+    throw new Error('Aucune arborescence valide extraite.');
+  }
+
+  onProgress?.(`Enregistrement de ${newCourses.length} matière(s)...`);
+  await createBatchUserCourses(newCourses);
+
+  return {
+    subjectCount: newCourses.length,
+    fileCount: files.length,
+    pdfCount,
+  };
+}
