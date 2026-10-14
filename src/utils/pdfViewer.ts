@@ -1,3 +1,4 @@
+import { renderAsync } from 'docx-preview';
 import { findDocumentBlob, saveDocumentBlob, dataUrlToBlob } from './fileStorage';
 import { getCurrentUserCached, type DbCourse } from './supabase';
 
@@ -7,7 +8,10 @@ export interface OpenPdfOptions {
   folder?: string;
   fileUrl?: string;
   rawCourse?: DbCourse;
+  content?: string;
 }
+
+export type OpenDocumentOptions = OpenPdfOptions;
 
 let activeBlobUrl: string | null = null;
 let currentDocContext: OpenPdfOptions | null = null;
@@ -19,6 +23,8 @@ export function setupPdfViewerModal(): void {
   const btnClose = document.getElementById('btn-close-pdf-viewer');
   const dropBox = document.getElementById('pdf-drop-box');
   const fileInput = document.getElementById('input-pdf-missing') as HTMLInputElement | null;
+  const btnCopyText = document.getElementById('btn-copy-doc-text');
+  const btnCopyLabel = document.getElementById('btn-copy-doc-label');
 
   btnClose?.addEventListener('click', () => {
     if (modal) {
@@ -27,6 +33,23 @@ export function setupPdfViewerModal(): void {
     }
     const frame = document.getElementById('pdf-viewer-frame') as HTMLIFrameElement | null;
     if (frame) frame.src = '';
+  });
+
+  btnCopyText?.addEventListener('click', () => {
+    const codeEl = document.getElementById('code-viewer-content');
+    const mdEl = document.getElementById('markdown-viewer-content');
+    const textToCopy = (codeEl?.textContent || mdEl?.textContent || '').trim();
+    if (textToCopy) {
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        if (btnCopyLabel) {
+          const original = btnCopyLabel.textContent;
+          btnCopyLabel.textContent = 'Copié !';
+          setTimeout(() => {
+            if (btnCopyLabel) btnCopyLabel.textContent = original;
+          }, 2000);
+        }
+      }).catch(() => {});
+    }
   });
 
   // Gestion du glisser-déposer sur la zone de fichier manquant
@@ -43,19 +66,19 @@ export function setupPdfViewerModal(): void {
     e.preventDefault();
     dropBox.classList.remove('drag-over');
     if (e.dataTransfer?.files && e.dataTransfer.files[0]) {
-      await handleAttachedPdfFile(e.dataTransfer.files[0]);
+      await handleAttachedDocumentFile(e.dataTransfer.files[0]);
     }
   });
 
   fileInput?.addEventListener('change', async () => {
     if (fileInput.files && fileInput.files[0]) {
-      await handleAttachedPdfFile(fileInput.files[0]);
+      await handleAttachedDocumentFile(fileInput.files[0]);
       fileInput.value = '';
     }
   });
 }
 
-async function handleAttachedPdfFile(file: File): Promise<void> {
+async function handleAttachedDocumentFile(file: File): Promise<void> {
   if (!currentDocContext) return;
   const user = getCurrentUserCached();
   const userId = user?.id || '';
@@ -70,30 +93,77 @@ async function handleAttachedPdfFile(file: File): Promise<void> {
   await saveDocumentBlob(title, file);
 
   // Réaffichage immédiat
-  await openPdfViewer(currentDocContext);
+  await openDocumentViewer(currentDocContext);
 }
 
-export async function openPdfViewer(options: OpenPdfOptions): Promise<void> {
+function renderMarkdown(md: string): string {
+  if (!md) return '';
+  return md
+    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+    .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>')
+    .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+    .replace(/`([^`]+)`/gim, '<code>$1</code>')
+    .replace(/^\- (.*$)/gim, '<li>$1</li>')
+    .replace(/\n\n+/g, '</p><p>')
+    .replace(/\n/g, '<br />');
+}
+
+export async function openDocumentViewer(options: OpenPdfOptions): Promise<void> {
   currentDocContext = options;
   const modal = document.getElementById('modal-pdf-viewer') as HTMLDialogElement | null;
   if (!modal) return;
 
+  const badgeEl = document.getElementById('pdf-viewer-badge');
   const titleEl = document.getElementById('pdf-viewer-title');
   const breadcrumbEl = document.getElementById('pdf-viewer-breadcrumb');
   const btnNewTab = document.getElementById('btn-pdf-new-tab') as HTMLButtonElement | null;
   const btnDownload = document.getElementById('btn-pdf-download') as HTMLAnchorElement | null;
+  const btnFullscreenText = document.getElementById('btn-pdf-fullscreen-text');
+
+  // Conteneurs
   const frameWrapper = document.getElementById('pdf-frame-wrapper');
   const frame = document.getElementById('pdf-viewer-frame') as HTMLIFrameElement | null;
+  const docxWrapper = document.getElementById('docx-frame-wrapper');
+  const docxContainer = document.getElementById('docx-viewer-container');
+  const textWrapper = document.getElementById('text-frame-wrapper');
+  const textInfo = document.getElementById('text-frame-info');
+  const mdContent = document.getElementById('markdown-viewer-content');
+  const codePre = document.getElementById('code-viewer-pre');
+  const codeContent = document.getElementById('code-viewer-content');
+
+  // Zone manquant
   const missingZone = document.getElementById('pdf-missing-zone');
   const missingFilename = document.getElementById('pdf-missing-filename');
+  const dropHighlight = document.getElementById('doc-drop-highlight');
 
-  const docTitle = options.title;
+  const docTitle = options.title.trim();
   const docSubject = options.subject || 'Cours';
   const docFolder = options.folder || 'Document';
+
+  // Détection de l'extension et de la catégorie
+  const extMatch = docTitle.match(/\.([a-zA-Z0-9]+)$/);
+  const ext = (extMatch ? extMatch[1] : (options.fileUrl?.split('.').pop() || 'doc')).toLowerCase();
+  const isPdf = ext === 'pdf';
+  const isDocx = ext === 'docx' || ext === 'doc';
+  const isMd = ext === 'md';
+  const isText = [
+    'txt', 'text', 'md', 'c', 'h', 'cpp', 'java', 'py', 'js', 'ts', 'sh',
+    'sci', 'sce', 'm', 'json', 'csv', 'log', 'xml', 'sql', 'html', 'css', 'note'
+  ].includes(ext) || (!isPdf && !isDocx && Boolean(options.content));
 
   if (titleEl) titleEl.textContent = docTitle;
   if (breadcrumbEl) breadcrumbEl.textContent = `${docSubject} / ${docFolder}`;
   if (missingFilename) missingFilename.textContent = docTitle;
+  if (dropHighlight) dropHighlight.textContent = (ext ? ext.toUpperCase() : 'DOCUMENT');
+
+  // Mise à jour visuelle du badge
+  if (badgeEl) {
+    badgeEl.textContent = (ext ? ext.toUpperCase() : 'DOC').slice(0, 4);
+    badgeEl.className = `file-badge file-badge--${isPdf ? 'pdf' : isDocx ? 'doc' : isText ? 'code' : 'doc'}`;
+  }
 
   // Nettoyage de l'ancien URL Blob
   if (activeBlobUrl && activeBlobUrl.startsWith('blob:')) {
@@ -103,9 +173,10 @@ export async function openPdfViewer(options: OpenPdfOptions): Promise<void> {
     activeBlobUrl = null;
   }
 
+  let finalBlob: Blob | null = null;
   let finalUrl: string | null = null;
 
-  // 1. URL fournie directement (ex: lien web ou /cours-files/...)
+  // 1. URL fournie directement
   if (options.fileUrl && (options.fileUrl.startsWith('http') || options.fileUrl.startsWith('/') || options.fileUrl.startsWith('blob:'))) {
     finalUrl = options.fileUrl;
   }
@@ -113,27 +184,27 @@ export async function openPdfViewer(options: OpenPdfOptions): Promise<void> {
   // 2. Data URL embarquée dans le cours
   if (!finalUrl && options.rawCourse?.body_md && options.rawCourse.body_md.startsWith('data:')) {
     try {
-      const blob = dataUrlToBlob(options.rawCourse.body_md);
-      activeBlobUrl = URL.createObjectURL(blob);
+      finalBlob = dataUrlToBlob(options.rawCourse.body_md);
+      activeBlobUrl = URL.createObjectURL(finalBlob);
       finalUrl = activeBlobUrl;
     } catch (e) {
-      console.warn('[PdfViewer] Erreur conversion dataUrl:', e);
+      console.warn('[DocViewer] Erreur conversion dataUrl:', e);
     }
   }
 
   // 3. Recherche dans la base locale IndexedDB
-  if (!finalUrl) {
+  if (!finalBlob && !finalUrl) {
     const user = getCurrentUserCached();
     const blob = await findDocumentBlob(user?.id, docSubject, docFolder, docTitle);
     if (blob) {
+      finalBlob = blob;
       activeBlobUrl = URL.createObjectURL(blob);
       finalUrl = activeBlobUrl;
     }
   }
 
-  // 4. Si introuvable mais qu'il s'agit d'un fichier du repo statique
-  if (!finalUrl && docTitle.endsWith('.pdf')) {
-    // Tester si présent dans /cours-files/
+  // 4. Si introuvable mais présent sur le serveur statique (/cours-files/...)
+  if (!finalBlob && !finalUrl) {
     const possibleStatic = `/cours-files/${encodeURI(docSubject)}/${encodeURI(docFolder)}/${encodeURI(docTitle)}`;
     try {
       const headCheck = await fetch(possibleStatic, { method: 'HEAD' });
@@ -143,34 +214,165 @@ export async function openPdfViewer(options: OpenPdfOptions): Promise<void> {
     } catch {}
   }
 
-  // Affichage du modal
+  // 5. Contenu textuel direct fourni
+  if (!finalBlob && !finalUrl && options.content && options.content !== docTitle) {
+    finalBlob = new Blob([options.content], { type: 'text/plain;charset=utf-8' });
+    activeBlobUrl = URL.createObjectURL(finalBlob);
+    finalUrl = activeBlobUrl;
+  }
+
+  // Si on a finalUrl mais pas encore finalBlob (et qu'on doit lire le contenu en JS pour docx ou text)
+  if (finalUrl && !finalBlob && (isDocx || isText)) {
+    try {
+      const res = await fetch(finalUrl);
+      if (res.ok) {
+        finalBlob = await res.blob();
+      }
+    } catch (e) {
+      console.warn('[DocViewer] Échec fetch blob depuis finalUrl:', e);
+    }
+  }
+
+  // Affichage de la modale
   if (typeof modal.showModal === 'function') {
     if (!modal.open) modal.showModal();
   } else {
     modal.style.display = 'flex';
   }
 
-  // Configuration de l'affichage
-  if (finalUrl) {
-    if (frameWrapper) frameWrapper.style.display = 'flex';
-    if (missingZone) missingZone.style.display = 'none';
-    if (frame) frame.src = finalUrl + '#view=FitH';
+  // Masquage initial de tous les conteneurs
+  if (frameWrapper) frameWrapper.style.display = 'none';
+  if (docxWrapper) docxWrapper.style.display = 'none';
+  if (textWrapper) textWrapper.style.display = 'none';
+  if (missingZone) missingZone.style.display = 'none';
 
+  if (finalUrl || finalBlob) {
+    // 1. Gestion affichage PDF
+    if (isPdf && frameWrapper && frame) {
+      frameWrapper.style.display = 'flex';
+      frame.src = (finalUrl || activeBlobUrl || '') + '#view=FitH';
+    }
+    // 2. Gestion affichage Word DOCX
+    else if (isDocx && docxWrapper && docxContainer) {
+      docxWrapper.style.display = 'flex';
+      docxContainer.innerHTML = '<div style="padding: 2.5rem; text-align: center; color: var(--muted, #666);">Chargement et mise en page du document Word...</div>';
+
+      try {
+        let buffer: ArrayBuffer | null = null;
+        if (finalBlob) {
+          buffer = await finalBlob.arrayBuffer();
+        } else if (finalUrl) {
+          const resp = await fetch(finalUrl);
+          buffer = await resp.arrayBuffer();
+        }
+
+        if (buffer) {
+          docxContainer.innerHTML = '';
+          await renderAsync(buffer, docxContainer, undefined, {
+            inWrapper: false,
+            ignoreWidth: false,
+            ignoreHeight: false,
+            breakPages: true,
+            renderHeaders: true,
+            renderFooters: true,
+          });
+        } else {
+          throw new Error('Données du document Word inaccessibles.');
+        }
+      } catch (err: any) {
+        console.warn('[DocViewer] docx-preview a échoué:', err);
+        docxContainer.innerHTML = `
+          <div style="padding: 3rem 1.5rem; text-align: center; max-width: 500px; margin: 0 auto;">
+            <div style="font-size: 2.5rem; margin-bottom: 1rem;">📄</div>
+            <h3 style="margin-bottom: 0.5rem;">Aperçu direct non disponible</h3>
+            <p style="color: var(--muted); font-size: 0.92rem; line-height: 1.6; margin-bottom: 1.5rem;">
+              Ce document Word (${docTitle}) ne peut pas être converti directement dans le navigateur (format binaire .doc ancien ou fichier protégé).
+            </p>
+            <a href="${finalUrl}" download="${docTitle}" class="btn btn--primary" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.2rem; text-decoration: none;">
+              📥 Télécharger le fichier Word
+            </a>
+          </div>
+        `;
+      }
+    }
+    // 3. Gestion affichage Texte / Code / Markdown
+    else if (textWrapper) {
+      textWrapper.style.display = 'flex';
+      let rawText = '';
+      if (finalBlob) {
+        rawText = await finalBlob.text();
+      } else if (options.content) {
+        rawText = options.content;
+      } else if (finalUrl) {
+        try {
+          const resp = await fetch(finalUrl);
+          rawText = await resp.text();
+        } catch {
+          rawText = options.content || '';
+        }
+      }
+
+      if (textInfo) {
+        textInfo.textContent = `${ext.toUpperCase()} · ${rawText.split('\n').length} lignes`;
+      }
+
+      if (isMd && mdContent) {
+        mdContent.style.display = 'block';
+        if (codePre) codePre.style.display = 'none';
+        mdContent.innerHTML = renderMarkdown(rawText);
+      } else {
+        if (mdContent) mdContent.style.display = 'none';
+        if (codePre && codeContent) {
+          codePre.style.display = 'block';
+          codeContent.textContent = rawText;
+        }
+      }
+    }
+
+    // Configuration des actions
     if (btnNewTab) {
       btnNewTab.style.display = 'inline-flex';
-      btnNewTab.onclick = () => window.open(finalUrl!, '_blank');
+      if (btnFullscreenText) {
+        btnFullscreenText.textContent = isPdf ? 'Nouvel onglet' : 'Plein écran';
+      }
+      btnNewTab.onclick = () => {
+        if (isPdf && finalUrl) {
+          window.open(finalUrl, '_blank');
+        } else {
+          if (!document.fullscreenElement) {
+            modal.requestFullscreen().catch(() => {
+              if (finalUrl) window.open(finalUrl, '_blank');
+            });
+          } else {
+            document.exitFullscreen().catch(() => {});
+          }
+        }
+      };
     }
+
     if (btnDownload) {
       btnDownload.style.display = 'inline-flex';
-      btnDownload.href = finalUrl;
+      btnDownload.href = finalUrl || '#';
       btnDownload.download = docTitle;
+      btnDownload.onclick = (e) => {
+        if (!finalUrl && finalBlob) {
+          e.preventDefault();
+          const u = URL.createObjectURL(finalBlob);
+          const a = document.createElement('a');
+          a.href = u;
+          a.download = docTitle;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(u), 1000);
+        }
+      };
     }
   } else {
-    // Fichier non encore chargé
-    if (frameWrapper) frameWrapper.style.display = 'none';
+    // Document non trouvé en cache local
     if (missingZone) missingZone.style.display = 'flex';
-    if (frame) frame.src = '';
     if (btnNewTab) btnNewTab.style.display = 'none';
     if (btnDownload) btnDownload.style.display = 'none';
   }
 }
+
+// Rétrocompatibilité : openPdfViewer redirige vers le visualiseur universel
+export const openPdfViewer = openDocumentViewer;

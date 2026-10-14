@@ -104,7 +104,7 @@ export async function findDocumentBlob(
 export function dataUrlToBlob(dataUrl: string): Blob {
   const arr = dataUrl.split(',');
   const mimeMatch = arr[0].match(/:(.*?);/);
-  const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
+  const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
   const bstr = atob(arr[1]);
   let n = bstr.length;
   const u8arr = new Uint8Array(n);

@@ -336,15 +336,17 @@ export function getUserCoursesImmediate(): DbCourse[] {
   return [];
 }
 
+export function isValidUuid(str: any): boolean {
+  return typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+}
+
 export async function fetchUserCourses(): Promise<DbCourse[]> {
   const cachedUser = getCurrentUserCached();
-  const userId = cachedUser?.id;
-  const localCourses = getUserCoursesImmediate();
+  const user = cachedUser || (await getCurrentUser().catch(() => null));
+  const activeId = user?.id;
+  const localCourses = activeId ? getLocalUserCourses(activeId) : getUserCoursesImmediate();
 
-  // Tentative réseau avec un timeout court (2.5s) pour ne jamais geler l'interface
-  const remoteFetch = async () => {
-    const user = cachedUser || (await getCurrentUser().catch(() => null));
-    const activeId = user?.id || userId;
+  const remoteFetch = async (): Promise<DbCourse[]> => {
     const sb = getSupabase();
     const query = sb
       .from('courses')
@@ -359,19 +361,54 @@ export async function fetchUserCourses(): Promise<DbCourse[]> {
     const { data, error } = await query;
     if (error) throw error;
 
-    const filtered = (data || []).filter(
+    const remoteFiltered = (data || []).filter(
       (c) => c.title !== TIMETABLE_SYNC_TITLE && (!c.tags || !c.tags.includes(SYSTEM_TAG))
     );
 
+    // Synchronisation bidirectionnelle intelligente :
     if (activeId) {
-      saveLocalUserCourses(activeId, filtered);
+      if (remoteFiltered.length > 0) {
+        // La base Supabase contient des cours.
+        // Vérifier si des cours créés localement (ex: hors-ligne) ne sont pas encore dans Supabase
+        const remoteTitles = new Set(remoteFiltered.map((r) => r.title.toLowerCase().trim()));
+        const missingRemotely = localCourses.filter(
+          (l) => (!l.id || !isValidUuid(l.id)) && !remoteTitles.has(l.title.toLowerCase().trim())
+        );
+
+        if (missingRemotely.length > 0) {
+          // Pousser les cours locaux orphelins vers Supabase en tâche de fond
+          createBatchUserCourses(missingRemotely).catch((e) =>
+            console.warn('[Supabase Sync] Téléversement des cours locaux non synchronisés:', e)
+          );
+        }
+
+        saveLocalUserCourses(activeId, remoteFiltered);
+        return remoteFiltered;
+      } else if (localCourses.length > 0) {
+        // La base Supabase est vide pour cet utilisateur, mais des cours existent localement (ex: importés sur PC) !
+        // On les pousse immédiatement vers Supabase pour qu'ils soient synchronisés sur le mobile.
+        try {
+          const pushed = await createBatchUserCourses(localCourses);
+          if (pushed && pushed.length > 0) {
+            saveLocalUserCourses(activeId, pushed);
+            return pushed;
+          }
+        } catch (pushErr) {
+          console.warn('[Supabase Sync] Échec téléversement initial des cours:', pushErr);
+        }
+        return localCourses;
+      } else {
+        saveLocalUserCourses(activeId, []);
+        return [];
+      }
     }
 
-    return filtered;
+    return remoteFiltered;
   };
 
+  // Timeout généreux (8s) pour réseaux mobiles lents
   const timeout = new Promise<DbCourse[]>((_, reject) => {
-    setTimeout(() => reject(new Error('Supabase network timeout')), 2500);
+    setTimeout(() => reject(new Error('Supabase network timeout')), 8000);
   });
 
   try {
@@ -392,9 +429,12 @@ export async function createUserCourse(course: Omit<DbCourse, 'id' | 'user_id' |
   }
 
   const now = new Date().toISOString();
+  const rawId = (course as any).id;
+  const hasValidId = isValidUuid(rawId);
+
   const newCourse: DbCourse = {
     ...course,
-    id: (course as any).id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `course-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`),
+    id: hasValidId ? rawId : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined),
     user_id: user.id,
     created_at: now,
     updated_at: now,
@@ -402,32 +442,47 @@ export async function createUserCourse(course: Omit<DbCourse, 'id' | 'user_id' |
 
   // Sauvegarde optimiste locale dédiée à ce compte
   const localList = getLocalUserCourses(user.id);
-  const updatedList = [newCourse, ...localList.filter((c) => c.id !== newCourse.id)];
+  const updatedList = [newCourse, ...localList.filter((c) => (newCourse.id && c.id !== newCourse.id) || c.title !== newCourse.title)];
   saveLocalUserCourses(user.id, updatedList);
 
   // Synchronisation distante Supabase
   try {
     const sb = getSupabase();
+    const payload: any = {
+      user_id: user.id,
+      title: newCourse.title,
+      body_md: newCourse.body_md || '',
+      tags: Array.isArray(newCourse.tags) ? newCourse.tags : [],
+    };
+    if (newCourse.id && isValidUuid(newCourse.id)) {
+      payload.id = newCourse.id;
+    }
+
     const { data, error } = await sb
       .from('courses')
-      .insert([{
-        id: newCourse.id,
-        user_id: user.id,
-        title: newCourse.title,
-        body_md: newCourse.body_md,
-        tags: newCourse.tags,
-      }])
+      .insert([payload])
       .select()
       .single();
 
     if (error) {
-      console.warn('[Supabase Course] Insert distant échoué (cours conservé localement):', error);
-    } else if (data) {
-      const idx = updatedList.findIndex((c) => c.id === newCourse.id);
-      if (idx !== -1) {
-        updatedList[idx] = data;
-        saveLocalUserCourses(user.id, updatedList);
+      console.warn('[Supabase Course] Insert distant échoué:', error);
+      // Nouvelle tentative sans imposer l'UUID pour laisser Postgres gen_random_uuid()
+      if (payload.id) {
+        delete payload.id;
+        const retry = await sb.from('courses').insert([payload]).select().single();
+        if (retry.data) {
+          const idx = updatedList.findIndex((c) => c.title === newCourse.title);
+          if (idx !== -1) updatedList[idx] = retry.data;
+          else updatedList.unshift(retry.data);
+          saveLocalUserCourses(user.id, updatedList);
+          return retry.data;
+        }
       }
+    } else if (data) {
+      const idx = updatedList.findIndex((c) => c.title === newCourse.title || (newCourse.id && c.id === newCourse.id));
+      if (idx !== -1) updatedList[idx] = data;
+      else updatedList.unshift(data);
+      saveLocalUserCourses(user.id, updatedList);
       return data;
     }
   } catch (netErr) {
@@ -445,38 +500,63 @@ export async function createBatchUserCourses(courses: Array<Omit<DbCourse, 'id' 
   }
 
   const now = new Date().toISOString();
-  const coursesWithUser: DbCourse[] = courses.map((c, i) => ({
-    ...c,
-    id: (c as any).id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `course-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 7)}`),
-    user_id: user.id,
-    created_at: now,
-    updated_at: now,
-  }));
+  const coursesWithUser: DbCourse[] = courses.map((c) => {
+    const rawId = (c as any).id;
+    const hasValidId = isValidUuid(rawId);
+    return {
+      ...c,
+      id: hasValidId ? rawId : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : undefined),
+      user_id: user.id,
+      created_at: now,
+      updated_at: now,
+    };
+  });
 
   // Sauvegarde optimiste immédiate dans le stockage local du compte
   const currentLocal = getLocalUserCourses(user.id);
-  const existingIds = new Set(currentLocal.map((c) => c.id));
-  const merged = [...coursesWithUser.filter((c) => !existingIds.has(c.id)), ...currentLocal];
+  const existingIds = new Set(currentLocal.map((c) => c.id).filter(Boolean));
+  const existingTitles = new Set(currentLocal.map((c) => c.title.toLowerCase().trim()));
+
+  const toAddLocally = coursesWithUser.filter(
+    (c) => (c.id && !existingIds.has(c.id)) || (!c.id && !existingTitles.has(c.title.toLowerCase().trim()))
+  );
+  const merged = [...toAddLocally, ...currentLocal];
   saveLocalUserCourses(user.id, merged);
 
   // Synchronisation distante Supabase
   try {
     const sb = getSupabase();
+    const rowsToInsert = coursesWithUser.map((c) => {
+      const row: any = {
+        user_id: user.id,
+        title: c.title,
+        body_md: c.body_md || '',
+        tags: Array.isArray(c.tags) ? c.tags : [],
+      };
+      if (c.id && isValidUuid(c.id)) {
+        row.id = c.id;
+      }
+      return row;
+    });
+
     const { data, error } = await sb
       .from('courses')
-      .insert(coursesWithUser.map((c) => ({
-        id: c.id,
-        user_id: c.user_id,
-        title: c.title,
-        body_md: c.body_md,
-        tags: c.tags,
-      })))
+      .insert(rowsToInsert)
       .select();
 
     if (error) {
-      console.warn('[Supabase Courses] Batch insert distant échoué (cours conservés localement):', error);
+      console.warn('[Supabase Courses] Batch insert distant échoué:', error);
+      // Tentative de secours sans IDs forcés
+      const fallbackRows = rowsToInsert.map(({ id, ...rest }) => rest);
+      const retry = await sb.from('courses').insert(fallbackRows).select();
+      if (retry.data && retry.data.length > 0) {
+        const updated = [...retry.data, ...currentLocal.filter((c) => !retry.data.some((d) => d.title.toLowerCase() === c.title.toLowerCase()))];
+        saveLocalUserCourses(user.id, updated);
+        return retry.data;
+      }
     } else if (data && data.length > 0) {
-      saveLocalUserCourses(user.id, [...data, ...currentLocal.filter((c) => !data.some((d) => d.id === c.id))]);
+      const updated = [...data, ...currentLocal.filter((c) => !data.some((d) => d.id === c.id || d.title.toLowerCase() === c.title.toLowerCase()))];
+      saveLocalUserCourses(user.id, updated);
       return data;
     }
   } catch (netErr) {
@@ -507,26 +587,28 @@ export async function updateUserCourse(id: string, updates: Partial<Omit<DbCours
     }
   }
 
-  try {
-    const sb = getSupabase();
-    const { data, error } = await sb
-      .from('courses')
-      .update({ ...updates, updated_at: now })
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    if (data && user) {
-      const local = getLocalUserCourses(user.id);
-      const idx = local.findIndex((c) => c.id === id);
-      if (idx !== -1) {
-        local[idx] = data;
-        saveLocalUserCourses(user.id, local);
+  if (isValidUuid(id)) {
+    try {
+      const sb = getSupabase();
+      const { data, error } = await sb
+        .from('courses')
+        .update({ ...updates, updated_at: now })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      if (data && user) {
+        const local = getLocalUserCourses(user.id);
+        const idx = local.findIndex((c) => c.id === id);
+        if (idx !== -1) {
+          local[idx] = data;
+          saveLocalUserCourses(user.id, local);
+        }
+        return data;
       }
-      return data;
+    } catch (err) {
+      console.warn('[Supabase Course] Échec mise à jour distante (conservé localement):', err);
     }
-  } catch (err) {
-    console.warn('[Supabase Course] Échec mise à jour distante (conservé localement):', err);
   }
 
   return updatedCourse;
@@ -538,11 +620,13 @@ export async function deleteUserCourse(id: string): Promise<void> {
     const local = getLocalUserCourses(user.id);
     saveLocalUserCourses(user.id, local.filter((c) => c.id !== id));
   }
-  try {
-    const sb = getSupabase();
-    await sb.from('courses').delete().eq('id', id);
-  } catch (err) {
-    console.warn('[Supabase Course] Échec suppression distante (supprimé localement):', err);
+  if (isValidUuid(id)) {
+    try {
+      const sb = getSupabase();
+      await sb.from('courses').delete().eq('id', id);
+    } catch (err) {
+      console.warn('[Supabase Course] Échec suppression distante (supprimé localement):', err);
+    }
   }
 }
 
@@ -554,11 +638,14 @@ export async function deleteBatchUserCourses(ids: string[]): Promise<void> {
     const local = getLocalUserCourses(user.id);
     saveLocalUserCourses(user.id, local.filter((c) => c.id && !toDel.has(c.id)));
   }
-  try {
-    const sb = getSupabase();
-    await sb.from('courses').delete().in('id', ids);
-  } catch (err) {
-    console.warn('[Supabase Courses] Échec suppression batch distante (supprimé localement):', err);
+  const validIds = ids.filter((id) => isValidUuid(id));
+  if (validIds.length > 0) {
+    try {
+      const sb = getSupabase();
+      await sb.from('courses').delete().in('id', validIds);
+    } catch (err) {
+      console.warn('[Supabase Courses] Échec suppression batch distante (supprimé localement):', err);
+    }
   }
 }
 

@@ -95,7 +95,13 @@ const subjectsList = subjects.map((s) => ({
                 </div>
                 <ul class="file-list" role="list">
                   {td.files.map((file) => (
-                    <li class="file-item">
+                    <li
+                      class="file-item static-file-item"
+                      data-subject={sub.name}
+                      data-folder={td.name}
+                      data-filename={file.name}
+                      data-fileurl={file.url}
+                    >
                       <div class="file-info">
                         <span class={`file-badge file-badge--${file.type}`}>
                           {file.ext ? file.ext.replace('.', '').toUpperCase() : 'BIN'}
@@ -125,7 +131,13 @@ const subjectsList = subjects.map((s) => ({
                 </div>
                 <ul class="file-list" role="list">
                   {sub.folder.files.map((file) => (
-                    <li class="file-item">
+                    <li
+                      class="file-item static-file-item"
+                      data-subject={sub.name}
+                      data-folder="Documents racines"
+                      data-filename={file.name}
+                      data-fileurl={file.url}
+                    >
                       <div class="file-info">
                         <span class={`file-badge file-badge--${file.type}`}>
                           {file.ext ? file.ext.replace('.', '').toUpperCase() : 'BIN'}
@@ -318,8 +330,30 @@ const subjectsList = subjects.map((s) => ({
       }
     });
 
-    // Initialisation du lecteur PDF interactif
+    // Initialisation du lecteur interactif de documents (PDF, Word, texte, code)
     setupPdfViewerModal();
+
+    document.querySelectorAll<HTMLElement>('.static-file-item').forEach((item) => {
+      const filename = item.getAttribute('data-filename') || '';
+      const subject = item.getAttribute('data-subject') || '';
+      const folder = item.getAttribute('data-folder') || '';
+      const fileUrl = item.getAttribute('data-fileurl') || '';
+
+      const handleStaticConsult = (e: MouseEvent) => {
+        if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+          e.preventDefault();
+          openPdfViewer({
+            title: filename,
+            subject,
+            folder,
+            fileUrl,
+          });
+        }
+      };
+
+      item.querySelector('.file-name')?.addEventListener('click', handleStaticConsult as any);
+      item.querySelector('.btn-consulter')?.addEventListener('click', handleStaticConsult as any);
+    });
 
     const btnCancelFolder = document.getElementById('btn-cancel-folder');
     const btnStartFolderImport = document.getElementById('btn-start-folder-import');
@@ -730,29 +764,14 @@ const subjectsList = subjects.map((s) => ({
             `;
 
             const onConsult = () => {
-              if (isPdf) {
-                openPdfViewer({
-                  title: file.title,
-                  subject,
-                  folder: folderName,
-                  fileUrl: file.url,
-                  rawCourse: file.rawCourse,
-                });
-              } else if (file.url) {
-                window.open(file.url, '_blank');
-              } else if (file.rawCourse && file.rawCourse.body_md && file.rawCourse.body_md.startsWith('data:')) {
-                const a = document.createElement('a');
-                a.href = file.rawCourse.body_md;
-                a.download = file.title;
-                a.click();
-              } else {
-                if (viewNoteTitle) viewNoteTitle.textContent = file.title;
-                if (viewNoteMeta) viewNoteMeta.textContent = `${subject} / ${folderName}`;
-                if (viewNoteContent) {
-                  viewNoteContent.innerHTML = renderMarkdown(file.content || file.rawCourse?.body_md || file.title);
-                }
-                modalViewNote?.showModal();
-              }
+              openPdfViewer({
+                title: file.title,
+                subject,
+                folder: folderName,
+                fileUrl: file.url,
+                rawCourse: file.rawCourse,
+                content: file.content,
+              });
             };
 
             li.querySelector('.file-name')?.addEventListener('click', onConsult);
