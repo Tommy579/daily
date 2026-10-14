@@ -546,9 +546,8 @@ import { url } from '../../utils/url';
       }
     } catch {}
 
-    // 4. Par défaut : maquette universitaire officielle
-    const defaultTemplateEvents = generateWeekEvents(monday).filter((e) => e.category !== 'habit');
-    return [...defaultTemplateEvents, ...events];
+    // Pas de calendrier par défaut : renvoyer uniquement les cours réels de l'utilisateur
+    return events;
   }
 
   // -------------------------------------------------------------

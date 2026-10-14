@@ -124,10 +124,14 @@ const shortcuts = [
 </Base>
 
 <script>
-  import { generateWeekEvents } from '../utils/timetable';
-  import { getCurrentSession } from '../utils/supabase';
+  import { getCurrentSession, fetchUserScheduleEvents } from '../utils/supabase';
 
-  type Ev = ReturnType<typeof generateWeekEvents>[number];
+  interface HomeEvent {
+    title: string;
+    start: Date;
+    end: Date;
+    location?: string;
+  }
 
   const fmtTime = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
@@ -153,7 +157,7 @@ const shortcuts = [
     return node;
   }
 
-  function renderItem(ev: Ev, now: Date, showDay = false): HTMLLIElement {
+  function renderItem(ev: HomeEvent, now: Date, showDay = false): HTMLLIElement {
     const li = el('li', 'tl-item');
     const state = now > ev.end ? 'past' : now >= ev.start ? 'live' : 'next';
     li.dataset.state = state;
@@ -177,7 +181,7 @@ const shortcuts = [
     return li;
   }
 
-  function initHome() {
+  async function initHome() {
     const root = document.querySelector<HTMLElement>('[data-today]');
     if (!root) return;
     const now = new Date();
@@ -203,13 +207,38 @@ const shortcuts = [
       dateEl.textContent = s.charAt(0).toUpperCase() + s.slice(1);
     }
 
-    // Cours du jour (hors habitudes)
+    // Cours du jour chargés depuis le compte de l'utilisateur (aucun cours fictif par défaut)
     const monday = mondayOf(now);
     const nextMonday = new Date(monday);
     nextMonday.setDate(monday.getDate() + 7);
-    const all = [...generateWeekEvents(monday), ...generateWeekEvents(nextMonday)]
-      .filter((e) => e.category !== 'habit')
-      .sort((a, b) => a.start.getTime() - b.start.getTime());
+
+    const all: HomeEvent[] = [];
+    try {
+      const dbEvents = await fetchUserScheduleEvents();
+      if (dbEvents && dbEvents.length > 0) {
+        dbEvents.forEach((dbEv) => {
+          const dayOffset = (dbEv.day_of_week || 1) - 1;
+          const [sH, sM] = (dbEv.start_time || '08:30').split(':').map(Number);
+          const [eH, eM] = (dbEv.end_time || '10:30').split(':').map(Number);
+
+          const d1 = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + dayOffset);
+          const start1 = new Date(d1);
+          start1.setHours(sH, sM, 0, 0);
+          const end1 = new Date(d1);
+          end1.setHours(eH, eM, 0, 0);
+          all.push({ title: dbEv.title, start: start1, end: end1, location: dbEv.location });
+
+          const d2 = new Date(nextMonday.getFullYear(), nextMonday.getMonth(), nextMonday.getDate() + dayOffset);
+          const start2 = new Date(d2);
+          start2.setHours(sH, sM, 0, 0);
+          const end2 = new Date(d2);
+          end2.setHours(eH, eM, 0, 0);
+          all.push({ title: dbEv.title, start: start2, end: end2, location: dbEv.location });
+        });
+      }
+    } catch {}
+
+    all.sort((a, b) => a.start.getTime() - b.start.getTime());
 
     const today = all.filter((e) => e.start.toDateString() === now.toDateString());
     const list = root.querySelector<HTMLOListElement>('[data-today-list]');
@@ -230,6 +259,8 @@ const shortcuts = [
       if (next) {
         list.append(el('li', 'tl-caption', 'Prochain cours'));
         list.append(renderItem(next, now, true));
+      } else {
+        list.innerHTML = '<li class="meta" style="padding: 0.75rem 0;">Aucun cours planifié pour cette journée.</li>';
       }
     }
 

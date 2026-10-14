@@ -91,13 +91,13 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
               <strong id="timetable-status-title">Calendrier actif</strong>
             </div>
             <p class="status-desc meta" id="timetable-status-desc">
-              Calendrier par défaut chargé (Licence Philosophie / L2-L3).
+              Synchronisé avec votre compte. Aucun calendrier iCal importé.
             </p>
           </div>
 
           <div class="card-actions">
             <button type="submit" class="btn btn--primary btn--sm">Mettre à jour le calendrier</button>
-            <button type="button" class="btn btn--danger btn--sm" id="btn-reset-timetable">Réinitialiser par défaut</button>
+            <button type="button" class="btn btn--danger btn--sm" id="btn-reset-timetable">Effacer le calendrier importé</button>
           </div>
         </form>
       </section>
@@ -314,15 +314,15 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     });
 
     btnResetTimetable?.addEventListener('click', () => {
-      if (confirm('Voulez-vous réinitialiser l’emploi du temps avec le calendrier par défaut de la faculté ?')) {
+      if (confirm('Voulez-vous effacer le calendrier importé ?')) {
         savePersistent(STORAGE_KEYS.TIMETABLE_ICS, '');
         savePersistent(STORAGE_KEYS.TIMETABLE_URL, '');
         deleteCookie(STORAGE_KEYS.TIMETABLE_ICS);
         deleteCookie(STORAGE_KEYS.TIMETABLE_URL);
         if (icsFileInput) icsFileInput.value = '';
         if (icsUrlInput) icsUrlInput.value = '';
-        if (timetableDesc) timetableDesc.textContent = 'Calendrier par défaut chargé (Licence Philosophie / L2-L3).';
-        alert('Emploi du temps réinitialisé aux cours standards.');
+        if (timetableDesc) timetableDesc.textContent = 'Synchronisé avec votre compte. Aucun calendrier iCal importé.';
+        alert('Calendrier importé effacé.');
       }
     });
 
