@@ -315,6 +315,34 @@ export async function deleteUserCourse(id: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function deleteBatchUserCourses(ids: string[]): Promise<void> {
+  if (!ids || ids.length === 0) return;
+  const sb = getSupabase();
+  const { error } = await sb.from('courses').delete().in('id', ids);
+  if (error) throw error;
+}
+
+export async function clearUserCourses(): Promise<void> {
+  const sb = getSupabase();
+  const user = await getCurrentUser().catch(() => null);
+  if (user) {
+    const { error } = await sb
+      .from('courses')
+      .delete()
+      .eq('user_id', user.id)
+      .neq('title', TIMETABLE_SYNC_TITLE);
+    if (error) throw error;
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem('marges_custom_courses');
+      localStorage.removeItem('marges_custom_subjects');
+    } catch {}
+  }
+}
+
+
 export async function fetchUserScheduleEvents(): Promise<DbScheduleEvent[]> {
   const sb = getSupabase();
   const { data, error } = await sb
