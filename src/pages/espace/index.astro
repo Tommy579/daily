@@ -509,10 +509,12 @@ const localPresetCourses = getCourses().map((s) => {
     formatSupabaseError,
     loginWithPassword,
     logoutUser,
+    getCurrentUser,
     getCurrentSession,
     updatePassword,
     updateUserProfile,
     fetchUserCourses,
+    getLocalUserCourses,
     createUserCourse,
     createBatchUserCourses,
     deleteUserCourse,
@@ -806,9 +808,20 @@ const localPresetCourses = getCourses().map((s) => {
         if (badgeCourses) badgeCourses.textContent = String(cachedCourses.length);
         renderCourses();
       } catch (err: any) {
-        if (coursesLoading) {
-          coursesLoading.style.display = 'block';
-          coursesLoading.innerHTML = `<span style="color: var(--color-danger, #dc2626);">${formatSupabaseError(err)}</span>`;
+        console.warn('[Courses] Erreur chargement distant:', err);
+        const user = await getCurrentUser().catch(() => null);
+        if (user) {
+          cachedCourses = getLocalUserCourses(user.id);
+          if (badgeCourses) badgeCourses.textContent = String(cachedCourses.length);
+          if (cachedCourses.length > 0) {
+            renderCourses();
+          }
+        }
+        if (cachedCourses.length === 0) {
+          if (coursesLoading) {
+            coursesLoading.style.display = 'block';
+            coursesLoading.innerHTML = `<span style="color: var(--color-danger, #dc2626);">${formatSupabaseError(err)}</span>`;
+          }
         }
       } finally {
         if (coursesLoading && (cachedCourses.length > 0 || (coursesEmpty && coursesEmpty.style.display === 'block'))) {
@@ -979,18 +992,49 @@ const localPresetCourses = getCourses().map((s) => {
     // Importation des 6 matières locales pré-configurées
     async function importLocalPresetCourses() {
       const root = document.querySelector('[data-local-presets]') as HTMLElement | null;
-      if (!root) return;
-      const raw = root.getAttribute('data-local-presets');
-      if (!raw) return;
       let presets: Array<{ title: string; body_md: string; tags: string[] }> = [];
-      try {
-        presets = JSON.parse(raw);
-      } catch (e) {
-        return;
+      if (root) {
+        const raw = root.getAttribute('data-local-presets');
+        if (raw) {
+          try {
+            presets = JSON.parse(raw);
+          } catch (e) {}
+        }
       }
+
       if (presets.length === 0) {
-        notify('Aucune matière locale détectée.', true);
-        return;
+        presets = [
+          {
+            title: 'Algèbre linéaire numérique & Scilab',
+            body_md: '## Algèbre linéaire numérique & Scilab\n\n- Méthodes directes et itératives de résolution de systèmes linéaires\n- Décomposition LU, Cholesky, QR et SVD\n- Travaux pratiques et scripts Scilab / MATLAB',
+            tags: ['Algèbre linéaire numérique & Scilab', 'Université'],
+          },
+          {
+            title: 'Analyse numérique',
+            body_md: '## Analyse numérique\n\n- Interpolation polynomiale (Lagrange, Newton)\n- Dérivation et intégration numérique (trapèzes, Simpson, Gauss)\n- Résolution numérique des équations différentielles ordinaires (Euler, Runge-Kutta)',
+            tags: ['Analyse numérique', 'Université'],
+          },
+          {
+            title: 'EDO',
+            body_md: '## Équations Différentielles Ordinaires (EDO)\n\n- Systèmes différentiels linéaires et exponentielle de matrice\n- Portraits de phase, stabilité et équilibres\n- Fiches de révisions et annales d\'examens',
+            tags: ['EDO', 'Université'],
+          },
+          {
+            title: 'Informatique théorique',
+            body_md: '## Informatique théorique\n\n- Logique des propositions et calcul des prédicats\n- Représentation des entiers et flottants, complément à deux\n- Induction structurelle, programmation dynamique et diviser pour régner',
+            tags: ['Informatique théorique', 'Université'],
+          },
+          {
+            title: 'IPA',
+            body_md: '## Informatique pour l\'ingénieur & Algorithmique (IPA)\n\n- Programmation en C et Java (POO, héritage, exceptions)\n- Pointeurs, allocation dynamique et gestion mémoire\n- Structures de données : listes chaînées, arbres binaires, tables de hachage',
+            tags: ['IPA', 'Université'],
+          },
+          {
+            title: 'Maths de l_ingénieur',
+            body_md: '## Mathématiques de l\'ingénieur\n\n- Séries et transformées de Fourier, transformée de Laplace\n- Fonctions holomorphes, intégrales curvilignes et théorème des résidus\n- Calcul variationnel et fiches de révisions',
+            tags: ['Maths de l_ingénieur', 'Université'],
+          },
+        ];
       }
 
       // Filtrer les cours déjà présents pour éviter les doublons accidentels
