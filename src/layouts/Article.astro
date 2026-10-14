@@ -29,6 +29,7 @@ const {
   epigraphAuthor,
   dropcap,
   references,
+  isAiGenerated,
 } = entry.data;
 
 const minutes = readingTime(entry.body ?? '');
@@ -111,6 +112,14 @@ const jsonLd = {
           >
             Rappel
           </a>
+          {
+            isAiGenerated && (
+              <>
+                <span class="sep" aria-hidden="true">·</span>
+                <span class="ai-generated-badge" title="Généré par le modèle IA Gemini via GitHub Actions">Texte généré par IA</span>
+              </>
+            )
+          }
         </p>
       </header>
 
@@ -248,6 +257,15 @@ const jsonLd = {
 
   .byline { margin: 0; }
   .themes a { color: var(--fg); text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); }
+  .ai-generated-badge {
+    font-size: 0.72rem;
+    font-style: italic;
+    opacity: 0.85;
+    background: var(--soft);
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+  }
 
   /* Épigraphe : italique, alignée à droite */
   .epigraph {
