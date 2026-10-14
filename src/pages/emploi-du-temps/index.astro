@@ -783,10 +783,11 @@ import { url } from '../../utils/url';
         const info = parseCourse(ev.title, ev.category);
         const kindClass = `card-kind--${info.kind.toLowerCase()}`;
         const isTight = totalCols > 1;
+        const isShort = durationH <= 1.1;
 
         cardsHtml += `
           <article
-            class="course-card ${kindClass} ${isTight ? 'is-tight' : ''}"
+            class="cal-course-card ${kindClass} ${isTight ? 'is-tight' : ''} ${isShort ? 'is-short' : ''}"
             style="top: ${topPercent}%; height: ${heightPercent}%; left: calc(${leftPercent}% + 3px); width: calc(${widthPercent}% - 6px);"
             data-event-id="${ev.id}"
             tabindex="0"
@@ -1453,7 +1454,7 @@ import { url } from '../../utils/url';
   }
 </script>
 
-<style>
+<style is:global>
   /* ==============================================================
      DESIGN SYSTÈME ÉPURÉ · EMPLOI DU TEMPS MARGES
      Un planning aéré, haute lisibilité, typographique et soigné.
@@ -1959,7 +1960,7 @@ import { url } from '../../utils/url';
      Conçues pour une lisibilité totale sans aucun chevauchement !
      ============================================================== */
 
-  .course-card {
+  .cal-course-card {
     position: absolute;
     border-radius: var(--r-sm);
     overflow: hidden;
@@ -1967,29 +1968,29 @@ import { url } from '../../utils/url';
     box-sizing: border-box;
     transition: transform 0.15s ease, box-shadow 0.15s ease, z-index 0.15s ease;
     z-index: 2;
-    min-height: 52px;
+    min-height: 44px;
     box-shadow: var(--shadow-sm);
   }
 
-  .course-card:hover {
+  .cal-course-card:hover {
     transform: translateY(-2px);
     z-index: 30;
     box-shadow: var(--shadow-md);
   }
 
-  .course-card:focus-visible {
+  .cal-course-card:focus-visible {
     outline: 2px solid var(--fg);
     outline-offset: 2px;
     z-index: 30;
   }
 
   .card-inner {
-    padding: 0.5rem 0.65rem;
+    padding: 0.45rem 0.6rem;
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    gap: 0.25rem;
+    gap: 0.2rem;
     box-sizing: border-box;
     overflow: hidden;
   }
@@ -2000,6 +2001,7 @@ import { url } from '../../utils/url';
     justify-content: space-between;
     gap: 0.35rem;
     line-height: 1;
+    flex-shrink: 0;
   }
 
   .card-tag {
@@ -2049,6 +2051,7 @@ import { url } from '../../utils/url';
     color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
+    flex-shrink: 0;
   }
 
   .card-loc {
@@ -2074,18 +2077,34 @@ import { url } from '../../utils/url';
   }
 
   /* Mode serré (quand 2 cours ont lieu au même créneau) */
-  .course-card.is-tight .card-inner {
-    padding: 0.35rem 0.45rem;
+  .cal-course-card.is-tight .card-inner {
+    padding: 0.3rem 0.4rem;
     gap: 0.15rem;
   }
 
-  .course-card.is-tight .card-course-title {
+  .cal-course-card.is-tight .card-course-title {
     font-size: 0.75rem;
     line-height: 1.2;
   }
 
-  .course-card.is-tight .card-time {
+  .cal-course-card.is-tight .card-time {
     display: none;
+  }
+
+  /* Mode créneau court (ex: 1h ou moins) */
+  .cal-course-card.is-short .card-inner {
+    padding: 0.3rem 0.45rem;
+    gap: 0.15rem;
+  }
+
+  .cal-course-card.is-short .card-course-title {
+    font-size: 0.76rem;
+    line-height: 1.15;
+    -webkit-line-clamp: 1;
+  }
+
+  .cal-course-card.is-short .card-bottom-row {
+    font-size: 0.65rem;
   }
 
   /* Couleurs sémantiques par type de cours */
