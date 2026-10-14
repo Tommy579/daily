@@ -151,10 +151,54 @@ const subjectsList = subjects.map((s) => ({
 
     <!-- Modale de création et de classement de cours -->
     <CourseManagerModal />
+
+    <!-- Modale de consultation d'un cours / note Markdown (Supabase) -->
+    <dialog class="panel course-modal" id="modal-view-note" style="max-width: 680px; width: 90%;">
+      <div class="modal-inner">
+        <header class="modal-header">
+          <div>
+            <span class="label" id="view-note-meta">Matière / Catégorie</span>
+            <h2 class="modal-title" id="view-note-title">Titre</h2>
+          </div>
+          <button type="button" class="btn-close" id="btn-close-view-note" aria-label="Fermer">✕</button>
+        </header>
+        <div class="markdown-preview" id="view-note-content" style="max-height: 60vh; overflow-y: auto; padding: 1rem 0;"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn--sm" id="btn-dismiss-note">Fermer</button>
+        </div>
+      </div>
+    </dialog>
   </div>
 </Base>
 
 <script>
+  import {
+    fetchUserCourses,
+    createUserCourse,
+    deleteUserCourse,
+    type DbCourse,
+  } from '../../utils/supabase';
+
+  function renderMarkdown(md: string): string {
+    if (!md) return '<p class="meta">Aucun contenu.</p>';
+    const escaped = md
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    return escaped
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>')
+      .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+      .replace(/`([^`]+)`/gim, '<code>$1</code>')
+      .replace(/^\- (.*$)/gim, '<li>$1</li>')
+      .replace(/\n\n+/g, '</p><p>')
+      .replace(/\n/g, '<br />');
+  }
+
   interface CustomCourseItem {
     id: string;
     name: string;
@@ -186,14 +230,31 @@ const subjectsList = subjects.map((s) => ({
     const btnClose = document.getElementById('btn-close-course-modal');
     const btnCancelSubject = document.getElementById('btn-cancel-subject');
     const btnCancelFile = document.getElementById('btn-cancel-file');
+    const btnCancelNote = document.getElementById('btn-cancel-note');
+
+    const modalViewNote = document.getElementById('modal-view-note') as HTMLDialogElement;
+    const viewNoteTitle = document.getElementById('view-note-title');
+    const viewNoteMeta = document.getElementById('view-note-meta');
+    const viewNoteContent = document.getElementById('view-note-content');
+    const btnCloseViewNote = document.getElementById('btn-close-view-note');
+    const btnDismissNote = document.getElementById('btn-dismiss-note');
+
+    btnCloseViewNote?.addEventListener('click', () => modalViewNote?.close());
+    btnDismissNote?.addEventListener('click', () => modalViewNote?.close());
 
     const formSubject = document.getElementById('form-create-subject') as HTMLFormElement;
     const formFile = document.getElementById('form-upload-file') as HTMLFormElement;
+    const formNote = document.getElementById('form-create-note') as HTMLFormElement;
 
     const selectTargetSubject = document.getElementById('select-target-subject') as HTMLSelectElement;
     const selectTargetFolder = document.getElementById('select-target-folder') as HTMLSelectElement;
+    const selectNoteSubject = document.getElementById('select-note-subject') as HTMLSelectElement;
+    const selectNoteFolder = document.getElementById('select-note-folder') as HTMLSelectElement;
     const groupCustomFolder = document.getElementById('group-custom-folder');
     const inputCustomFolder = document.getElementById('input-custom-folder') as HTMLInputElement;
+
+    const noteTitleInput = document.getElementById('note-title-input') as HTMLInputElement;
+    const noteBodyInput = document.getElementById('note-body-input') as HTMLTextAreaElement;
 
     const toast = document.getElementById('course-toast');
     const toastMsg = document.getElementById('toast-message');
@@ -244,18 +305,19 @@ const subjectsList = subjects.map((s) => ({
 
     // Mise à jour de la liste déroulante des matières
     function populateSubjectsSelect(selectedName?: string) {
-      if (!selectTargetSubject) return;
-      selectTargetSubject.innerHTML = '<option value="" disabled selected>Sélectionner une matière...</option>';
-
       const customSubjects = getCustomSubjects();
       const allNames = Array.from(new Set([...baseSubjects.map((s) => s.name), ...customSubjects.map((s) => s.name)])).sort((a, b) => a.localeCompare(b));
 
-      allNames.forEach((name) => {
-        const opt = document.createElement('option');
-        opt.value = name;
-        opt.textContent = name;
-        if (selectedName && selectedName === name) opt.selected = true;
-        selectTargetSubject.appendChild(opt);
+      [selectTargetSubject, selectNoteSubject].forEach((sel) => {
+        if (!sel) return;
+        sel.innerHTML = '<option value="" disabled selected>Sélectionner une matière...</option>';
+        allNames.forEach((name) => {
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          if (selectedName && selectedName === name) opt.selected = true;
+          sel.appendChild(opt);
+        });
       });
     }
 
@@ -288,7 +350,7 @@ const subjectsList = subjects.map((s) => ({
     });
 
     // Ouvrir / Fermer modale
-    function openModal(defaultTab: 'tab-subject' | 'tab-file' = 'tab-subject', presetSubject?: string) {
+    function openModal(defaultTab: 'tab-subject' | 'tab-file' | 'tab-note' = 'tab-subject', presetSubject?: string) {
       populateSubjectsSelect(presetSubject);
       tabs.forEach((t) => {
         const isMatch = t.getAttribute('data-tab') === defaultTab;
@@ -306,6 +368,7 @@ const subjectsList = subjects.map((s) => ({
     btnClose?.addEventListener('click', () => modal?.close());
     btnCancelSubject?.addEventListener('click', () => modal?.close());
     btnCancelFile?.addEventListener('click', () => modal?.close());
+    btnCancelNote?.addEventListener('click', () => modal?.close());
 
     modal?.addEventListener('click', (e) => {
       if (e.target === modal) modal.close();
@@ -355,7 +418,7 @@ const subjectsList = subjects.map((s) => ({
       renderDynamicSubjects();
     });
 
-    // 3. Traitement formulaire : Importer / classer un document
+    // 3. Traitement formulaire : Importer / classer un document (Supabase)
     formFile?.addEventListener('submit', (e) => {
       e.preventDefault();
       const targetSubject = selectTargetSubject.value;
@@ -370,37 +433,50 @@ const subjectsList = subjects.map((s) => ({
       const file = fileInput.files[0];
       const reader = new FileReader();
 
-      reader.onload = (evt) => {
+      reader.onload = async (evt) => {
         const dataUrl = evt.target?.result as string;
-        const ext = '.' + file.name.split('.').pop()?.toLowerCase();
-        let fType: 'pdf' | 'doc' | 'code' | 'text' | 'other' = 'other';
-        if (ext === '.pdf') fType = 'pdf';
-        else if (['.doc', '.docx', '.odt'].includes(ext)) fType = 'doc';
-        else if (['.c', '.h', '.cpp', '.m', '.sci', '.sce', '.py', '.sh'].includes(ext)) fType = 'code';
-        else if (['.txt', '.md'].includes(ext)) fType = 'text';
-
-        const customCourses = getCustomCourses();
-        customCourses.push({
-          id: Math.random().toString(36).substring(2, 9),
-          name: file.name,
-          subjectName: targetSubject,
-          folderName: targetFolder,
-          size: file.size,
-          ext,
-          type: fType,
-          fileData: dataUrl,
-          addedAt: Date.now(),
-        });
-
-        saveCustomCourses(customCourses);
-        modal?.close();
-        fileInput.value = '';
-        if (inputCustomFolder) inputCustomFolder.value = '';
-        showToast(`Document « ${file.name} » classé dans « ${targetSubject}${targetFolder ? ' / ' + targetFolder : ''} » !`);
-        renderDynamicSubjects();
+        try {
+          await createUserCourse({
+            title: file.name,
+            tags: [targetSubject, targetFolder],
+            body_md: dataUrl,
+          });
+          modal?.close();
+          fileInput.value = '';
+          if (inputCustomFolder) inputCustomFolder.value = '';
+          showToast(`Document « ${file.name} » enregistré dans Supabase !`);
+          await loadAndRenderSupabaseCourses();
+        } catch (err: any) {
+          alert('Erreur enregistrement Supabase: ' + err.message);
+        }
       };
 
       reader.readAsDataURL(file);
+    });
+
+    // 4. Traitement formulaire : Rédiger une note / cours Markdown (Supabase)
+    formNote?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const targetSubject = selectNoteSubject.value;
+      const targetFolder = selectNoteFolder.value || 'Fiches de révisions';
+      const title = noteTitleInput.value.trim();
+      const body_md = noteBodyInput.value.trim();
+      if (!targetSubject || !title) return;
+
+      try {
+        await createUserCourse({
+          title,
+          tags: [targetSubject, targetFolder],
+          body_md,
+        });
+        modal?.close();
+        noteTitleInput.value = '';
+        noteBodyInput.value = '';
+        showToast(`Cours « ${title} » enregistré dans Supabase !`);
+        await loadAndRenderSupabaseCourses();
+      } catch (err: any) {
+        alert('Erreur enregistrement Supabase: ' + err.message);
+      }
     });
 
     // 4. Rendu interactif des matières et documents ajoutés localement
@@ -530,7 +606,136 @@ const subjectsList = subjects.map((s) => ({
       });
     }
 
+    // 5. Charger et afficher les cours depuis la base Supabase
+    async function loadAndRenderSupabaseCourses() {
+      try {
+        const dbCourses = await fetchUserCourses();
+        document.querySelectorAll('.file-item-supabase').forEach((el) => el.remove());
+
+        dbCourses.forEach((c) => {
+          const subject = (c.tags && c.tags[0]) || 'Général';
+          const folder = (c.tags && c.tags[1]) || 'Fiches de révisions';
+
+          const slugId = subject
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+
+          let card = document.getElementById(`folder-${slugId}`);
+          if (!card && container) {
+            card = document.createElement('section');
+            card.className = 'panel subject-card';
+            card.id = `folder-${slugId}`;
+            card.setAttribute('data-subject-card', subject);
+
+            card.innerHTML = `
+              <div class="subject-header">
+                <div class="subject-title-wrap">
+                  <span class="subject-initial" aria-hidden="true">${subject.charAt(0).toUpperCase()}</span>
+                  <div>
+                    <h2 class="subject-title">${subject}</h2>
+                    <p class="subject-meta meta">
+                      <span class="subject-count-label">Cours & Documents personnels</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn--sm btn-add-in-subject"
+                  data-subject-target="${subject}"
+                  title="Ajouter un document dans ${subject}"
+                >
+                  + Ajouter un cours
+                </button>
+              </div>
+              <div class="folder-tree" id="tree-${slugId}"></div>
+            `;
+
+            card.querySelector('.btn-add-in-subject')?.addEventListener('click', () => {
+              openModal('tab-note', subject);
+            });
+
+            container.appendChild(card);
+          }
+
+          const tree = card?.querySelector('.folder-tree');
+          if (!tree) return;
+
+          let tdSection = tree.querySelector(`[data-folder-name="${folder}"]`);
+          if (!tdSection) {
+            tdSection = document.createElement('div');
+            tdSection.className = 'td-section';
+            tdSection.setAttribute('data-folder-name', folder);
+            tdSection.innerHTML = `
+              <div class="td-header">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="td-folder-icon"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.6l2 2.2h7.4A2.5 2.5 0 0 1 21 9.7v7.8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/></svg>
+                <h3 class="td-title">${folder}</h3>
+                <span class="meta td-count">0</span>
+              </div>
+              <ul class="file-list" role="list"></ul>
+            `;
+            tree.appendChild(tdSection);
+          }
+
+          const fileList = tdSection.querySelector('.file-list');
+          if (fileList) {
+            const li = document.createElement('li');
+            li.className = 'file-item file-item-supabase';
+            const isDataUrl = c.body_md && c.body_md.startsWith('data:');
+            const badgeLabel = isDataUrl ? 'DOC' : 'NOTE';
+
+            li.innerHTML = `
+              <div class="file-info">
+                <span class="file-badge file-badge--doc">${badgeLabel}</span>
+                <span class="file-name" style="cursor: pointer;">${c.title}</span>
+              </div>
+              <div class="file-actions meta">
+                <button type="button" class="btn btn--sm btn-consult-db">Consulter</button>
+                <button type="button" class="btn btn--danger btn--sm btn-del-db" title="Supprimer de la base">✕</button>
+              </div>
+            `;
+
+            li.querySelector('.btn-consult-db')?.addEventListener('click', () => {
+              if (isDataUrl) {
+                const a = document.createElement('a');
+                a.href = c.body_md;
+                a.download = c.title;
+                a.click();
+              } else {
+                if (viewNoteTitle) viewNoteTitle.textContent = c.title;
+                if (viewNoteMeta) viewNoteMeta.textContent = `${subject} / ${folder}`;
+                if (viewNoteContent) viewNoteContent.innerHTML = renderMarkdown(c.body_md);
+                modalViewNote?.showModal();
+              }
+            });
+
+            li.querySelector('.btn-del-db')?.addEventListener('click', async () => {
+              if (confirm(`Supprimer définitivement « ${c.title} » de votre base de données Supabase ?`)) {
+                try {
+                  if (c.id) await deleteUserCourse(c.id);
+                  showToast(`« ${c.title} » supprimé.`);
+                  await loadAndRenderSupabaseCourses();
+                } catch (err: any) {
+                  alert(err.message);
+                }
+              }
+            });
+
+            fileList.appendChild(li);
+
+            const countBadge = tdSection.querySelector('.td-count');
+            if (countBadge) countBadge.textContent = String(fileList.children.length);
+          }
+        });
+      } catch (err) {
+        console.warn('Erreur chargement Supabase courses:', err);
+      }
+    }
+
     renderDynamicSubjects();
+    loadAndRenderSupabaseCourses();
   }
 
   document.addEventListener('astro:page-load', initCourseManager);

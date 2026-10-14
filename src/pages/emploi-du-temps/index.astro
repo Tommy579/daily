@@ -33,11 +33,23 @@ import { url } from '../../utils/url';
             <span class="btn-label-desktop">Liste</span>
           </button>
         </div>
+        <button type="button" class="btn btn--primary btn--sm" id="btn-open-add-event" style="display: inline-flex; align-items: center; gap: 0.35rem;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+          <span>Ajouter un cours</span>
+        </button>
         <a href={url('/configuration/#calendar-settings')} class="icon-btn icon-btn-solo" title="Paramètres & Import" aria-label="Paramètres & Import">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </a>
       </div>
     </header>
+
+    <!-- Bandeau d'état Supabase -->
+    <div id="cal-db-banner" class="cal-sync-banner" style="display: none; padding: 0.75rem 1.25rem; background: var(--surface); border-bottom: 1px solid var(--line); font-size: 0.88rem; align-items: center; justify-content: space-between; gap: 1rem;">
+      <span id="cal-db-banner-text">Votre emploi du temps personnel dans Supabase est actuellement vide.</span>
+      <button type="button" class="btn btn--sm" id="btn-seed-schedule">
+        Copier la maquette standard dans ma base Supabase
+      </button>
+    </div>
 
     <!-- Vue Grille Calendrier Hebdomadaire (7 jours) -->
     <div class="calendar-scroll-viewport" data-week-view>
@@ -121,7 +133,59 @@ import { url } from '../../utils/url';
         </div>
         <div class="dialog-actions">
           <a href={url('/cours/')} class="btn-modal-action" id="modal-link-course">Consulter les supports de cours →</a>
+          <button type="button" class="btn btn--danger btn--sm" id="btn-delete-cal-event" style="display: none;">Supprimer de ma base</button>
         </div>
+      </div>
+    </dialog>
+
+    <!-- Modale d'ajout d'un créneau dans Supabase -->
+    <dialog class="cal-event-dialog" id="dialog-add-event">
+      <div class="dialog-content">
+        <header class="dialog-header">
+          <span class="dialog-badge">NOUVEAU CRÉNEAU</span>
+          <button type="button" class="btn-close-modal" id="btn-close-add-event" aria-label="Fermer">✕</button>
+        </header>
+        <h2 class="dialog-title">Ajouter un créneau à mon emploi du temps</h2>
+        <form id="form-add-event" class="dialog-form" style="display: grid; gap: 1rem; margin-top: 1rem;">
+          <div class="form-group" style="display: grid; gap: 0.35rem;">
+            <label for="new-ev-title" class="field-label" style="font-size: 0.85rem; font-weight: 600;">Intitulé du cours :</label>
+            <input type="text" id="new-ev-title" placeholder="Ex: CM Informatique théorique" required style="padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--fg);" />
+          </div>
+          <div class="form-group" style="display: grid; gap: 0.35rem;">
+            <label for="new-ev-day" class="field-label" style="font-size: 0.85rem; font-weight: 600;">Jour de la semaine :</label>
+            <select id="new-ev-day" style="padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--fg);">
+              <option value="1">Lundi</option>
+              <option value="2">Mardi</option>
+              <option value="3">Mercredi</option>
+              <option value="4">Jeudi</option>
+              <option value="5">Vendredi</option>
+              <option value="6">Samedi</option>
+              <option value="7">Dimanche</option>
+            </select>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group" style="display: grid; gap: 0.35rem;">
+              <label for="new-ev-start" class="field-label" style="font-size: 0.85rem; font-weight: 600;">Début :</label>
+              <input type="time" id="new-ev-start" value="08:30" required style="padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--fg);" />
+            </div>
+            <div class="form-group" style="display: grid; gap: 0.35rem;">
+              <label for="new-ev-end" class="field-label" style="font-size: 0.85rem; font-weight: 600;">Fin :</label>
+              <input type="time" id="new-ev-end" value="10:30" required style="padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--fg);" />
+            </div>
+          </div>
+          <div class="form-group" style="display: grid; gap: 0.35rem;">
+            <label for="new-ev-loc" class="field-label" style="font-size: 0.85rem; font-weight: 600;">Salle / Lieu :</label>
+            <input type="text" id="new-ev-loc" placeholder="Ex: Salle 204" style="padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--fg);" />
+          </div>
+          <div class="form-group" style="display: grid; gap: 0.35rem;">
+            <label for="new-ev-notes" class="field-label" style="font-size: 0.85rem; font-weight: 600;">Notes complémentaires :</label>
+            <input type="text" id="new-ev-notes" placeholder="Ex: Groupe TD 1, apporter le polycopié" style="padding: 0.5rem 0.75rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--fg);" />
+          </div>
+          <div class="dialog-actions" style="margin-top: 0.75rem; display: flex; gap: 0.75rem;">
+            <button type="submit" class="btn btn--primary btn--sm" id="btn-submit-add-event">Enregistrer dans ma base</button>
+            <button type="button" class="btn btn--sm" id="btn-cancel-add-event">Annuler</button>
+          </div>
+        </form>
       </div>
     </dialog>
   </div>
@@ -129,8 +193,14 @@ import { url } from '../../utils/url';
 
 <script>
   import ICAL from 'ical.js';
-  import { generateWeekEvents } from '../../utils/timetable';
+  import { generateWeekEvents, WEEKLY_SCHEDULE_TEMPLATE } from '../../utils/timetable';
   import { STORAGE_KEYS, loadPersistent } from '../../utils/persistence';
+  import {
+    fetchUserScheduleEvents,
+    createUserScheduleEvent,
+    deleteUserScheduleEvent,
+    type DbScheduleEvent,
+  } from '../../utils/supabase';
 
   interface CalendarEvent {
     id: string;
@@ -140,6 +210,8 @@ import { url } from '../../utils/url';
     location?: string;
     description?: string;
     category?: 'cm' | 'td' | 'tp' | 'habit' | 'other';
+    isDb?: boolean;
+    dbId?: string;
   }
 
   const START_HOUR = 8;
@@ -198,11 +270,52 @@ import { url } from '../../utils/url';
     }
   }
 
-  function loadEventsForCurrentWeek(): CalendarEvent[] {
+  async function loadEventsForCurrentWeek(): Promise<CalendarEvent[]> {
     const monday = getStartOfWeek(activeDate);
     const sunday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const banner = document.getElementById('cal-db-banner');
 
-    // Vérifier si l'utilisateur a importé son fichier .ics dans les cookies/localStorage
+    // 1. Supabase database
+    try {
+      const dbEvents = await fetchUserScheduleEvents();
+      if (dbEvents && dbEvents.length > 0) {
+        if (banner) banner.style.display = 'none';
+        return dbEvents.map((dbEv) => {
+          const dayOffset = (dbEv.day_of_week || 1) - 1;
+          const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + dayOffset);
+          const [sH, sM] = (dbEv.start_time || '08:30').split(':').map(Number);
+          const [eH, eM] = (dbEv.end_time || '10:30').split(':').map(Number);
+          const start = new Date(d);
+          start.setHours(sH, sM, 0, 0);
+          const end = new Date(d);
+          end.setHours(eH, eM, 0, 0);
+
+          const t = dbEv.title.toUpperCase();
+          let category: 'cm' | 'td' | 'tp' | 'habit' | 'other' = 'cm';
+          if (t.includes('TD')) category = 'td';
+          else if (t.includes('TP')) category = 'tp';
+          else if (t.includes('POMPE') || t.includes('HABIT')) category = 'habit';
+
+          return {
+            id: dbEv.id || Math.random().toString(),
+            title: dbEv.title,
+            start,
+            end,
+            location: dbEv.location || '',
+            description: dbEv.notes || '',
+            category,
+            isDb: true,
+            dbId: dbEv.id,
+          };
+        });
+      } else {
+        if (banner) banner.style.display = 'flex';
+      }
+    } catch (err) {
+      console.warn('Erreur chargement Supabase schedule:', err);
+    }
+
+    // 2. Vérifier si l'utilisateur a importé son fichier .ics dans les cookies/localStorage
     const savedIcs = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
     if (savedIcs && savedIcs.trim().length > 20) {
       try {
@@ -216,7 +329,7 @@ import { url } from '../../utils/url';
       }
     }
 
-    // Par défaut : cours récurrents du cursus exactement conformes à sa maquette
+    // 3. Par défaut : cours récurrents du cursus exactement conformes à sa maquette
     return generateWeekEvents(monday);
   }
 
@@ -326,9 +439,9 @@ import { url } from '../../utils/url';
     return result;
   }
 
-  function renderCalendar() {
+  async function renderCalendar() {
     const monday = getStartOfWeek(activeDate);
-    currentEvents = loadEventsForCurrentWeek();
+    currentEvents = await loadEventsForCurrentWeek();
 
     // 1. Titre du mois en haut
     const monthDisplay = document.getElementById('cal-month-display');
@@ -535,7 +648,10 @@ import { url } from '../../utils/url';
       .join('');
   }
 
+  let selectedEvent: CalendarEvent | null = null;
+
   function openEventModal(ev: CalendarEvent) {
+    selectedEvent = ev;
     const modal = document.getElementById('event-modal') as HTMLDialogElement;
     if (!modal) return;
 
@@ -544,6 +660,7 @@ import { url } from '../../utils/url';
     const timeEl = document.getElementById('modal-time');
     const locEl = document.getElementById('modal-location');
     const descEl = document.getElementById('modal-desc');
+    const btnDelete = document.getElementById('btn-delete-cal-event');
 
     if (catEl) catEl.textContent = ev.title.toUpperCase().startsWith('TD') ? 'TD' : 'CM';
     if (titleEl) titleEl.textContent = ev.title;
@@ -551,31 +668,142 @@ import { url } from '../../utils/url';
     if (locEl) locEl.textContent = ev.location ? ev.location : 'Salle non spécifiée';
     if (descEl) descEl.textContent = ev.description || '';
 
+    if (btnDelete) {
+      if (ev.isDb && ev.dbId) {
+        btnDelete.style.display = 'inline-block';
+      } else {
+        btnDelete.style.display = 'none';
+      }
+    }
+
     modal.showModal();
   }
 
   function initTimetable() {
     renderCalendar();
 
+    // Suppression d'un cours depuis la modale
+    const btnDelete = document.getElementById('btn-delete-cal-event');
+    btnDelete?.addEventListener('click', async () => {
+      if (!selectedEvent || !selectedEvent.dbId) return;
+      if (!confirm('Voulez-vous vraiment supprimer ce cours de votre emploi du temps ?')) return;
+      try {
+        await deleteUserScheduleEvent(selectedEvent.dbId);
+        (document.getElementById('event-modal') as HTMLDialogElement)?.close();
+        await renderCalendar();
+      } catch (err: any) {
+        alert(err.message || 'Erreur lors de la suppression.');
+      }
+    });
+
+    // Modale d'ajout d'un nouveau cours
+    const dialogAdd = document.getElementById('dialog-add-event') as HTMLDialogElement | null;
+    const btnOpenAdd = document.getElementById('btn-open-add-event');
+    const btnCloseAdd = document.getElementById('btn-close-add-event');
+    const btnCancelAdd = document.getElementById('btn-cancel-add-event');
+    const formAdd = document.getElementById('form-add-event') as HTMLFormElement | null;
+
+    btnOpenAdd?.addEventListener('click', () => {
+      dialogAdd?.showModal();
+    });
+    btnCloseAdd?.addEventListener('click', () => {
+      dialogAdd?.close();
+    });
+    btnCancelAdd?.addEventListener('click', () => {
+      dialogAdd?.close();
+    });
+
+    formAdd?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const titleInput = document.getElementById('new-ev-title') as HTMLInputElement | null;
+      const daySelect = document.getElementById('new-ev-day') as HTMLSelectElement | null;
+      const startInput = document.getElementById('new-ev-start') as HTMLInputElement | null;
+      const endInput = document.getElementById('new-ev-end') as HTMLInputElement | null;
+      const locInput = document.getElementById('new-ev-loc') as HTMLInputElement | null;
+      const notesInput = document.getElementById('new-ev-notes') as HTMLInputElement | null;
+
+      if (!titleInput || !daySelect || !startInput || !endInput) return;
+
+      const title = titleInput.value.trim();
+      const dayOfWeek = parseInt(daySelect.value, 10);
+      const startTime = startInput.value;
+      const endTime = endInput.value;
+      const location = locInput?.value.trim() || undefined;
+      const notes = notesInput?.value.trim() || undefined;
+
+      const submitBtn = document.getElementById('btn-submit-add-event') as HTMLButtonElement | null;
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        await createUserScheduleEvent({
+          title,
+          day_of_week: dayOfWeek,
+          start_time: startTime.length === 5 ? `${startTime}:00` : startTime,
+          end_time: endTime.length === 5 ? `${endTime}:00` : endTime,
+          location,
+          notes,
+        });
+        dialogAdd?.close();
+        formAdd.reset();
+        await renderCalendar();
+      } catch (err: any) {
+        alert(err.message || 'Erreur lors de la création du créneau.');
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+
+    // Copie de la maquette standard dans Supabase
+    const btnSeed = document.getElementById('btn-seed-schedule');
+    btnSeed?.addEventListener('click', async () => {
+      if (!confirm('Voulez-vous copier la maquette standard de vos cours dans votre compte Supabase personnel ?')) return;
+      btnSeed.setAttribute('disabled', 'true');
+      btnSeed.textContent = 'Copie en cours...';
+      try {
+        for (const item of WEEKLY_SCHEDULE_TEMPLATE) {
+          const totalEndMin = item.startHour * 60 + item.startMinute + item.durationMinutes;
+          const endH = Math.floor(totalEndMin / 60);
+          const endM = totalEndMin % 60;
+          const startTime = `${String(item.startHour).padStart(2, '0')}:${String(item.startMinute).padStart(2, '0')}:00`;
+          const endTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}:00`;
+
+          await createUserScheduleEvent({
+            title: item.title,
+            day_of_week: item.dayOffset + 1,
+            start_time: startTime,
+            end_time: endTime,
+            location: item.location,
+            notes: item.description,
+          });
+        }
+        await renderCalendar();
+      } catch (err: any) {
+        alert(err.message || 'Erreur lors de la copie de la maquette.');
+      } finally {
+        btnSeed.removeAttribute('disabled');
+        btnSeed.textContent = 'Copier la maquette standard dans ma base Supabase';
+      }
+    });
+
     // Boutons de navigation semaines
-    document.getElementById('cal-prev')?.addEventListener('click', () => {
+    document.getElementById('cal-prev')?.addEventListener('click', async () => {
       const prev = new Date(activeDate);
       prev.setDate(prev.getDate() - 7);
       activeDate = prev;
-      renderCalendar();
+      await renderCalendar();
     });
 
-    document.getElementById('cal-next')?.addEventListener('click', () => {
+    document.getElementById('cal-next')?.addEventListener('click', async () => {
       const next = new Date(activeDate);
       next.setDate(next.getDate() + 7);
       activeDate = next;
-      renderCalendar();
+      await renderCalendar();
     });
 
     // Bouton Aujourd'hui (Pill flottante iOS)
-    document.getElementById('btn-today-pill')?.addEventListener('click', () => {
+    document.getElementById('btn-today-pill')?.addEventListener('click', async () => {
       activeDate = new Date();
-      renderCalendar();
+      await renderCalendar();
       // Scroll doux vers aujourd'hui sur mobile
       const todayCol = document.querySelector('.col-today');
       todayCol?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });

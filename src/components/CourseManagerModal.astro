@@ -20,7 +20,11 @@ import Icon from './Icon.astro';
       </button>
       <button type="button" class="modal-tab" data-tab="tab-file" role="tab" aria-selected="false">
         <Icon name="file" size={15} />
-        Importer un Cours / TD
+        Importer un Fichier
+      </button>
+      <button type="button" class="modal-tab" data-tab="tab-note" role="tab" aria-selected="false">
+        <Icon name="edit" size={15} />
+        Rédiger un Cours (Markdown)
       </button>
     </div>
 
@@ -112,6 +116,55 @@ import Icon from './Icon.astro';
       <div class="modal-actions">
         <button type="button" class="btn btn--sm" id="btn-cancel-file">Annuler</button>
         <button type="submit" class="btn btn--primary btn--sm">Importer et répertorier</button>
+      </div>
+    </form>
+
+    <!-- 3. Formulaire : Rédiger un cours / note en Markdown -->
+    <form id="form-create-note" class="modal-tab-panel" data-panel="tab-note">
+      <p class="meta tab-desc">
+        Rédigez directement vos notes ou fiches de révisions en Markdown. Elles seront stockées de manière privée dans votre base de données Supabase.
+      </p>
+
+      <div class="form-group">
+        <label for="select-note-subject" class="field-label">Matière :</label>
+        <select id="select-note-subject" required>
+          <option value="" disabled selected>Sélectionner une matière...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="select-note-folder" class="field-label">Catégorie :</label>
+        <select id="select-note-folder">
+          <option value="CM">CM (Cours Magistral)</option>
+          <option value="TD">TD (Travaux Dirigés)</option>
+          <option value="Fiches de révisions" selected>Fiches de révisions</option>
+          <option value="Documents racines">Général</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="note-title-input" class="field-label">Titre du cours / de la note :</label>
+        <input
+          type="text"
+          id="note-title-input"
+          placeholder="ex : Séance 2 — La Critique de la Raison Pure"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="note-body-input" class="field-label">Contenu (Markdown) :</label>
+        <textarea
+          id="note-body-input"
+          rows="8"
+          placeholder="Rédigez ici vos notes (# Titre, **gras**, listes, citations...)"
+          required
+        ></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn--sm" id="btn-cancel-note">Annuler</button>
+        <button type="submit" class="btn btn--primary btn--sm">Enregistrer dans Supabase</button>
       </div>
     </form>
   </div>

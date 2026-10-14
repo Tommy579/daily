@@ -525,6 +525,12 @@ import { url } from '../../utils/url';
         if (btn) btn.disabled = true;
         await loginWithPassword(email, pwd);
         notify('Connexion réussie.');
+        document.documentElement.classList.add('is-authenticated');
+        const redirectParam = new URLSearchParams(window.location.search).get('redirect');
+        if (redirectParam && redirectParam.startsWith('/')) {
+          window.location.replace(redirectParam);
+          return;
+        }
         await refreshSessionState();
       } catch (err: any) {
         if (loginErrorBox && loginErrorText) {
@@ -541,6 +547,7 @@ import { url } from '../../utils/url';
     btnLogout?.addEventListener('click', async () => {
       try {
         await logoutUser();
+        document.documentElement.classList.remove('is-authenticated');
         notify('Vous avez été déconnecté.');
         await refreshSessionState();
       } catch (err: any) {

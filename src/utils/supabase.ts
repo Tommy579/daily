@@ -154,6 +154,18 @@ export async function createUserCourse(course: Omit<DbCourse, 'id' | 'user_id' |
   return data;
 }
 
+export async function updateUserCourse(id: string, updates: Partial<Omit<DbCourse, 'id' | 'user_id' | 'created_at'>>): Promise<DbCourse> {
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('courses')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteUserCourse(id: string): Promise<void> {
   const sb = getSupabase();
   const { error } = await sb.from('courses').delete().eq('id', id);
@@ -176,6 +188,18 @@ export async function createUserScheduleEvent(event: Omit<DbScheduleEvent, 'id' 
   const { data, error } = await sb
     .from('schedule_events')
     .insert([event])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateUserScheduleEvent(id: string, updates: Partial<Omit<DbScheduleEvent, 'id' | 'user_id' | 'created_at'>>): Promise<DbScheduleEvent> {
+  const sb = getSupabase();
+  const { data, error } = await sb
+    .from('schedule_events')
+    .update(updates)
+    .eq('id', id)
     .select()
     .single();
   if (error) throw error;

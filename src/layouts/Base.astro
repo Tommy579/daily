@@ -42,10 +42,12 @@ const websiteLd = {
   url: Astro.site?.href,
   inLanguage: 'fr-FR',
 };
+
+const isEspace = Astro.url.pathname.includes('/espace');
 ---
 
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-is-espace={isEspace ? 'true' : undefined}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -110,6 +112,71 @@ const websiteLd = {
     <!-- Données structurées -->
     <script type="application/ld+json" set:html={JSON.stringify(jsonLd ?? websiteLd)} />
 
+    <!-- Verrouillage d'accès au site si non connecté -->
+    <script is:inline define:vars={{ espaceUrl: url('/espace/') }}>
+      (function () {
+        try {
+          var p = window.location.pathname.replace(/\/$/, '');
+          var isEspace = p.endsWith('/espace');
+          if (!isEspace) {
+            var hasToken = false;
+            for (var i = 0; i < localStorage.length; i++) {
+              var k = localStorage.key(i);
+              if (k && (k.indexOf('-auth-token') !== -1 || k === 'supabase.auth.token')) {
+                hasToken = true;
+                break;
+              }
+            }
+            if (!hasToken) {
+              window.location.replace(espaceUrl + '?redirect=' + encodeURIComponent(window.location.pathname + window.location.search));
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <script>
+      import { getCurrentSession, getSupabase } from '../utils/supabase';
+      import { url } from '../utils/url';
+
+      async function verifySession() {
+        const p = window.location.pathname.replace(/\/$/, '');
+        const isEspace = p.endsWith('/espace');
+        try {
+          const session = await getCurrentSession();
+          if (!session || !session.user) {
+            if (!isEspace) {
+              window.location.replace(url('/espace/?redirect=' + encodeURIComponent(window.location.pathname + window.location.search)));
+              return;
+            }
+          } else {
+            document.documentElement.classList.add('is-authenticated');
+          }
+        } catch (err) {
+          if (!isEspace) {
+            window.location.replace(url('/espace/'));
+          }
+        }
+      }
+
+      verifySession();
+      document.addEventListener('astro:page-load', verifySession);
+
+      try {
+        const sb = getSupabase();
+        sb.auth.onAuthStateChange((_event, session) => {
+          const p = window.location.pathname.replace(/\/$/, '');
+          const isEspace = p.endsWith('/espace');
+          if (!session && !isEspace) {
+            document.documentElement.classList.remove('is-authenticated');
+            window.location.replace(url('/espace/'));
+          } else if (session) {
+            document.documentElement.classList.add('is-authenticated');
+          }
+        });
+      } catch (e) {}
+    </script>
+
     <ClientRouter />
   </head>
   <body>
@@ -124,4 +191,16 @@ const websiteLd = {
 
 <style>
   main:focus { outline: none; }
+
+  /* Verrouillage du rendu tant que la session n'est pas vérifiée (sauf sur la page /espace/) */
+  html:not([data-is-espace="true"]):not(.is-authenticated) body {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .15s ease;
+  }
+  html.is-authenticated body,
+  html[data-is-espace="true"] body {
+    opacity: 1;
+    pointer-events: auto;
+  }
 </style>
