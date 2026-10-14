@@ -94,6 +94,24 @@ jobs:
           fi
 
       # -------------------------------------------------------------
+      # ÉTAPE : Ping Supabase pour éviter la mise en pause du projet
+      # -------------------------------------------------------------
+      - name: ⚡ Ping Supabase (maintien du projet actif)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
+            echo "Ping de Supabase pour maintenir le projet gratuit actif..."
+            curl -fsS "${SUPABASE_URL}/rest/v1/ping?select=id&limit=1" \
+              -H "apikey: ${SUPABASE_PUBLISHABLE_KEY}" \
+              -H "Authorization: Bearer ${SUPABASE_PUBLISHABLE_KEY}" \
+              && echo "✓ Supabase ping réussi" || echo "⚠️ Ping Supabase échoué (non bloquant)"
+          else
+            echo "Secrets SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY non configurés (étape ignorée)."
+          fi
+
+      # -------------------------------------------------------------
       # ÉTAPE : Build du site statique Astro et indexation Pagefind
       # -------------------------------------------------------------
       - name: 🏗️ Build du site Astro & index Pagefind

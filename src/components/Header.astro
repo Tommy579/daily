@@ -34,6 +34,16 @@ const isConfig = path.includes('/configuration');
       <ThemeToggle />
       <a
         class="icon-link"
+        href={url('/espace/')}
+        aria-current={path.includes('/espace') ? 'page' : undefined}
+        aria-label="Mon espace & Connexion"
+        title="Mon espace & Connexion"
+        id="header-user-btn"
+      >
+        <Icon name="user" size={18} />
+      </a>
+      <a
+        class="icon-link"
         href={url('/configuration/')}
         aria-current={isConfig ? 'page' : undefined}
         aria-label="Configuration"

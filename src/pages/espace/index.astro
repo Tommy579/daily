@@ -1,0 +1,1540 @@
+---
+import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
+import { url } from '../../utils/url';
+---
+
+<Base
+  title="Mon Espace Personnel"
+  description="Accédez à vos cours privés, votre emploi du temps et vos rappels synchronisés en toute sécurité."
+>
+  <div class="container container--wide app-page espace-page" data-espace-root>
+    <header class="page-header espace-hero">
+      <div class="espace-hero-top">
+        <div>
+          <p class="crumbs"><a href={url('/')}>Accueil</a> / Espace Personnel</p>
+          <h1 class="espace-title">Mon Espace</h1>
+          <p class="espace-motto">
+            Données privées protégées par Row Level Security (RLS) et synchronisées avec Supabase.
+          </p>
+        </div>
+        <div class="espace-auth-actions" id="user-top-actions" style="display: none;">
+          <div class="user-badge">
+            <span class="user-status-dot"></span>
+            <span id="user-display-email" class="user-email-text">utilisateur</span>
+          </div>
+          <button type="button" class="btn btn--sm" id="btn-logout">
+            <Icon name="log-out" size={14} />
+            Se déconnecter
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Zone de messages / notifications -->
+    <div id="espace-banner" class="panel espace-banner" style="display: none;">
+      <span class="banner-dot"></span>
+      <span id="espace-banner-text">Message</span>
+    </div>
+
+    <!-- 1. VUE NON CONNECTÉ (FORMULAIRE DE CONNEXION) -->
+    <div id="view-login" class="espace-section">
+      <div class="panel auth-card">
+        <div class="card-head">
+          <span class="icon-tile"><Icon name="user" size={20} /></span>
+          <div>
+            <h2>Connexion à votre espace</h2>
+            <p class="meta">Entrez les identifiants fournis par l'administrateur</p>
+          </div>
+        </div>
+
+        <form id="form-login" class="espace-form">
+          <div class="form-group">
+            <label for="login-email" class="field-label">Adresse email :</label>
+            <input
+              type="email"
+              id="login-email"
+              placeholder="votre-nom@exemple.fr"
+              required
+              autocomplete="username"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="login-password" class="field-label">Mot de passe :</label>
+            <input
+              type="password"
+              id="login-password"
+              placeholder="••••••••••••"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+
+          <div id="login-error-box" class="login-error" style="display: none;">
+            <span id="login-error-text">Identifiants invalides.</span>
+          </div>
+
+          <div class="card-actions">
+            <button type="submit" class="btn btn--primary" id="btn-submit-login">
+              Se connecter
+            </button>
+            <a href={url('/configuration/#supabase-settings')} class="btn btn--sm">
+              <Icon name="settings" size={14} />
+              Paramètres Supabase
+            </a>
+          </div>
+        </form>
+
+        <div class="auth-security-notice meta">
+          <p>
+            <strong>Protection des données :</strong> Les comptes sont créés sur invitation. Chaque utilisateur dispose de son espace étanche : grâce aux politiques PostgreSQL Row Level Security (RLS), vos cours privés, plannings et rappels ne sont accessibles que par vous.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. VUE CONNECTÉ (TABLEAU DE BORD PERSONNEL) -->
+    <div id="view-dashboard" class="espace-section" style="display: none;">
+      <!-- Navigation par onglets -->
+      <nav class="espace-tabs" aria-label="Sections de mon espace">
+        <button type="button" class="tab-btn active" data-tab="courses">
+          <Icon name="folder" size={16} />
+          <span>Mes Cours Privés</span>
+          <span class="tab-badge" id="badge-courses-count">0</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="schedule">
+          <Icon name="calendar" size={16} />
+          <span>Mon Emploi du Temps</span>
+          <span class="tab-badge" id="badge-schedule-count">0</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="reminders">
+          <Icon name="bell" size={16} />
+          <span>Mes Rappels</span>
+          <span class="tab-badge" id="badge-reminders-count">0</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="security">
+          <Icon name="settings" size={16} />
+          <span>Compte & Sécurité</span>
+        </button>
+      </nav>
+
+      <!-- ONGLET A : COURS PRIVÉS -->
+      <section id="tab-panel-courses" class="tab-panel active">
+        <div class="panel-section-head">
+          <div>
+            <h2>Mes Cours et Notes Personnels</h2>
+            <p class="meta">Rédigez et consultez vos fiches au format Markdown, stockées de manière privée</p>
+          </div>
+          <button type="button" class="btn btn--primary btn--sm" id="btn-open-course-modal">
+            <Icon name="plus" size={14} />
+            Nouveau cours
+          </button>
+        </div>
+
+        <div id="courses-list-loading" class="meta loading-state">Chargement de vos cours...</div>
+        <div id="courses-list-empty" class="panel empty-state" style="display: none;">
+          <p>Aucun cours privé enregistré pour le moment.</p>
+          <button type="button" class="btn btn--sm" id="btn-create-first-course">
+            Créer votre premier cours
+          </button>
+        </div>
+        <div id="courses-grid" class="cards-grid"></div>
+      </section>
+
+      <!-- ONGLET B : EMPLOI DU TEMPS -->
+      <section id="tab-panel-schedule" class="tab-panel" style="display: none;">
+        <div class="panel-section-head">
+          <div>
+            <h2>Mon Emploi du Temps Personnel</h2>
+            <p class="meta">Vos créneaux personnalisés de cours, TD ou séances de travail</p>
+          </div>
+          <button type="button" class="btn btn--primary btn--sm" id="btn-open-schedule-modal">
+            <Icon name="plus" size={14} />
+            Ajouter un créneau
+          </button>
+        </div>
+
+        <div id="schedule-list-loading" class="meta loading-state">Chargement de votre planning...</div>
+        <div id="schedule-list-empty" class="panel empty-state" style="display: none;">
+          <p>Aucun créneau personnalisé enregistré.</p>
+          <button type="button" class="btn btn--sm" id="btn-create-first-schedule">
+            Ajouter un créneau de cours
+          </button>
+        </div>
+        <div id="schedule-days-container" class="schedule-days-grid"></div>
+      </section>
+
+      <!-- ONGLET C : RAPPELS -->
+      <section id="tab-panel-reminders" class="tab-panel" style="display: none;">
+        <div class="panel-section-head">
+          <div>
+            <h2>Mes Rappels Personnels</h2>
+            <p class="meta">Vos alertes quotidiennes de révisions et lectures</p>
+          </div>
+          <button type="button" class="btn btn--primary btn--sm" id="btn-open-reminder-modal">
+            <Icon name="plus" size={14} />
+            Nouveau rappel
+          </button>
+        </div>
+
+        <div id="reminders-list-loading" class="meta loading-state">Chargement de vos rappels...</div>
+        <div id="reminders-list-empty" class="panel empty-state" style="display: none;">
+          <p>Aucun rappel personnel configuré.</p>
+          <button type="button" class="btn btn--sm" id="btn-create-first-reminder">
+            Créer un rappel
+          </button>
+        </div>
+        <div id="reminders-list" class="reminders-list"></div>
+      </section>
+
+      <!-- ONGLET D : COMPTE & SÉCURITÉ -->
+      <section id="tab-panel-security" class="tab-panel" style="display: none;">
+        <div class="security-grid">
+          <div class="panel security-card">
+            <h3>Changer mon mot de passe</h3>
+            <p class="meta">Mettez à jour le mot de passe initial attribué par l'administrateur</p>
+
+            <form id="form-change-password" class="espace-form">
+              <div class="form-group">
+                <label for="new-password" class="field-label">Nouveau mot de passe :</label>
+                <input type="password" id="new-password" minlength="8" required placeholder="8 caractères minimum" />
+              </div>
+              <div class="form-group">
+                <label for="confirm-password" class="field-label">Confirmer le mot de passe :</label>
+                <input type="password" id="confirm-password" minlength="8" required placeholder="Confirmez" />
+              </div>
+              <div class="card-actions">
+                <button type="submit" class="btn btn--primary btn--sm" id="btn-submit-pwd">
+                  Mettre à jour le mot de passe
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="panel security-card">
+            <h3>Sauvegarde et Export de mes données</h3>
+            <p class="meta">Téléchargez l'intégralité de vos cours, planning et rappels au format JSON</p>
+            <div class="card-actions" style="margin-top: 1.5rem;">
+              <button type="button" class="btn btn--sm" id="btn-export-data">
+                <Icon name="book" size={14} />
+                Exporter mes données (JSON)
+              </button>
+            </div>
+            <p class="help-text" style="margin-top: 1rem;">
+              En cas de suppression de compte, toutes vos données Supabase sont automatiquement supprimées en cascade (politique <code>ON DELETE CASCADE</code>).
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- MODAL : AJOUT / ÉDITION DE COURS -->
+    <div id="modal-course" class="modal-overlay" style="display: none;">
+      <div class="modal-dialog modal-dialog--wide">
+        <div class="modal-header">
+          <h3 id="modal-course-title">Rédiger un cours privé</h3>
+          <button type="button" class="btn-close" id="btn-close-course-modal" aria-label="Fermer">✕</button>
+        </div>
+        <form id="form-save-course" class="modal-body espace-form">
+          <div class="form-group">
+            <label for="course-input-title" class="field-label">Titre du cours ou de la fiche :</label>
+            <input type="text" id="course-input-title" placeholder="Ex: Philosophie de l'Esprit — Séance 1" required />
+          </div>
+          <div class="form-group">
+            <label for="course-input-tags" class="field-label">Étiquettes (séparées par des virgules) :</label>
+            <input type="text" id="course-input-tags" placeholder="Ex: Métaphysique, Conscience, Fiche" />
+          </div>
+          <div class="form-group">
+            <div class="editor-tabs-head">
+              <label for="course-input-body" class="field-label">Contenu (Markdown) :</label>
+              <div class="editor-switch">
+                <button type="button" class="btn-subtab active" id="tab-write">Écrire</button>
+                <button type="button" class="btn-subtab" id="tab-preview">Aperçu</button>
+              </div>
+            </div>
+            <textarea id="course-input-body" rows="12" placeholder="Écrivez vos notes en Markdown ici... (# Titre, **gras**, listes, citations)"></textarea>
+            <div id="course-preview-area" class="markdown-preview" style="display: none;"></div>
+          </div>
+          <div class="modal-footer card-actions">
+            <button type="submit" class="btn btn--primary" id="btn-submit-course">Enregistrer le cours</button>
+            <button type="button" class="btn btn--sm" id="btn-cancel-course">Annuler</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL : LECTURE DE COURS -->
+    <div id="modal-view-course" class="modal-overlay" style="display: none;">
+      <div class="modal-dialog modal-dialog--wide">
+        <div class="modal-header">
+          <div>
+            <h3 id="view-course-modal-title">Titre</h3>
+            <p class="meta" id="view-course-modal-meta">Tags</p>
+          </div>
+          <button type="button" class="btn-close" id="btn-close-view-modal" aria-label="Fermer">✕</button>
+        </div>
+        <div class="modal-body">
+          <div id="view-course-body" class="markdown-rendered-view"></div>
+        </div>
+        <div class="modal-footer card-actions">
+          <button type="button" class="btn btn--sm" id="btn-close-view-bottom">Fermer la lecture</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL : AJOUT DE CRÉNEAU D'EMPLOI DU TEMPS -->
+    <div id="modal-schedule" class="modal-overlay" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>Ajouter un créneau d'emploi du temps</h3>
+          <button type="button" class="btn-close" id="btn-close-schedule-modal" aria-label="Fermer">✕</button>
+        </div>
+        <form id="form-save-schedule" class="modal-body espace-form">
+          <div class="form-group">
+            <label for="schedule-input-title" class="field-label">Intitulé du cours / créneau :</label>
+            <input type="text" id="schedule-input-title" placeholder="Ex: TD Éthique contemporaine" required />
+          </div>
+          <div class="form-group">
+            <label for="schedule-input-day" class="field-label">Jour de la semaine :</label>
+            <select id="schedule-input-day" required>
+              <option value="1">Lundi</option>
+              <option value="2">Mardi</option>
+              <option value="3">Mercredi</option>
+              <option value="4">Jeudi</option>
+              <option value="5">Vendredi</option>
+              <option value="6">Samedi</option>
+              <option value="7">Dimanche</option>
+            </select>
+          </div>
+          <div class="times-subgrid">
+            <div class="form-group">
+              <label for="schedule-input-start" class="field-label">Début :</label>
+              <input type="time" id="schedule-input-start" value="08:30" required />
+            </div>
+            <div class="form-group">
+              <label for="schedule-input-end" class="field-label">Fin :</label>
+              <input type="time" id="schedule-input-end" value="10:30" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="schedule-input-location" class="field-label">Salle / Bâtiment (optionnel) :</label>
+            <input type="text" id="schedule-input-location" placeholder="Ex: Bâtiment B, Salle 204" />
+          </div>
+          <div class="form-group">
+            <label for="schedule-input-notes" class="field-label">Notes (optionnel) :</label>
+            <input type="text" id="schedule-input-notes" placeholder="Ex: Professeur M. Dupont, apporter le recueil de textes" />
+          </div>
+          <div class="modal-footer card-actions">
+            <button type="submit" class="btn btn--primary" id="btn-submit-schedule">Enregistrer le créneau</button>
+            <button type="button" class="btn btn--sm" id="btn-cancel-schedule">Annuler</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL : AJOUT DE RAPPEL -->
+    <div id="modal-reminder" class="modal-overlay" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>Nouveau rappel personnel</h3>
+          <button type="button" class="btn-close" id="btn-close-reminder-modal" aria-label="Fermer">✕</button>
+        </div>
+        <form id="form-save-reminder" class="modal-body espace-form">
+          <div class="form-group">
+            <label for="reminder-input-label" class="field-label">Intitulé du rappel :</label>
+            <input type="text" id="reminder-input-label" placeholder="Ex: Relire le texte du jour" required />
+          </div>
+          <div class="form-group">
+            <label for="reminder-input-kind" class="field-label">Type d'élément visé :</label>
+            <select id="reminder-input-kind" required>
+              <option value="texte">Texte philosophique</option>
+              <option value="cours">Support de cours</option>
+              <option value="libre">Rappel libre</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="reminder-input-time" class="field-label">Heure du rappel :</label>
+            <input type="time" id="reminder-input-time" value="09:00" required />
+          </div>
+          <div class="modal-footer card-actions">
+            <button type="submit" class="btn btn--primary" id="btn-submit-reminder">Créer le rappel</button>
+            <button type="button" class="btn btn--sm" id="btn-cancel-reminder">Annuler</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</Base>
+
+<script>
+  import {
+    getSupabase,
+    getSupabaseCredentials,
+    loginWithPassword,
+    logoutUser,
+    getCurrentSession,
+    updatePassword,
+    fetchUserCourses,
+    createUserCourse,
+    deleteUserCourse,
+    fetchUserScheduleEvents,
+    createUserScheduleEvent,
+    deleteUserScheduleEvent,
+    fetchUserReminders,
+    createUserReminder,
+    toggleUserReminder,
+    deleteUserReminder,
+    type DbCourse,
+    type DbScheduleEvent,
+    type DbReminder,
+  } from '../../utils/supabase';
+
+  // Parser Markdown ultra-léger et sécurisé
+  function renderMarkdown(md: string): string {
+    if (!md) return '<p class="meta">Aucun contenu.</p>';
+    const escaped = md
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    return escaped
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>')
+      .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+      .replace(/`([^`]+)`/gim, '<code>$1</code>')
+      .replace(/^\- (.*$)/gim, '<li>$1</li>')
+      .replace(/\n\n+/g, '</p><p>')
+      .replace(/\n/g, '<br />');
+  }
+
+  const DAY_NAMES = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
+  function initEspace() {
+    const viewLogin = document.getElementById('view-login');
+    const viewDashboard = document.getElementById('view-dashboard');
+    const userTopActions = document.getElementById('user-top-actions');
+    const userDisplayEmail = document.getElementById('user-display-email');
+    const btnLogout = document.getElementById('btn-logout');
+
+    const formLogin = document.getElementById('form-login') as HTMLFormElement;
+    const loginEmailInput = document.getElementById('login-email') as HTMLInputElement;
+    const loginPwdInput = document.getElementById('login-password') as HTMLInputElement;
+    const loginErrorBox = document.getElementById('login-error-box');
+    const loginErrorText = document.getElementById('login-error-text');
+
+    const espaceBanner = document.getElementById('espace-banner');
+    const espaceBannerText = document.getElementById('espace-banner-text');
+
+    // Badges
+    const badgeCourses = document.getElementById('badge-courses-count');
+    const badgeSchedule = document.getElementById('badge-schedule-count');
+    const badgeReminders = document.getElementById('badge-reminders-count');
+
+    // Containers
+    const coursesGrid = document.getElementById('courses-grid');
+    const coursesLoading = document.getElementById('courses-list-loading');
+    const coursesEmpty = document.getElementById('courses-list-empty');
+
+    const scheduleGrid = document.getElementById('schedule-days-container');
+    const scheduleLoading = document.getElementById('schedule-list-loading');
+    const scheduleEmpty = document.getElementById('schedule-list-empty');
+
+    const remindersList = document.getElementById('reminders-list');
+    const remindersLoading = document.getElementById('reminders-list-loading');
+    const remindersEmpty = document.getElementById('reminders-list-empty');
+
+    let cachedCourses: DbCourse[] = [];
+    let cachedSchedule: DbScheduleEvent[] = [];
+    let cachedReminders: DbReminder[] = [];
+
+    function notify(msg: string, isError = false) {
+      if (!espaceBanner || !espaceBannerText) return;
+      espaceBannerText.textContent = msg;
+      espaceBanner.className = isError ? 'panel espace-banner banner-error' : 'panel espace-banner';
+      espaceBanner.style.display = 'flex';
+      setTimeout(() => {
+        if (espaceBanner) espaceBanner.style.display = 'none';
+      }, 5000);
+    }
+
+    // Gestion des onglets
+    const tabButtons = document.querySelectorAll<HTMLButtonElement>('.tab-btn');
+    const tabPanels: Record<string, HTMLElement | null> = {
+      courses: document.getElementById('tab-panel-courses'),
+      schedule: document.getElementById('tab-panel-schedule'),
+      reminders: document.getElementById('tab-panel-reminders'),
+      security: document.getElementById('tab-panel-security'),
+    };
+
+    tabButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tab = btn.getAttribute('data-tab');
+        if (!tab) return;
+        tabButtons.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        Object.entries(tabPanels).forEach(([k, panel]) => {
+          if (panel) panel.style.display = k === tab ? 'block' : 'none';
+        });
+      });
+    });
+
+    // Écoute de session
+    async function refreshSessionState() {
+      const { isConfigured } = getSupabaseCredentials();
+      if (!isConfigured) {
+        if (loginErrorBox && loginErrorText) {
+          loginErrorBox.style.display = 'block';
+          loginErrorText.textContent =
+            'Supabase n’est pas encore configuré avec vos clés réelles. Allez dans Configuration pour ajouter votre Project URL et clé publique.';
+        }
+      }
+
+      try {
+        const session = await getCurrentSession();
+        if (session && session.user) {
+          if (viewLogin) viewLogin.style.display = 'none';
+          if (viewDashboard) viewDashboard.style.display = 'block';
+          if (userTopActions) userTopActions.style.display = 'flex';
+          if (userDisplayEmail) userDisplayEmail.textContent = session.user.email || 'Connecté';
+
+          await Promise.all([loadCourses(), loadSchedule(), loadReminders()]);
+        } else {
+          if (viewLogin) viewLogin.style.display = 'block';
+          if (viewDashboard) viewDashboard.style.display = 'none';
+          if (userTopActions) userTopActions.style.display = 'none';
+        }
+      } catch (err: any) {
+        console.error('Erreur session:', err);
+      }
+    }
+
+    // Connexion
+    formLogin?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (loginErrorBox) loginErrorBox.style.display = 'none';
+      const email = loginEmailInput.value.trim();
+      const pwd = loginPwdInput.value;
+
+      try {
+        const btn = document.getElementById('btn-submit-login') as HTMLButtonElement;
+        if (btn) btn.disabled = true;
+        await loginWithPassword(email, pwd);
+        notify('Connexion réussie.');
+        await refreshSessionState();
+      } catch (err: any) {
+        if (loginErrorBox && loginErrorText) {
+          loginErrorBox.style.display = 'block';
+          loginErrorText.textContent = err.message || 'Échec de connexion. Vérifiez vos identifiants.';
+        }
+      } finally {
+        const btn = document.getElementById('btn-submit-login') as HTMLButtonElement;
+        if (btn) btn.disabled = false;
+      }
+    });
+
+    // Déconnexion
+    btnLogout?.addEventListener('click', async () => {
+      try {
+        await logoutUser();
+        notify('Vous avez été déconnecté.');
+        await refreshSessionState();
+      } catch (err: any) {
+        notify(err.message, true);
+      }
+    });
+
+    // -------------------------------------------------------------
+    // GESTION DES COURS
+    // -------------------------------------------------------------
+    async function loadCourses() {
+      if (coursesLoading) coursesLoading.style.display = 'block';
+      if (coursesEmpty) coursesEmpty.style.display = 'none';
+      try {
+        cachedCourses = await fetchUserCourses();
+        if (badgeCourses) badgeCourses.textContent = String(cachedCourses.length);
+        renderCourses();
+      } catch (err: any) {
+        notify('Erreur lors du chargement des cours: ' + err.message, true);
+      } finally {
+        if (coursesLoading) coursesLoading.style.display = 'none';
+      }
+    }
+
+    function renderCourses() {
+      if (!coursesGrid) return;
+      coursesGrid.innerHTML = '';
+      if (cachedCourses.length === 0) {
+        if (coursesEmpty) coursesEmpty.style.display = 'block';
+        return;
+      }
+      if (coursesEmpty) coursesEmpty.style.display = 'none';
+
+      cachedCourses.forEach((c) => {
+        const card = document.createElement('div');
+        card.className = 'panel course-card';
+        const tags = c.tags && c.tags.length ? c.tags.map((t) => `<span class="tag-pill">${t}</span>`).join(' ') : '';
+        const dateStr = c.updated_at ? new Date(c.updated_at).toLocaleDateString('fr-FR') : '';
+
+        card.innerHTML = `
+          <div class="card-top">
+            <h3 class="course-card-title">${c.title}</h3>
+            <span class="meta">${dateStr}</span>
+          </div>
+          <div class="tags-row">${tags}</div>
+          <div class="card-bottom">
+            <button type="button" class="btn btn--sm btn-read-course" data-id="${c.id}">Lire</button>
+            <button type="button" class="btn btn--danger btn--sm btn-del-course" data-id="${c.id}">Supprimer</button>
+          </div>
+        `;
+
+        card.querySelector('.btn-read-course')?.addEventListener('click', () => {
+          openCourseReader(c);
+        });
+
+        card.querySelector('.btn-del-course')?.addEventListener('click', async () => {
+          if (confirm(`Supprimer définitivement le cours "${c.title}" ?`)) {
+            try {
+              if (c.id) await deleteUserCourse(c.id);
+              notify('Cours supprimé.');
+              await loadCourses();
+            } catch (err: any) {
+              notify(err.message, true);
+            }
+          }
+        });
+
+        coursesGrid.appendChild(card);
+      });
+    }
+
+    // Modals Cours
+    const modalCourse = document.getElementById('modal-course');
+    const btnOpenCourseModal = document.getElementById('btn-open-course-modal');
+    const btnCreateFirstCourse = document.getElementById('btn-create-first-course');
+    const btnCloseCourseModal = document.getElementById('btn-close-course-modal');
+    const btnCancelCourse = document.getElementById('btn-cancel-course');
+    const formSaveCourse = document.getElementById('form-save-course') as HTMLFormElement;
+
+    const courseTitleInput = document.getElementById('course-input-title') as HTMLInputElement;
+    const courseTagsInput = document.getElementById('course-input-tags') as HTMLInputElement;
+    const courseBodyInput = document.getElementById('course-input-body') as HTMLTextAreaElement;
+    const coursePreviewArea = document.getElementById('course-preview-area');
+    const tabWrite = document.getElementById('tab-write');
+    const tabPreview = document.getElementById('tab-preview');
+
+    function openCourseModal() {
+      if (formSaveCourse) formSaveCourse.reset();
+      if (coursePreviewArea) coursePreviewArea.style.display = 'none';
+      if (courseBodyInput) courseBodyInput.style.display = 'block';
+      if (tabWrite) tabWrite.classList.add('active');
+      if (tabPreview) tabPreview.classList.remove('active');
+      if (modalCourse) modalCourse.style.display = 'flex';
+    }
+
+    btnOpenCourseModal?.addEventListener('click', openCourseModal);
+    btnCreateFirstCourse?.addEventListener('click', openCourseModal);
+    btnCloseCourseModal?.addEventListener('click', () => {
+      if (modalCourse) modalCourse.style.display = 'none';
+    });
+    btnCancelCourse?.addEventListener('click', () => {
+      if (modalCourse) modalCourse.style.display = 'none';
+    });
+
+    tabWrite?.addEventListener('click', () => {
+      tabWrite.classList.add('active');
+      tabPreview?.classList.remove('active');
+      if (courseBodyInput) courseBodyInput.style.display = 'block';
+      if (coursePreviewArea) coursePreviewArea.style.display = 'none';
+    });
+
+    tabPreview?.addEventListener('click', () => {
+      tabPreview.classList.add('active');
+      tabWrite?.classList.remove('active');
+      if (courseBodyInput) courseBodyInput.style.display = 'none';
+      if (coursePreviewArea) {
+        coursePreviewArea.innerHTML = renderMarkdown(courseBodyInput?.value || '');
+        coursePreviewArea.style.display = 'block';
+      }
+    });
+
+    formSaveCourse?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = courseTitleInput.value.trim();
+      const rawTags = courseTagsInput.value.trim();
+      const body_md = courseBodyInput.value.trim();
+      const tags = rawTags ? rawTags.split(',').map((t) => t.trim()).filter(Boolean) : [];
+
+      try {
+        await createUserCourse({ title, body_md, tags });
+        if (modalCourse) modalCourse.style.display = 'none';
+        notify('Cours enregistré dans Supabase !');
+        await loadCourses();
+      } catch (err: any) {
+        notify(err.message, true);
+      }
+    });
+
+    // Modal Lecture Cours
+    const modalViewCourse = document.getElementById('modal-view-course');
+    const viewCourseTitle = document.getElementById('view-course-modal-title');
+    const viewCourseMeta = document.getElementById('view-course-modal-meta');
+    const viewCourseBody = document.getElementById('view-course-body');
+    const btnCloseViewModal = document.getElementById('btn-close-view-modal');
+    const btnCloseViewBottom = document.getElementById('btn-close-view-bottom');
+
+    function openCourseReader(c: DbCourse) {
+      if (viewCourseTitle) viewCourseTitle.textContent = c.title;
+      if (viewCourseMeta) {
+        const tags = (c.tags || []).join(', ') || 'Général';
+        const date = c.updated_at ? new Date(c.updated_at).toLocaleDateString('fr-FR') : '';
+        viewCourseMeta.textContent = `${tags} · Mis à jour le ${date}`;
+      }
+      if (viewCourseBody) {
+        viewCourseBody.innerHTML = renderMarkdown(c.body_md);
+      }
+      if (modalViewCourse) modalViewCourse.style.display = 'flex';
+    }
+
+    btnCloseViewModal?.addEventListener('click', () => {
+      if (modalViewCourse) modalViewCourse.style.display = 'none';
+    });
+    btnCloseViewBottom?.addEventListener('click', () => {
+      if (modalViewCourse) modalViewCourse.style.display = 'none';
+    });
+
+    // -------------------------------------------------------------
+    // GESTION DE L'EMPLOI DU TEMPS
+    // -------------------------------------------------------------
+    async function loadSchedule() {
+      if (scheduleLoading) scheduleLoading.style.display = 'block';
+      if (scheduleEmpty) scheduleEmpty.style.display = 'none';
+      try {
+        cachedSchedule = await fetchUserScheduleEvents();
+        if (badgeSchedule) badgeSchedule.textContent = String(cachedSchedule.length);
+        renderSchedule();
+      } catch (err: any) {
+        notify('Erreur planning: ' + err.message, true);
+      } finally {
+        if (scheduleLoading) scheduleLoading.style.display = 'none';
+      }
+    }
+
+    function renderSchedule() {
+      if (!scheduleGrid) return;
+      scheduleGrid.innerHTML = '';
+      if (cachedSchedule.length === 0) {
+        if (scheduleEmpty) scheduleEmpty.style.display = 'block';
+        return;
+      }
+      if (scheduleEmpty) scheduleEmpty.style.display = 'none';
+
+      // Regrouper par jour
+      const grouped: Record<number, DbScheduleEvent[]> = {};
+      for (let day = 1; day <= 7; day++) grouped[day] = [];
+      cachedSchedule.forEach((evt) => {
+        if (!grouped[evt.day_of_week]) grouped[evt.day_of_week] = [];
+        grouped[evt.day_of_week].push(evt);
+      });
+
+      for (let day = 1; day <= 7; day++) {
+        const events = grouped[day];
+        if (events.length === 0) continue;
+
+        const dayCol = document.createElement('div');
+        dayCol.className = 'panel schedule-day-col';
+        dayCol.innerHTML = `
+          <div class="day-head">
+            <h4>${DAY_NAMES[day]}</h4>
+            <span class="meta">${events.length} cours</span>
+          </div>
+          <div class="day-events-list"></div>
+        `;
+
+        const eventsList = dayCol.querySelector('.day-events-list');
+        events.forEach((evt) => {
+          const item = document.createElement('div');
+          item.className = 'schedule-event-item';
+          const start = evt.start_time.slice(0, 5);
+          const end = evt.end_time.slice(0, 5);
+          const loc = evt.location ? `<span class="event-loc">${evt.location}</span>` : '';
+          const notes = evt.notes ? `<p class="event-notes meta">${evt.notes}</p>` : '';
+
+          item.innerHTML = `
+            <div class="event-top">
+              <span class="event-time">${start} – ${end}</span>
+              <button type="button" class="btn-del-event" title="Supprimer ce créneau">✕</button>
+            </div>
+            <strong class="event-title">${evt.title}</strong>
+            ${loc}
+            ${notes}
+          `;
+
+          item.querySelector('.btn-del-event')?.addEventListener('click', async () => {
+            if (confirm(`Supprimer le créneau "${evt.title}" ?`)) {
+              try {
+                if (evt.id) await deleteUserScheduleEvent(evt.id);
+                notify('Créneau supprimé.');
+                await loadSchedule();
+              } catch (err: any) {
+                notify(err.message, true);
+              }
+            }
+          });
+
+          eventsList?.appendChild(item);
+        });
+
+        scheduleGrid.appendChild(dayCol);
+      }
+    }
+
+    // Modal Schedule
+    const modalSchedule = document.getElementById('modal-schedule');
+    const btnOpenScheduleModal = document.getElementById('btn-open-schedule-modal');
+    const btnCreateFirstSchedule = document.getElementById('btn-create-first-schedule');
+    const btnCloseScheduleModal = document.getElementById('btn-close-schedule-modal');
+    const btnCancelSchedule = document.getElementById('btn-cancel-schedule');
+    const formSaveSchedule = document.getElementById('form-save-schedule') as HTMLFormElement;
+
+    function openScheduleModal() {
+      if (formSaveSchedule) formSaveSchedule.reset();
+      if (modalSchedule) modalSchedule.style.display = 'flex';
+    }
+
+    btnOpenScheduleModal?.addEventListener('click', openScheduleModal);
+    btnCreateFirstSchedule?.addEventListener('click', openScheduleModal);
+    btnCloseScheduleModal?.addEventListener('click', () => {
+      if (modalSchedule) modalSchedule.style.display = 'none';
+    });
+    btnCancelSchedule?.addEventListener('click', () => {
+      if (modalSchedule) modalSchedule.style.display = 'none';
+    });
+
+    formSaveSchedule?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = (document.getElementById('schedule-input-title') as HTMLInputElement).value.trim();
+      const day_of_week = parseInt((document.getElementById('schedule-input-day') as HTMLSelectElement).value, 10);
+      const start_time = (document.getElementById('schedule-input-start') as HTMLInputElement).value;
+      const end_time = (document.getElementById('schedule-input-end') as HTMLInputElement).value;
+      const location = (document.getElementById('schedule-input-location') as HTMLInputElement).value.trim();
+      const notes = (document.getElementById('schedule-input-notes') as HTMLInputElement).value.trim();
+
+      try {
+        await createUserScheduleEvent({
+          title,
+          day_of_week,
+          start_time,
+          end_time,
+          location: location || undefined,
+          notes: notes || undefined,
+        });
+        if (modalSchedule) modalSchedule.style.display = 'none';
+        notify('Créneau ajouté à l’emploi du temps.');
+        await loadSchedule();
+      } catch (err: any) {
+        notify(err.message, true);
+      }
+    });
+
+    // -------------------------------------------------------------
+    // GESTION DES RAPPELS
+    // -------------------------------------------------------------
+    async function loadReminders() {
+      if (remindersLoading) remindersLoading.style.display = 'block';
+      if (remindersEmpty) remindersEmpty.style.display = 'none';
+      try {
+        cachedReminders = await fetchUserReminders();
+        if (badgeReminders) badgeReminders.textContent = String(cachedReminders.length);
+        renderReminders();
+      } catch (err: any) {
+        notify('Erreur rappels: ' + err.message, true);
+      } finally {
+        if (remindersLoading) remindersLoading.style.display = 'none';
+      }
+    }
+
+    function renderReminders() {
+      if (!remindersList) return;
+      remindersList.innerHTML = '';
+      if (cachedReminders.length === 0) {
+        if (remindersEmpty) remindersEmpty.style.display = 'block';
+        return;
+      }
+      if (remindersEmpty) remindersEmpty.style.display = 'none';
+
+      cachedReminders.forEach((r) => {
+        const item = document.createElement('div');
+        item.className = 'panel reminder-row';
+        const timeFormatted = r.time_of_day.slice(0, 5);
+
+        item.innerHTML = `
+          <div class="reminder-left">
+            <span class="tag-pill tag-kind">${r.kind}</span>
+            <strong class="reminder-label">${r.label || 'Rappel'}</strong>
+            <span class="reminder-time-tag">${timeFormatted}</span>
+          </div>
+          <div class="reminder-actions">
+            <label class="toggle-switch" title="Activer / Désactiver">
+              <input type="checkbox" class="chk-toggle-reminder" ${r.enabled ? 'checked' : ''} />
+              <span class="toggle-slider"></span>
+            </label>
+            <button type="button" class="btn btn--danger btn--sm btn-del-reminder">Supprimer</button>
+          </div>
+        `;
+
+        item.querySelector('.chk-toggle-reminder')?.addEventListener('change', async (e) => {
+          const target = e.target as HTMLInputElement;
+          try {
+            if (r.id) await toggleUserReminder(r.id, target.checked);
+            notify(`Rappel ${target.checked ? 'activé' : 'désactivé'}.`);
+          } catch (err: any) {
+            notify(err.message, true);
+            target.checked = !target.checked;
+          }
+        });
+
+        item.querySelector('.btn-del-reminder')?.addEventListener('click', async () => {
+          if (confirm(`Supprimer le rappel "${r.label}" ?`)) {
+            try {
+              if (r.id) await deleteUserReminder(r.id);
+              notify('Rappel supprimé.');
+              await loadReminders();
+            } catch (err: any) {
+              notify(err.message, true);
+            }
+          }
+        });
+
+        remindersList.appendChild(item);
+      });
+    }
+
+    // Modal Rappel
+    const modalReminder = document.getElementById('modal-reminder');
+    const btnOpenReminderModal = document.getElementById('btn-open-reminder-modal');
+    const btnCreateFirstReminder = document.getElementById('btn-create-first-reminder');
+    const btnCloseReminderModal = document.getElementById('btn-close-reminder-modal');
+    const btnCancelReminder = document.getElementById('btn-cancel-reminder');
+    const formSaveReminder = document.getElementById('form-save-reminder') as HTMLFormElement;
+
+    function openReminderModal() {
+      if (formSaveReminder) formSaveReminder.reset();
+      if (modalReminder) modalReminder.style.display = 'flex';
+    }
+
+    btnOpenReminderModal?.addEventListener('click', openReminderModal);
+    btnCreateFirstReminder?.addEventListener('click', openReminderModal);
+    btnCloseReminderModal?.addEventListener('click', () => {
+      if (modalReminder) modalReminder.style.display = 'none';
+    });
+    btnCancelReminder?.addEventListener('click', () => {
+      if (modalReminder) modalReminder.style.display = 'none';
+    });
+
+    formSaveReminder?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const label = (document.getElementById('reminder-input-label') as HTMLInputElement).value.trim();
+      const kind = (document.getElementById('reminder-input-kind') as HTMLSelectElement).value as any;
+      const time_of_day = (document.getElementById('reminder-input-time') as HTMLInputElement).value;
+
+      try {
+        await createUserReminder({
+          label,
+          kind,
+          time_of_day,
+          enabled: true,
+          days_of_week: [1, 2, 3, 4, 5, 6, 7],
+        });
+        if (modalReminder) modalReminder.style.display = 'none';
+        notify('Rappel personnel enregistré.');
+        await loadReminders();
+      } catch (err: any) {
+        notify(err.message, true);
+      }
+    });
+
+    // -------------------------------------------------------------
+    // SÉCURITÉ & CHANGEMENT DE MOT DE PASSE
+    // -------------------------------------------------------------
+    const formPwd = document.getElementById('form-change-password') as HTMLFormElement;
+    formPwd?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newPwd = (document.getElementById('new-password') as HTMLInputElement).value;
+      const confPwd = (document.getElementById('confirm-password') as HTMLInputElement).value;
+
+      if (newPwd !== confPwd) {
+        notify('Les deux mots de passe ne correspondent pas.', true);
+        return;
+      }
+
+      try {
+        const btn = document.getElementById('btn-submit-pwd') as HTMLButtonElement;
+        if (btn) btn.disabled = true;
+        await updatePassword(newPwd);
+        notify('Mot de passe mis à jour avec succès.');
+        formPwd.reset();
+      } catch (err: any) {
+        notify('Erreur: ' + err.message, true);
+      } finally {
+        const btn = document.getElementById('btn-submit-pwd') as HTMLButtonElement;
+        if (btn) btn.disabled = false;
+      }
+    });
+
+    // Export des données JSON
+    const btnExport = document.getElementById('btn-export-data');
+    btnExport?.addEventListener('click', () => {
+      const dump = {
+        exportedAt: new Date().toISOString(),
+        courses: cachedCourses,
+        schedule: cachedSchedule,
+        reminders: cachedReminders,
+      };
+      const blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' });
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = dlUrl;
+      a.download = `marges-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(dlUrl);
+      notify('Export JSON téléchargé avec succès.');
+    });
+
+    // Écouter les changements d'état Supabase
+    try {
+      const sb = getSupabase();
+      sb.auth.onAuthStateChange(() => {
+        refreshSessionState();
+      });
+    } catch (e) {
+      // Ignorer si pas configuré
+    }
+
+    // Initialisation au chargement
+    refreshSessionState();
+  }
+
+  document.addEventListener('astro:page-load', initEspace);
+</script>
+
+<style>
+  .espace-page {
+    padding-bottom: 6rem;
+  }
+  .espace-hero {
+    padding-block: clamp(1.5rem, 1rem + 2vw, 3rem) clamp(1rem, 0.75rem + 1vw, 2rem);
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+  .espace-hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .espace-title {
+    font-family: var(--font-text);
+    font-size: clamp(2rem, 1.5rem + 2vw, 3rem);
+    letter-spacing: -.03em;
+    margin: .35rem 0 .35rem;
+  }
+  .espace-motto {
+    font-family: var(--font-text);
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--muted);
+    margin: 0;
+  }
+  .espace-auth-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--soft);
+    padding: 0.5rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+  }
+  .user-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+  }
+  .user-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+  }
+  .user-email-text {
+    font-weight: 500;
+  }
+
+  .espace-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1.25rem;
+    margin-bottom: 2rem;
+    border-left: 3px solid var(--fg);
+    font-size: 0.9rem;
+  }
+  .banner-error {
+    border-left-color: #ef4444;
+    color: #ef4444;
+  }
+  .banner-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .auth-card {
+    max-width: 32rem;
+    margin: 2rem auto;
+    padding: 2.25rem;
+  }
+  .card-head {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .card-head h2 {
+    margin: 0 0 0.2rem;
+    font-family: var(--font-text);
+    font-size: 1.35rem;
+  }
+  .card-head p { margin: 0; font-size: 0.88rem; }
+
+  .espace-form {
+    display: grid;
+    gap: 1.25rem;
+  }
+  .form-group {
+    display: grid;
+    gap: 0.4rem;
+  }
+  .field-label {
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .espace-form input[type="text"],
+  .espace-form input[type="email"],
+  .espace-form input[type="password"],
+  .espace-form input[type="time"],
+  .espace-form select,
+  .espace-form textarea {
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 0.92rem;
+    transition: border-color .15s ease;
+  }
+  .espace-form textarea {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.88rem;
+    line-height: 1.5;
+    resize: vertical;
+  }
+  .espace-form input:focus,
+  .espace-form select:focus,
+  .espace-form textarea:focus {
+    border-color: var(--fg);
+    outline: none;
+  }
+
+  .login-error {
+    background: color-mix(in srgb, #ef4444 15%, transparent);
+    color: #ef4444;
+    padding: 0.65rem 0.85rem;
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+  }
+
+  .auth-security-notice {
+    margin-top: 1.75rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  /* Onglets */
+  .espace-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.15rem;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all .15s ease;
+    white-space: nowrap;
+  }
+  .tab-btn:hover {
+    color: var(--fg);
+  }
+  .tab-btn.active {
+    color: var(--fg);
+    border-bottom-color: var(--fg);
+  }
+  .tab-badge {
+    background: var(--soft);
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .panel-section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .panel-section-head h2 {
+    margin: 0 0 0.2rem;
+    font-family: var(--font-text);
+    font-size: 1.35rem;
+  }
+  .panel-section-head p { margin: 0; }
+
+  .empty-state {
+    padding: 3rem 2rem;
+    text-align: center;
+    display: grid;
+    place-items: center;
+    gap: 1rem;
+    color: var(--muted);
+  }
+  .loading-state {
+    padding: 2rem 0;
+  }
+
+  /* Grille Cours */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+  }
+  .course-card {
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .course-card-title {
+    margin: 0;
+    font-family: var(--font-text);
+    font-size: 1.15rem;
+  }
+  .tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .tag-pill {
+    background: var(--soft);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .tag-kind {
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    font-weight: 600;
+  }
+  .card-bottom {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+  }
+
+  /* Emploi du temps */
+  .schedule-days-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.25rem;
+  }
+  .schedule-day-col {
+    padding: 1.25rem;
+  }
+  .day-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .day-head h4 {
+    margin: 0;
+    font-family: var(--font-text);
+    font-size: 1.1rem;
+  }
+  .day-events-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .schedule-event-item {
+    background: var(--soft);
+    padding: 0.85rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    display: grid;
+    gap: 0.3rem;
+  }
+  .event-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .event-time {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .btn-del-event {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0.2rem 0.4rem;
+  }
+  .btn-del-event:hover { color: #ef4444; }
+  .event-title {
+    font-size: 0.92rem;
+  }
+  .event-loc {
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .event-notes {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  /* Rappels */
+  .reminders-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .reminder-row {
+    padding: 0.85rem 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+  .reminder-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .reminder-label {
+    font-size: 0.95rem;
+  }
+  .reminder-time-tag {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.85rem;
+    background: var(--soft);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .reminder-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  /* Toggle Switch */
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--line);
+    transition: .2s;
+    border-radius: 20px;
+  }
+  .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: var(--surface);
+    transition: .2s;
+    border-radius: 50%;
+  }
+  input:checked + .toggle-slider { background-color: var(--fg); }
+  input:checked + .toggle-slider:before { transform: translateX(16px); }
+
+  /* Sécurité */
+  .security-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+  }
+  .security-card {
+    padding: 1.75rem;
+  }
+  .security-card h3 {
+    margin: 0 0 0.25rem;
+    font-family: var(--font-text);
+  }
+
+  /* Modals */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  .modal-dialog {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  }
+  .modal-dialog--wide {
+    max-width: 760px;
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .modal-header h3 { margin: 0; font-family: var(--font-text); }
+  .btn-close {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .btn-close:hover { color: var(--fg); }
+  .modal-body {
+    padding: 1.5rem;
+  }
+  .modal-footer {
+    padding: 1rem 1.5rem 1.5rem;
+  }
+  .editor-tabs-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .editor-switch {
+    display: flex;
+    gap: 0.25rem;
+  }
+  .btn-subtab {
+    background: transparent;
+    border: 1px solid var(--line);
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .btn-subtab.active {
+    background: var(--soft);
+    color: var(--fg);
+    border-color: var(--fg);
+  }
+  .markdown-preview,
+  .markdown-rendered-view {
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--soft);
+    min-height: 180px;
+    line-height: 1.6;
+    font-family: var(--font-text);
+  }
+  .markdown-preview h1,
+  .markdown-rendered-view h1,
+  .markdown-preview h2,
+  .markdown-rendered-view h2,
+  .markdown-preview h3,
+  .markdown-rendered-view h3 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  .markdown-preview blockquote,
+  .markdown-rendered-view blockquote {
+    border-left: 3px solid var(--fg);
+    padding-left: 1rem;
+    margin-left: 0;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .times-subgrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+</style>
