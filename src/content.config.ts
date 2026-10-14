@@ -30,6 +30,7 @@ const textes = defineCollection({
         }),
       )
       .default([]),
+    isAiGenerated: z.boolean().default(false),
     draft: z.boolean().default(false),
   }),
 });
