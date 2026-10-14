@@ -253,8 +253,12 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
           </div>
         </div>
 
-        <div class="card-actions">
+        <div class="card-actions" style="flex-wrap: wrap; gap: 0.5rem;">
           <button type="button" class="btn btn--sm" id="btn-request-notif-perm">Activer les notifications navigateur</button>
+          <button type="button" class="btn btn--danger btn--sm" id="btn-delete-all-courses" title="Supprimer tous les cours de votre compte Supabase et du stockage local">
+            <Icon name="trash" size={14} />
+            Supprimer tous les cours
+          </button>
           <button type="button" class="btn btn--danger btn--sm" id="btn-clear-all-data">Effacer toutes mes données</button>
         </div>
       </section>
@@ -282,6 +286,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     getCurrentUser,
     syncTimetableToSupabase,
     clearUserScheduleEvents,
+    clearUserCourses,
     getSupabaseCredentials,
     saveSupabaseCredentials,
     resetSupabaseCredentialsToDefault,
@@ -634,8 +639,25 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
       }
     });
 
-    btnClearAll?.addEventListener('click', () => {
+    const btnDeleteAllCourses = document.getElementById('btn-delete-all-courses');
+
+    btnDeleteAllCourses?.addEventListener('click', async () => {
+      if (confirm('Attention : Voulez-vous vraiment supprimer DÉFINITIVEMENT tous vos cours ?\n\nCette action supprimera tous les cours et fiches de révision enregistrés sur votre compte Supabase et dans votre navigateur. Votre emploi du temps sera conservé.\n\nContinuer ?')) {
+        try {
+          await clearUserCourses();
+          alert('Tous vos cours ont été supprimés avec succès.');
+        } catch (err: any) {
+          alert('Erreur lors de la suppression des cours : ' + formatSupabaseError(err));
+        }
+      }
+    });
+
+    btnClearAll?.addEventListener('click', async () => {
       if (confirm('Attention : cela supprimera tous vos cours personnalisés, vos rappels et votre calendrier. Continuer ?')) {
+        try {
+          await clearUserCourses().catch(() => {});
+          await clearUserScheduleEvents().catch(() => {});
+        } catch {}
         Object.values(STORAGE_KEYS).forEach((k) => {
           deleteCookie(k);
           localStorage.removeItem(k);
