@@ -523,10 +523,9 @@ export async function syncTimetableState(options?: {
   try {
     const cloud = await fetchTimetableFromSupabase();
 
-    // Cas 1 : L'utilisateur a déjà son emploi du temps sur son PC (localIcs ou localUrl),
-    // mais le Cloud Supabase est encore vide -> PUSH AUTOMATIQUE VERS SUPABASE
-    if ((localIcs || localUrl) && (!cloud?.icsContent && !cloud?.icsUrl || options?.forcePushLocal)) {
-      console.log('[Marges Sync] Synchronisation du calendrier local vers Supabase Cloud...');
+    // Cas 1 : L'utilisateur a explicitement demandé de pousser son fichier local (forcePushLocal: true)
+    if (options?.forcePushLocal && (localIcs || localUrl)) {
+      console.log('[Marges Sync] Synchronisation du calendrier local vers Supabase Cloud (forcée)...');
       await syncTimetableToSupabase({
         icsContent: localIcs || undefined,
         icsUrl: localUrl || undefined,
@@ -543,20 +542,13 @@ export async function syncTimetableState(options?: {
       };
     }
 
-    // Cas 2 : L'appareil actuel (ex: Smartphone mobile) n'a pas encore le fichier localement,
-    // mais le Cloud Supabase le possède déjà -> PULL AUTOMATIQUE DEPUIS SUPABASE
+    // Cas 2 : Le Cloud Supabase possède l'emploi du temps de cet utilisateur
     if (cloud && (cloud.icsContent || cloud.icsUrl)) {
-      let activeIcs = localIcs;
-      let activeUrl = localUrl;
+      let activeIcs = cloud.icsContent || '';
+      let activeUrl = cloud.icsUrl || '';
 
-      if (cloud.icsContent && cloud.icsContent !== localIcs) {
-        savePersistent(STORAGE_KEYS.TIMETABLE_ICS, cloud.icsContent);
-        activeIcs = cloud.icsContent;
-      }
-      if (cloud.icsUrl && cloud.icsUrl !== localUrl) {
-        savePersistent(STORAGE_KEYS.TIMETABLE_URL, cloud.icsUrl);
-        activeUrl = cloud.icsUrl;
-      }
+      savePersistent(STORAGE_KEYS.TIMETABLE_ICS, activeIcs);
+      savePersistent(STORAGE_KEYS.TIMETABLE_URL, activeUrl);
 
       // Si l'utilisateur a configuré une URL mais qu'aucun contenu ICS n'est en cache, on le télécharge
       if (!activeIcs && activeUrl) {
@@ -572,6 +564,8 @@ export async function syncTimetableState(options?: {
         }
       }
 
+      await clearUserScheduleEvents().catch(() => {});
+
       return {
         synced: true,
         source: 'cloud',
@@ -579,15 +573,26 @@ export async function syncTimetableState(options?: {
         icsUrl: activeUrl || undefined,
       };
     }
+
+    // Cas 3 : L'utilisateur connecté n'a aucun emploi du temps dans son Cloud Supabase.
+    // Pour ne jamais polluer son compte avec l'ancien fichier d'un autre utilisateur :
+    savePersistent(STORAGE_KEYS.TIMETABLE_ICS, '');
+    savePersistent(STORAGE_KEYS.TIMETABLE_URL, '');
+
+    return {
+      synced: true,
+      source: 'cloud',
+      icsContent: '',
+      icsUrl: '',
+    };
   } catch (syncErr) {
     console.warn('[Marges Sync] Erreur lors de la synchronisation Supabase:', syncErr);
+    return {
+      synced: false,
+      source: 'local',
+      icsContent: localIcs || undefined,
+      icsUrl: localUrl || undefined,
+    };
   }
-
-  return {
-    synced: false,
-    source: 'local',
-    icsContent: localIcs || undefined,
-    icsUrl: localUrl || undefined,
-  };
 }
 

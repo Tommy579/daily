@@ -1358,10 +1358,17 @@ const localPresetCourses = getCourses().map((s) => {
     refreshSessionState();
   }
 
-  document.addEventListener('astro:page-load', initEspace);
+  if (typeof window !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initEspace);
+    } else {
+      initEspace();
+    }
+    document.addEventListener('astro:page-load', initEspace);
+  }
 </script>
 
-<style>
+<style is:global>
   .espace-page {
     padding-bottom: 6rem;
   }

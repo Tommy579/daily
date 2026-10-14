@@ -125,7 +125,7 @@ const shortcuts = [
 
 <script>
   import { STORAGE_KEYS, loadPersistent } from '../utils/persistence';
-  import { getCurrentSession, fetchUserScheduleEvents } from '../utils/supabase';
+  import { getCurrentSession, fetchUserScheduleEvents, fetchUserCourses } from '../utils/supabase';
   import { syncTimetableState, parseIcsEvents } from '../utils/timetable';
 
   interface HomeEvent {
@@ -210,7 +210,7 @@ const shortcuts = [
     }
 
     // 0. Auto-synchronisation Supabase Cloud (PC <-> Mobile)
-    await syncTimetableState().catch(() => {});
+    const syncRes = await syncTimetableState().catch(() => null);
 
     // Définition de la fenêtre du jour strict et des 14 prochains jours
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
@@ -228,7 +228,7 @@ const shortcuts = [
     }
 
     // 1. Calendrier ICS de l'étudiant (analyse précise avec dates et récurrences)
-    const savedIcs = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
+    const savedIcs = syncRes?.icsContent !== undefined ? syncRes.icsContent : loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
     if (savedIcs && savedIcs.trim().length > 30) {
       const parsed = parseIcsEvents(savedIcs, startOfToday, maxUpcoming);
       parsed.forEach((ev) => {
@@ -292,23 +292,38 @@ const shortcuts = [
       }
     }
 
-    // Matières personnalisées ajoutées par l'utilisateur
+    // Matières personnalisées de l'utilisateur (issues de sa base Supabase)
     try {
       const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
-      const rawCustom = localStorage.getItem('marges_custom_subjects');
-      const customSubs: Array<{ id: string; name: string }> = rawCustom ? JSON.parse(rawCustom) : [];
+      const userCourses = await fetchUserCourses().catch(() => []);
       const subList = document.getElementById('home-subject-list');
-      if (subList && customSubs.length > 0) {
-        customSubs.forEach((sub) => {
-          const targetHref = `${basePath}/cours/#folder-${sub.id}`;
+      if (subList && userCourses.length > 0) {
+        const customSubjects = new Set<string>();
+        userCourses.forEach((c) => {
+          if (c.tags && c.tags.length > 0) {
+            const s = c.tags[0];
+            if (s && s !== 'Université' && s !== 'Dossier importé') customSubjects.add(s);
+          } else if (c.title) {
+            customSubjects.add(c.title);
+          }
+        });
+
+        customSubjects.forEach((subName) => {
+          const slugId = subName
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+          const targetHref = `${basePath}/cours/#folder-${slugId}`;
           if (!subList.querySelector(`a[href="${targetHref}"]`)) {
             const li = document.createElement('li');
             li.innerHTML = `
               <a href="${targetHref}" class="subject-row">
-                <span class="subject-initial" aria-hidden="true">${sub.name.charAt(0).toUpperCase()}</span>
+                <span class="subject-initial" aria-hidden="true">${subName.charAt(0).toUpperCase()}</span>
                 <span class="subject-text">
-                  <strong>${sub.name}</strong>
-                  <small>Matière personnalisée</small>
+                  <strong>${subName}</strong>
+                  <small>Matière personnelle</small>
                 </span>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="subject-arrow"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
               </a>
