@@ -55,6 +55,10 @@ const localPresetCourses = getCourses().map((s) => {
             <span class="user-status-dot"></span>
             <span id="user-display-email" class="user-email-text">utilisateur</span>
           </div>
+          <button type="button" class="btn btn--sm" id="btn-reset-session" title="Purger le jeton local et forcer une reconnexion propre">
+            <Icon name="refresh" size={14} />
+            Réinitialiser la session
+          </button>
           <button type="button" class="btn btn--sm" id="btn-logout">
             <Icon name="log-out" size={14} />
             Se déconnecter
@@ -678,11 +682,16 @@ const localPresetCourses = getCourses().map((s) => {
             userDisplayEmail.textContent = fullName ? `${fullName} (${session.user.email})` : (session.user.email || 'Connecté');
           }
           const profileInput = document.getElementById('profile-full-name') as HTMLInputElement | null;
-          if (profileInput && session.user.user_metadata?.full_name) {
-            profileInput.value = session.user.user_metadata.full_name;
+          // Purge de sécurité : si l'ancien profil contient un gros fichier ICS dans les métadonnées auth, on le nettoie
+          if (session.user.user_metadata?.timetable_ics) {
+            getSupabase().auth.updateUser({ data: { timetable_ics: null } }).catch(() => {});
           }
 
-          await Promise.all([loadCourses(), loadSchedule(), loadReminders()]);
+          try {
+            await Promise.all([loadCourses(), loadSchedule(), loadReminders()]);
+          } catch (loadErr: any) {
+            console.error('Erreur globale dashboard:', loadErr);
+          }
         } else {
           if (viewLogin) viewLogin.style.display = 'block';
           if (viewDashboard) viewDashboard.style.display = 'none';
@@ -735,20 +744,36 @@ const localPresetCourses = getCourses().map((s) => {
       }
     });
 
+    const btnResetSession = document.getElementById('btn-reset-session');
+    btnResetSession?.addEventListener('click', async () => {
+      await logoutUser();
+      document.documentElement.classList.remove('is-authenticated');
+      notify('Session locale purgée. Reconnectez-vous pour obtenir un jeton neuf.');
+      await refreshSessionState();
+    });
+
     // -------------------------------------------------------------
     // GESTION DES COURS
     // -------------------------------------------------------------
     async function loadCourses() {
-      if (coursesLoading) coursesLoading.style.display = 'block';
+      if (coursesLoading) {
+        coursesLoading.style.display = 'block';
+        coursesLoading.textContent = 'Chargement de vos cours...';
+      }
       if (coursesEmpty) coursesEmpty.style.display = 'none';
       try {
         cachedCourses = await fetchUserCourses();
         if (badgeCourses) badgeCourses.textContent = String(cachedCourses.length);
         renderCourses();
       } catch (err: any) {
-        notify('Erreur lors du chargement des cours : ' + formatSupabaseError(err), true);
+        if (coursesLoading) {
+          coursesLoading.style.display = 'block';
+          coursesLoading.innerHTML = `<span style="color: var(--color-danger, #dc2626);">${formatSupabaseError(err)}</span>`;
+        }
       } finally {
-        if (coursesLoading) coursesLoading.style.display = 'none';
+        if (coursesLoading && (cachedCourses.length > 0 || (coursesEmpty && coursesEmpty.style.display === 'block'))) {
+          coursesLoading.style.display = 'none';
+        }
       }
     }
 
@@ -1043,25 +1068,58 @@ const localPresetCourses = getCourses().map((s) => {
     // GESTION DE L'EMPLOI DU TEMPS
     // -------------------------------------------------------------
     async function loadSchedule() {
-      if (scheduleLoading) scheduleLoading.style.display = 'block';
+      if (scheduleLoading) {
+        scheduleLoading.style.display = 'block';
+        scheduleLoading.textContent = 'Chargement de votre planning...';
+      }
       if (scheduleEmpty) scheduleEmpty.style.display = 'none';
       try {
-        await syncTimetableState().catch(() => {});
+        const syncRes = await syncTimetableState().catch(() => null);
         cachedSchedule = await fetchUserScheduleEvents();
-        if (badgeSchedule) badgeSchedule.textContent = String(cachedSchedule.length);
-        renderSchedule();
+
+        const hasSyncedIcs = Boolean(syncRes?.icsContent || syncRes?.icsUrl);
+        if (badgeSchedule) {
+          if (cachedSchedule.length > 0) {
+            badgeSchedule.textContent = String(cachedSchedule.length);
+          } else if (hasSyncedIcs) {
+            badgeSchedule.textContent = 'ICS';
+          } else {
+            badgeSchedule.textContent = '0';
+          }
+        }
+        renderSchedule(hasSyncedIcs, syncRes?.icsUrl);
       } catch (err: any) {
-        notify('Erreur planning: ' + formatSupabaseError(err), true);
+        if (scheduleLoading) {
+          scheduleLoading.style.display = 'block';
+          scheduleLoading.innerHTML = `<span style="color: var(--color-danger, #dc2626);">${formatSupabaseError(err)}</span>`;
+        }
       } finally {
         if (scheduleLoading) scheduleLoading.style.display = 'none';
       }
     }
 
-    function renderSchedule() {
+    function renderSchedule(hasSyncedIcs = false, icsUrl = '') {
       if (!scheduleGrid) return;
       scheduleGrid.innerHTML = '';
+
+      if (hasSyncedIcs) {
+        const banner = document.createElement('div');
+        banner.className = 'panel';
+        banner.style.cssText = 'grid-column: 1 / -1; margin-bottom: 1.25rem; border-left: 3px solid var(--color-accent, #0066cc); padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;';
+        banner.innerHTML = `
+          <div>
+            <h4 style="margin: 0 0 0.25rem 0;">Calendrier universitaire synchronisé</h4>
+            <p class="meta" style="margin: 0; font-size: 0.85rem;">Votre emploi du temps (${icsUrl ? 'flux direct' : 'fichier iCalendar .ics'}) est actif et synchronisé sur votre compte.</p>
+          </div>
+          <a href="/daily/emploi-du-temps/" class="btn btn--sm btn--primary">
+            Consulter la grille complète
+          </a>
+        `;
+        scheduleGrid.appendChild(banner);
+      }
+
       if (cachedSchedule.length === 0) {
-        if (scheduleEmpty) scheduleEmpty.style.display = 'block';
+        if (!hasSyncedIcs && scheduleEmpty) scheduleEmpty.style.display = 'block';
         return;
       }
       if (scheduleEmpty) scheduleEmpty.style.display = 'none';
@@ -1178,16 +1236,24 @@ const localPresetCourses = getCourses().map((s) => {
     // GESTION DES RAPPELS
     // -------------------------------------------------------------
     async function loadReminders() {
-      if (remindersLoading) remindersLoading.style.display = 'block';
+      if (remindersLoading) {
+        remindersLoading.style.display = 'block';
+        remindersLoading.textContent = 'Chargement de vos rappels...';
+      }
       if (remindersEmpty) remindersEmpty.style.display = 'none';
       try {
         cachedReminders = await fetchUserReminders();
         if (badgeReminders) badgeReminders.textContent = String(cachedReminders.length);
         renderReminders();
       } catch (err: any) {
-        notify('Erreur rappels: ' + formatSupabaseError(err), true);
+        if (remindersLoading) {
+          remindersLoading.style.display = 'block';
+          remindersLoading.innerHTML = `<span style="color: var(--color-danger, #dc2626);">${formatSupabaseError(err)}</span>`;
+        }
       } finally {
-        if (remindersLoading) remindersLoading.style.display = 'none';
+        if (remindersLoading && (cachedReminders.length > 0 || (remindersEmpty && remindersEmpty.style.display === 'block'))) {
+          remindersLoading.style.display = 'none';
+        }
       }
     }
 

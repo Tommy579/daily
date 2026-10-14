@@ -117,6 +117,9 @@ export function getSupabase(): SupabaseClient {
   return supabaseInstance;
 }
 
+export const TIMETABLE_SYNC_TITLE = '__USER_TIMETABLE_ICS__';
+export const SYSTEM_TAG = '__system__';
+
 /**
  * Nettoie toutes les données privées stockées localement sur la machine (EDT, rappels, cours custom)
  * pour éviter toute contamination entre comptes utilisateurs différents sur le même navigateur.
@@ -139,6 +142,16 @@ export function clearLocalUserData(): void {
       deleteCookie(k);
     } catch {}
   });
+
+  // Nettoyage de sécurité de tous les jetons d'authentification Supabase locaux
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('sb-') || k.includes('-auth-token'))) {
+        localStorage.removeItem(k);
+      }
+    }
+  } catch {}
 }
 
 // -------------------------------------------------------------
@@ -151,14 +164,24 @@ export async function loginWithPassword(email: string, password: string): Promis
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) throw error;
   if (!data.user) throw new Error('Aucun utilisateur renvoyé par Supabase.');
+
+  // Si l'utilisateur avait une ancienne sauvegarde volumineuse dans ses métadonnées, on la purge pour alléger le JWT
+  if (data.user.user_metadata?.timetable_ics) {
+    sb.auth.updateUser({ data: { timetable_ics: null } }).catch(() => {});
+  }
+
   return data.user;
 }
 
 export async function logoutUser(): Promise<void> {
   clearLocalUserData();
-  const sb = getSupabase();
-  const { error } = await sb.auth.signOut();
-  if (error) throw error;
+  try {
+    const sb = getSupabase();
+    await sb.auth.signOut();
+  } catch (err) {
+    console.warn('[Supabase Logout] signOut réseau ignoré (session locale déjà vidée):', err);
+  }
+  supabaseInstance = null;
 }
 
 export async function getCurrentUser(): Promise<User | null> {
@@ -232,9 +255,12 @@ export async function fetchUserCourses(): Promise<DbCourse[]> {
   const { data, error } = await sb
     .from('courses')
     .select('*')
+    .neq('title', TIMETABLE_SYNC_TITLE)
     .order('updated_at', { ascending: false });
   if (error) throw error;
-  return data || [];
+  return (data || []).filter(
+    (c) => c.title !== TIMETABLE_SYNC_TITLE && (!c.tags || !c.tags.includes(SYSTEM_TAG))
+  );
 }
 
 export async function createUserCourse(course: Omit<DbCourse, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<DbCourse> {
@@ -366,26 +392,60 @@ export async function syncTimetableToSupabase(data: {
   icsUrl?: string;
 }): Promise<void> {
   const sb = getSupabase();
-  const { data: { user }, error: userErr } = await sb.auth.getUser();
-  if (userErr || !user) return;
+  const user = await getCurrentUser();
+  if (!user) return;
 
   const currentMeta = user.user_metadata || {};
-  const updates: Record<string, any> = {
+  const metaUpdates: Record<string, any> = {
     ...currentMeta,
     timetable_updated_at: new Date().toISOString(),
+    // On s'assure impérativement que timetable_ics ne reste JAMAIS dans user_metadata
+    // pour éviter de saturer la taille des en-têtes HTTP du JWT
+    timetable_ics: null,
   };
 
-  if (data.icsContent !== undefined) {
-    updates.timetable_ics = data.icsContent;
-  }
   if (data.icsUrl !== undefined) {
-    updates.timetable_url = data.icsUrl;
+    metaUpdates.timetable_url = data.icsUrl;
   }
 
-  const { error } = await sb.auth.updateUser({ data: updates });
-  if (error) {
-    console.warn('[Supabase Sync] Échec updateUser metadata:', error);
-    throw error;
+  // 1. Mettre à jour les métadonnées légères dans auth
+  try {
+    await sb.auth.updateUser({ data: metaUpdates });
+  } catch (metaErr) {
+    console.warn('[Supabase Sync] Note updateUser metadata:', metaErr);
+  }
+
+  // 2. Si un contenu ICS est fourni, on le persiste dans la table courses (avec RLS)
+  if (data.icsContent !== undefined) {
+    try {
+      const { data: existing } = await sb
+        .from('courses')
+        .select('id')
+        .eq('title', TIMETABLE_SYNC_TITLE)
+        .maybeSingle();
+
+      if (existing && existing.id) {
+        if (!data.icsContent) {
+          await sb.from('courses').delete().eq('id', existing.id);
+        } else {
+          await sb.from('courses').update({
+            body_md: data.icsContent,
+            tags: [SYSTEM_TAG, 'timetable'],
+            updated_at: new Date().toISOString(),
+          }).eq('id', existing.id);
+        }
+      } else if (data.icsContent) {
+        await sb.from('courses').insert([{
+          user_id: user.id,
+          title: TIMETABLE_SYNC_TITLE,
+          body_md: data.icsContent,
+          tags: [SYSTEM_TAG, 'timetable'],
+        }]);
+      }
+    } catch (dbErr) {
+      console.warn('[Supabase Sync] Échec sauvegarde calendrier table courses:', dbErr);
+      throw dbErr;
+    }
   }
 }
 
@@ -396,16 +456,40 @@ export async function fetchTimetableFromSupabase(): Promise<{
 } | null> {
   try {
     const sb = getSupabase();
-    const { data: { user }, error } = await sb.auth.getUser();
-    if (error || !user) return null;
+    const user = await getCurrentUser();
+    if (!user) return null;
 
-    const meta = user.user_metadata;
-    if (!meta) return null;
+    // 1. Lire d'abord depuis la table courses (stockage robuste)
+    let icsFromDb: string | undefined;
+    let updatedAtFromDb: string | undefined;
+
+    try {
+      const { data: row } = await sb
+        .from('courses')
+        .select('body_md, updated_at')
+        .eq('title', TIMETABLE_SYNC_TITLE)
+        .maybeSingle();
+
+      if (row && row.body_md) {
+        icsFromDb = row.body_md;
+        updatedAtFromDb = row.updated_at;
+      }
+    } catch (e) {
+      console.warn('[Supabase Sync] Lecture courses échouée:', e);
+    }
+
+    const meta = user.user_metadata || {};
+    const legacyIcs = typeof meta.timetable_ics === 'string' ? meta.timetable_ics : undefined;
+
+    // Si un ancien contenu ICS résidait dans user_metadata, on le purge pour alléger le JWT
+    if (legacyIcs) {
+      sb.auth.updateUser({ data: { timetable_ics: null } }).catch(() => {});
+    }
 
     return {
-      icsContent: typeof meta.timetable_ics === 'string' ? meta.timetable_ics : undefined,
+      icsContent: icsFromDb || legacyIcs,
       icsUrl: typeof meta.timetable_url === 'string' ? meta.timetable_url : undefined,
-      updatedAt: typeof meta.timetable_updated_at === 'string' ? meta.timetable_updated_at : undefined,
+      updatedAt: updatedAtFromDb || (typeof meta.timetable_updated_at === 'string' ? meta.timetable_updated_at : undefined),
     };
   } catch {
     return null;
@@ -424,10 +508,14 @@ export async function fetchUserReminders(): Promise<DbReminder[]> {
 }
 
 export async function createUserReminder(reminder: Omit<DbReminder, 'id' | 'user_id' | 'created_at'>): Promise<DbReminder> {
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error('Vous devez être connecté à votre compte pour enregistrer un rappel.');
+  }
   const sb = getSupabase();
   const { data, error } = await sb
     .from('reminders')
-    .insert([reminder])
+    .insert([{ ...reminder, user_id: user.id }])
     .select()
     .single();
   if (error) throw error;
