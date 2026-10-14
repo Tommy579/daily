@@ -124,10 +124,9 @@ const shortcuts = [
 </Base>
 
 <script>
-  import ICAL from 'ical.js';
   import { STORAGE_KEYS, loadPersistent } from '../utils/persistence';
   import { getCurrentSession, fetchUserScheduleEvents } from '../utils/supabase';
-  import { syncTimetableState } from '../utils/timetable';
+  import { syncTimetableState, parseIcsEvents } from '../utils/timetable';
 
   interface HomeEvent {
     title: string;
@@ -213,101 +212,63 @@ const shortcuts = [
     // 0. Auto-synchronisation Supabase Cloud (PC <-> Mobile)
     await syncTimetableState().catch(() => {});
 
-    // Cours du jour chargés depuis les 3 sources : Supabase > Calendrier ICS importé > LocalStorage
-    const monday = mondayOf(now);
-    const maxDate = new Date(monday);
-    maxDate.setDate(monday.getDate() + 28); // Couvre 4 semaines pour anticiper les prochains cours
+    // Définition de la fenêtre du jour strict et des 14 prochains jours
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const maxUpcoming = new Date(startOfToday.getTime() + 14 * 24 * 60 * 60 * 1000);
 
-    const all: HomeEvent[] = [];
+    const allEvents: HomeEvent[] = [];
     const seen = new Set<string>();
 
     function addEvent(ev: HomeEvent) {
       const key = `${ev.title}|${ev.start.getTime()}`;
       if (!seen.has(key)) {
         seen.add(key);
-        all.push(ev);
+        allEvents.push(ev);
       }
     }
 
-    // 1. Tenter de charger depuis Supabase (cours de l'utilisateur)
+    // 1. Calendrier ICS de l'étudiant (analyse précise avec dates et récurrences)
+    const savedIcs = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
+    if (savedIcs && savedIcs.trim().length > 30) {
+      const parsed = parseIcsEvents(savedIcs, startOfToday, maxUpcoming);
+      parsed.forEach((ev) => {
+        addEvent({
+          title: ev.title,
+          start: ev.start,
+          end: ev.end,
+          location: ev.location,
+        });
+      });
+    }
+
+    // 2. Créneaux hebdomadaires créés manuellement par l'étudiant (fallback)
     try {
       const dbEvents = await fetchUserScheduleEvents();
       if (dbEvents && dbEvents.length > 0) {
+        const monday = mondayOf(now);
         dbEvents.forEach((dbEv) => {
           const dayOffset = (dbEv.day_of_week || 1) - 1;
           const [sH, sM] = (dbEv.start_time || '08:30').split(':').map(Number);
           const [eH, eM] = (dbEv.end_time || '10:30').split(':').map(Number);
 
-          for (let w = 0; w < 4; w++) {
+          for (let w = 0; w < 2; w++) {
             const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + dayOffset + w * 7);
             const start = new Date(d);
             start.setHours(sH, sM, 0, 0);
             const end = new Date(d);
             end.setHours(eH, eM, 0, 0);
-            addEvent({ title: dbEv.title, start, end, location: dbEv.location });
-          }
-        });
-      }
-    } catch {}
-
-    // 2. Fichier ICS personnalisé importé par l'étudiant
-    try {
-      const savedIcs = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
-      if (savedIcs && savedIcs.trim().length > 30) {
-        const icalLib = (ICAL as any).default || ICAL;
-        if (icalLib && icalLib.parse) {
-          const jcal = icalLib.parse(savedIcs);
-          const comp = new icalLib.Component(jcal);
-          const vevents = comp.getAllSubcomponents('vevent');
-          for (const vevent of vevents) {
-            const ev = new icalLib.Event(vevent);
-            const start = ev.startDate.toJSDate();
-            const end = ev.endDate.toJSDate();
-            if (end >= now && start <= maxDate) {
-              addEvent({
-                title: ev.summary || 'Cours',
-                start,
-                end,
-                location: ev.location || '',
-              });
+            if (end >= startOfToday && start <= maxUpcoming) {
+              addEvent({ title: dbEv.title, start, end, location: dbEv.location });
             }
           }
-        }
-      }
-    } catch (e) {
-      console.warn('Erreur lecture ICS accueil:', e);
-    }
-
-    // 3. Événements personnalisés sauvegardés localement (localStorage fallback)
-    try {
-      const localCustom = localStorage.getItem('marges_custom_schedule_events');
-      if (localCustom) {
-        const parsedCustom: Array<{
-          title: string;
-          dayOffset: number;
-          startH: number;
-          startM: number;
-          endH: number;
-          endM: number;
-          location?: string;
-        }> = JSON.parse(localCustom);
-
-        parsedCustom.forEach((c) => {
-          for (let w = 0; w < 4; w++) {
-            const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + (c.dayOffset || 0) + w * 7);
-            const start = new Date(d);
-            start.setHours(c.startH || 8, c.startM || 0, 0, 0);
-            const end = new Date(d);
-            end.setHours(c.endH || 10, c.endM || 0, 0, 0);
-            addEvent({ title: c.title, start, end, location: c.location });
-          }
         });
       }
     } catch {}
 
-    all.sort((a, b) => a.start.getTime() - b.start.getTime());
+    allEvents.sort((a, b) => a.start.getTime() - b.start.getTime());
 
-    const today = all.filter((e) => e.start.toDateString() === now.toDateString());
+    // FILTRAGE STRICT : Uniquement les cours qui ont lieu AUJOURD'HUI
+    const today = allEvents.filter((e) => e.start.toDateString() === now.toDateString());
     const list = root.querySelector<HTMLOListElement>('[data-today-list]');
     const summary = root.querySelector('[data-today-summary]');
     if (!list || !summary) return;
@@ -318,16 +279,16 @@ const shortcuts = [
       const live = today.find((e) => now >= e.start && now <= e.end);
       if (live) summary.textContent = `En cours jusqu'à ${fmtTime(live.end)} · ${remaining.length} cours restant${remaining.length > 1 ? 's' : ''}`;
       else if (remaining.length) summary.textContent = `Prochain cours à ${fmtTime(remaining[0].start)} · ${remaining.length} restant${remaining.length > 1 ? 's' : ''}`;
-      else summary.textContent = 'Journée de cours terminée.';
+      else summary.textContent = `Journée de cours terminée (${today.length} créneau${today.length > 1 ? 'x' : ''} aujourd’hui).`;
       today.forEach((ev) => list.append(renderItem(ev, now)));
     } else {
-      const next = all.find((e) => e.start > now);
       summary.textContent = 'Aucun cours aujourd’hui.';
-      if (next) {
-        list.append(el('li', 'tl-caption', 'Prochain cours'));
-        list.append(renderItem(next, now, true));
-      } else {
-        list.innerHTML = '<li class="meta" style="padding: 0.75rem 0;">Aucun cours planifié pour cette journée.</li>';
+      list.innerHTML = '<li class="meta" style="padding: 0.75rem 0;">Aucun cours planifié pour cette journée.</li>';
+      const nextUpcoming = allEvents.find((e) => e.start > now);
+      if (nextUpcoming) {
+        const nextCaption = el('li', 'tl-caption', 'Prochain cours à venir');
+        const nextItem = renderItem(nextUpcoming, now, true);
+        list.append(nextCaption, nextItem);
       }
     }
 

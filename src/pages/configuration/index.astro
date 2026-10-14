@@ -275,14 +275,12 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
   } from '../../utils/reminders';
   import {
     fetchCalendarFromUrl,
-    parseIcsToScheduleEvents,
     syncTimetableState,
   } from '../../utils/timetable';
   import {
     getCurrentUser,
     syncTimetableToSupabase,
     clearUserScheduleEvents,
-    createBatchUserScheduleEvents,
   } from '../../utils/supabase';
 
   async function initConfigPage() {
@@ -334,14 +332,8 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
                     icsContent: content,
                     icsUrl: icsUrlInput.value.trim() || undefined,
                   });
-                  const parsed = parseIcsToScheduleEvents(content);
-                  if (parsed.length > 0) {
-                    await clearUserScheduleEvents();
-                    await createBatchUserScheduleEvents(parsed);
-                    syncMsg += ` Synchronisé avec Supabase (${parsed.length} cours enregistrés). Accessible sur votre mobile et tous vos appareils !`;
-                  } else {
-                    syncMsg += ` Synchronisé avec votre compte Supabase.`;
-                  }
+                  await clearUserScheduleEvents().catch(() => {});
+                  syncMsg += ` Synchronisé avec Supabase Cloud. Accessible sur votre mobile et tous vos écrans !`;
                 } else {
                   syncMsg += ` Sauvegardé en local. Connectez-vous à votre Espace pour synchroniser sur mobile.`;
                 }
@@ -376,14 +368,8 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
                   icsContent: content,
                   icsUrl: rawUrl,
                 });
-                const parsed = parseIcsToScheduleEvents(content);
-                if (parsed.length > 0) {
-                  await clearUserScheduleEvents();
-                  await createBatchUserScheduleEvents(parsed);
-                  syncMsg += ` Synchronisé avec Supabase (${parsed.length} cours enregistrés). Accessible sur votre mobile !`;
-                } else {
-                  syncMsg += ` Enregistré sur votre compte Supabase Cloud.`;
-                }
+                await clearUserScheduleEvents().catch(() => {});
+                syncMsg += ` Synchronisé avec Supabase Cloud. Accessible sur votre mobile et tous vos écrans !`;
               } else {
                 syncMsg += ` Sauvegardé en local. Connectez-vous à votre Espace pour synchroniser sur mobile.`;
               }
