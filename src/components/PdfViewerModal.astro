@@ -1,0 +1,259 @@
+---
+// Composant Lecteur PDF immersif haute performance pour Marges
+---
+
+<dialog class="panel pdf-viewer-modal" id="modal-pdf-viewer">
+  <div class="pdf-modal-inner">
+    <header class="pdf-modal-header">
+      <div class="pdf-header-left">
+        <span class="file-badge file-badge--pdf">PDF</span>
+        <div class="pdf-header-titles">
+          <h2 class="pdf-title" id="pdf-viewer-title">Document</h2>
+          <span class="pdf-breadcrumb meta" id="pdf-viewer-breadcrumb">Matière / Catégorie</span>
+        </div>
+      </div>
+
+      <div class="pdf-header-actions">
+        <button type="button" class="btn btn--sm" id="btn-pdf-new-tab" title="Ouvrir le PDF en grand dans un nouvel onglet">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Plein écran
+        </button>
+        <a class="btn btn--sm" id="btn-pdf-download" download="cours.pdf" href="#" title="Télécharger le fichier PDF sur votre appareil">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Télécharger
+        </a>
+        <button type="button" class="btn-close" id="btn-close-pdf-viewer" aria-label="Fermer le lecteur PDF">✕</button>
+      </div>
+    </header>
+
+    <div class="pdf-modal-body">
+      <!-- Zone d'affichage du PDF natif via iframe -->
+      <div class="pdf-frame-wrapper" id="pdf-frame-wrapper">
+        <iframe id="pdf-viewer-frame" class="pdf-frame" src="" title="Lecteur PDF"></iframe>
+      </div>
+
+      <!-- Zone d'aide et dépôt si le document n'a pas encore son contenu binaire en mémoire locale -->
+      <div class="pdf-missing-zone" id="pdf-missing-zone" style="display: none;">
+        <div class="pdf-missing-card">
+          <div class="pdf-icon-symbol">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <h3 id="pdf-missing-filename">Document.pdf</h3>
+          <p class="meta" id="pdf-missing-desc">
+            Ce cours est répertorié dans votre arborescence. Pour le lire directement dans votre navigateur, glissez-déposez le fichier PDF ci-dessous ou sélectionnez-le sur votre appareil.
+          </p>
+
+          <label class="pdf-drop-box" id="pdf-drop-box">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Déposer le fichier <strong class="highlight-file">PDF</strong> ici ou <span class="highlight">cliquer pour parcourir</span></span>
+            <input type="file" id="input-pdf-missing" accept=".pdf,application/pdf" style="display: none;" />
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<style>
+  .pdf-viewer-modal {
+    width: 96vw;
+    max-width: 1360px;
+    height: 92vh;
+    padding: 0;
+    margin: auto;
+    border: 1px solid var(--line-strong, var(--line));
+    border-radius: var(--radius, 12px);
+    background: var(--surface, #ffffff);
+    color: var(--fg, #141414);
+    box-shadow: 0 16px 50px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+  }
+
+  .pdf-viewer-modal::backdrop {
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(4px);
+  }
+
+  .pdf-viewer-modal[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pdf-modal-inner {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .pdf-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .pdf-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-width: 0;
+  }
+
+  .pdf-header-titles {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .pdf-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pdf-breadcrumb {
+    font-size: 0.8rem;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pdf-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .pdf-header-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+  }
+
+  .pdf-modal-body {
+    flex: 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #2b2e31;
+  }
+
+  .pdf-frame-wrapper {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    display: flex;
+  }
+
+  .pdf-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #525659;
+  }
+
+  .pdf-missing-zone {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    background: var(--bg);
+  }
+
+  .pdf-missing-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 2rem;
+    max-width: 520px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  }
+
+  .pdf-icon-symbol {
+    color: var(--danger, #dc2626);
+    margin-bottom: 0.85rem;
+  }
+
+  .pdf-missing-card h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.2rem;
+    word-break: break-word;
+  }
+
+  .pdf-missing-card p {
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: var(--muted);
+    margin: 0 0 1.5rem;
+  }
+
+  .pdf-drop-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 1.8rem 1.2rem;
+    border: 2px dashed var(--line-strong, var(--line));
+    border-radius: var(--radius);
+    background: var(--soft);
+    cursor: pointer;
+    transition: all 0.18s ease;
+  }
+
+  .pdf-drop-box:hover,
+  .pdf-drop-box.drag-over {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  }
+
+  .pdf-drop-box span {
+    font-size: 0.88rem;
+    color: var(--fg);
+  }
+
+  .pdf-drop-box .highlight {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  @media (max-width: 48rem) {
+    .pdf-viewer-modal {
+      width: 100vw;
+      height: 100vh;
+      max-width: 100vw;
+      border-radius: 0;
+      border: none;
+    }
+    .pdf-modal-header {
+      padding: 0.5rem 0.75rem;
+      gap: 0.5rem;
+    }
+    .pdf-header-actions .btn {
+      padding: 0.3rem 0.5rem;
+      font-size: 0.75rem;
+    }
+  }
+</style>

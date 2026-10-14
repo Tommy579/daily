@@ -22,6 +22,10 @@ import Icon from './Icon.astro';
         <Icon name="file" size={15} />
         Importer un Fichier
       </button>
+      <button type="button" class="modal-tab" data-tab="tab-folder" role="tab" aria-selected="false">
+        <Icon name="folder" size={15} />
+        Importer un Dossier
+      </button>
       <button type="button" class="modal-tab" data-tab="tab-note" role="tab" aria-selected="false">
         <Icon name="edit" size={15} />
         Rédiger un Cours (Markdown)
@@ -118,6 +122,33 @@ import Icon from './Icon.astro';
         <button type="submit" class="btn btn--primary btn--sm">Importer et répertorier</button>
       </div>
     </form>
+
+    <!-- 2b. Formulaire : Importer un dossier complet -->
+    <div id="panel-import-folder" class="modal-tab-panel" data-panel="tab-folder">
+      <p class="meta tab-desc">
+        Importez un dossier entier depuis votre machine (avec ses matières, sous-dossiers CM, TD et fichiers PDF). L'arborescence sera automatiquement structurée et tous les fichiers PDF pourront être lus instantanément dans le lecteur.
+      </p>
+
+      <div class="form-group">
+        <label for="course-folder-input" class="field-label">Dossier de cours à importer :</label>
+        <input
+          type="file"
+          id="course-folder-input"
+          webkitdirectory
+          directory
+          multiple
+          class="input-file"
+        />
+        <span class="help-text meta">Tous les documents PDF et supports détectés seront sauvegardés dans votre mémoire locale sécurisée pour lecture immédiate.</span>
+      </div>
+
+      <div id="folder-import-status" class="meta" style="display: none; padding: 0.5rem 0; font-weight: 500; color: var(--accent);"></div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn--sm" id="btn-cancel-folder">Annuler</button>
+        <button type="button" class="btn btn--primary btn--sm" id="btn-start-folder-import">Lancer l'importation</button>
+      </div>
+    </div>
 
     <!-- 3. Formulaire : Rédiger un cours / note en Markdown -->
     <form id="form-create-note" class="modal-tab-panel" data-panel="tab-note">
