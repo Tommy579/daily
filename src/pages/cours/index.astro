@@ -714,6 +714,7 @@ const subjectsList = subjects.map((s) => ({
 
             const isPdf = file.ext === 'pdf' || file.title.toLowerCase().endsWith('.pdf');
             const badgeClass = isPdf ? 'file-badge--pdf' : 'file-badge--doc';
+            const badgeLabel = (file.ext || (isPdf ? 'pdf' : 'doc')).toUpperCase().slice(0, 4);
 
             li.innerHTML = `
               <div class="file-info">
