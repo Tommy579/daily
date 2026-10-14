@@ -529,7 +529,9 @@ const localPresetCourses = getCourses().map((s) => {
     type DbScheduleEvent,
     type DbReminder,
   } from '../../utils/supabase';
-  import { syncTimetableState } from '../../utils/timetable';
+  import { STORAGE_KEYS, loadPersistent, savePersistent } from '../../utils/persistence';
+  import { syncTimetableState, parseIcsEvents, type ParsedCalendarEvent } from '../../utils/timetable';
+  import { url } from '../../utils/url';
 
   // Parser Markdown ultra-léger et sécurisé
   function renderMarkdown(md: string): string {
@@ -643,6 +645,7 @@ const localPresetCourses = getCourses().map((s) => {
     let cachedCourses: DbCourse[] = [];
     let cachedSchedule: DbScheduleEvent[] = [];
     let cachedReminders: DbReminder[] = [];
+    let activeScheduleDate = new Date();
 
     function notify(msg: string, isError = false) {
       if (!espaceBanner || !espaceBannerText) return;
@@ -672,6 +675,11 @@ const localPresetCourses = getCourses().map((s) => {
         Object.entries(tabPanels).forEach(([k, panel]) => {
           if (panel) panel.style.display = k === tab ? 'block' : 'none';
         });
+        if (tab === 'schedule') {
+          loadSchedule().catch(() => {});
+        } else if (tab === 'courses') {
+          loadCourses().catch(() => {});
+        }
       });
     });
 
@@ -1211,27 +1219,40 @@ const localPresetCourses = getCourses().map((s) => {
     // -------------------------------------------------------------
     // GESTION DE L'EMPLOI DU TEMPS
     // -------------------------------------------------------------
+    function getStartOfWeek(d: Date): Date {
+      const date = new Date(d);
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      date.setDate(diff);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    }
+
     async function loadSchedule() {
       if (scheduleLoading) {
         scheduleLoading.style.display = 'block';
         scheduleLoading.textContent = 'Chargement de votre planning...';
       }
       if (scheduleEmpty) scheduleEmpty.style.display = 'none';
+
       try {
         const syncRes = await syncTimetableState().catch(() => null);
-        cachedSchedule = await fetchUserScheduleEvents();
+        cachedSchedule = await fetchUserScheduleEvents().catch(() => []);
 
-        const hasSyncedIcs = Boolean(syncRes?.icsContent || syncRes?.icsUrl);
-        if (badgeSchedule) {
-          if (cachedSchedule.length > 0) {
-            badgeSchedule.textContent = String(cachedSchedule.length);
-          } else if (hasSyncedIcs) {
-            badgeSchedule.textContent = 'ICS';
-          } else {
-            badgeSchedule.textContent = '0';
-          }
+        const localIcs = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
+        const savedIcs = (syncRes?.icsContent && syncRes.icsContent.trim().length > 30)
+          ? syncRes.icsContent
+          : (localIcs && localIcs.trim().length > 30 ? localIcs : '');
+
+        const localUrl = loadPersistent(STORAGE_KEYS.TIMETABLE_URL);
+        const icsUrl = syncRes?.icsUrl || localUrl || '';
+        const hasSyncedIcs = Boolean(savedIcs || icsUrl);
+
+        if (syncRes?.icsContent && !localIcs) {
+          savePersistent(STORAGE_KEYS.TIMETABLE_ICS, syncRes.icsContent);
         }
-        renderSchedule(hasSyncedIcs, syncRes?.icsUrl);
+
+        renderSchedule(savedIcs, icsUrl, hasSyncedIcs);
       } catch (err: any) {
         if (scheduleLoading) {
           scheduleLoading.style.display = 'block';
@@ -1242,49 +1263,181 @@ const localPresetCourses = getCourses().map((s) => {
       }
     }
 
-    function renderSchedule(hasSyncedIcs = false, icsUrl = '') {
+    function renderSchedule(savedIcs = '', icsUrl = '', hasSyncedIcs = false) {
       if (!scheduleGrid) return;
       scheduleGrid.innerHTML = '';
 
+      let monday = getStartOfWeek(activeScheduleDate);
+      let sunday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+
+      let icsEvents: ParsedCalendarEvent[] = [];
+      if (savedIcs) {
+        icsEvents = parseIcsEvents(savedIcs, monday, sunday);
+
+        // Si la semaine courante est vide, chercher la première semaine contenant des cours
+        if (icsEvents.length === 0) {
+          const forwardEnd = new Date(monday.getTime() + 12 * 7 * 24 * 60 * 60 * 1000);
+          const futureEvents = parseIcsEvents(savedIcs, monday, forwardEnd);
+          if (futureEvents.length > 0) {
+            activeScheduleDate = new Date(futureEvents[0].start);
+            monday = getStartOfWeek(activeScheduleDate);
+            sunday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+            icsEvents = parseIcsEvents(savedIcs, monday, sunday);
+          } else {
+            const pastStart = new Date(monday.getTime() - 8 * 7 * 24 * 60 * 60 * 1000);
+            const pastEvents = parseIcsEvents(savedIcs, pastStart, monday);
+            if (pastEvents.length > 0) {
+              activeScheduleDate = new Date(pastEvents[pastEvents.length - 1].start);
+              monday = getStartOfWeek(activeScheduleDate);
+              sunday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+              icsEvents = parseIcsEvents(savedIcs, monday, sunday);
+            }
+          }
+        }
+      }
+
+      const weekLabel = `Semaine du ${monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} au ${sunday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+
+      interface UnifiedEvent {
+        id: string;
+        title: string;
+        startTime: string;
+        endTime: string;
+        location?: string;
+        notes?: string;
+        category?: string;
+        isCustom: boolean;
+        dbId?: string;
+      }
+
+      const grouped: Record<number, UnifiedEvent[]> = {};
+      for (let day = 1; day <= 7; day++) grouped[day] = [];
+
+      // A. Cours issus du calendrier ICS synchronisé
+      icsEvents.forEach((ev) => {
+        const jsDay = ev.start.getDay();
+        const dayOfWeek = jsDay === 0 ? 7 : jsDay;
+        const startStr = ev.start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        const endStr = ev.end.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+        grouped[dayOfWeek].push({
+          id: ev.id,
+          title: ev.title,
+          startTime: startStr,
+          endTime: endStr,
+          location: ev.location,
+          notes: ev.description,
+          category: ev.category,
+          isCustom: false,
+        });
+      });
+
+      // B. Créneaux personnalisés créés manuellement dans Supabase
+      cachedSchedule.forEach((dbEv) => {
+        const day = dbEv.day_of_week;
+        if (grouped[day]) {
+          grouped[day].push({
+            id: dbEv.id || `manual-${Math.random()}`,
+            title: dbEv.title,
+            startTime: (dbEv.start_time || '08:00').slice(0, 5),
+            endTime: (dbEv.end_time || '10:00').slice(0, 5),
+            location: dbEv.location,
+            notes: dbEv.notes,
+            isCustom: true,
+            dbId: dbEv.id,
+          });
+        }
+      });
+
+      // Trier les événements par heure pour chaque jour
+      for (let day = 1; day <= 7; day++) {
+        grouped[day].sort((a, b) => a.startTime.localeCompare(b.startTime));
+      }
+
+      const totalEvents = Object.values(grouped).reduce((sum, list) => sum + list.length, 0);
+
+      if (badgeSchedule) {
+        badgeSchedule.textContent = String(totalEvents);
+      }
+
+      // Bannière et navigation de semaine
       if (hasSyncedIcs) {
         const banner = document.createElement('div');
-        banner.className = 'panel';
-        banner.style.cssText = 'grid-column: 1 / -1; margin-bottom: 1.25rem; border-left: 3px solid var(--color-accent, #0066cc); padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;';
+        banner.className = 'panel schedule-sync-bar';
+        banner.style.cssText = 'grid-column: 1 / -1; margin-bottom: 1.25rem; border-left: 3px solid var(--accent); padding: 0.85rem 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;';
         banner.innerHTML = `
           <div>
-            <h4 style="margin: 0 0 0.25rem 0;">Calendrier universitaire synchronisé</h4>
-            <p class="meta" style="margin: 0; font-size: 0.85rem;">Votre emploi du temps (${icsUrl ? 'flux direct' : 'fichier iCalendar .ics'}) est actif et synchronisé sur votre compte.</p>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span class="dot-status dot-active"></span>
+              <h4 style="margin: 0; font-size: 1rem;">Emploi du temps synchronisé (${totalEvents} cours cette semaine)</h4>
+            </div>
+            <p class="meta" style="margin: 0.2rem 0 0 0; font-size: 0.825rem;">
+              ${icsUrl ? 'Flux iCalendar direct' : 'Fichier ADE .ics'} actif sur votre compte.
+            </p>
           </div>
-          <a href="/daily/emploi-du-temps/" class="btn btn--sm btn--primary">
-            Consulter la grille complète
-          </a>
+          <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+            <div class="week-nav" style="display: inline-flex; align-items: center; gap: 0.35rem; background: var(--soft); padding: 0.25rem 0.5rem; border-radius: 6px;">
+              <button type="button" class="btn btn--sm" id="btn-sched-prev-week" title="Semaine précédente" style="padding: 0.2rem 0.6rem;">&larr;</button>
+              <span class="meta" style="font-weight: 600; font-size: 0.825rem; padding: 0 0.4rem; white-space: nowrap;">${weekLabel}</span>
+              <button type="button" class="btn btn--sm" id="btn-sched-next-week" title="Semaine suivante" style="padding: 0.2rem 0.6rem;">&rarr;</button>
+              <button type="button" class="btn btn--sm" id="btn-sched-today-week" title="Aujourd'hui" style="padding: 0.2rem 0.6rem; margin-left: 0.25rem;">Aujourd'hui</button>
+            </div>
+            <a href="${url('/emploi-du-temps/')}" class="btn btn--sm btn--primary">
+              Grille complète
+            </a>
+          </div>
         `;
+
+        banner.querySelector('#btn-sched-prev-week')?.addEventListener('click', () => {
+          activeScheduleDate = new Date(activeScheduleDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+          renderSchedule(savedIcs, icsUrl, hasSyncedIcs);
+        });
+
+        banner.querySelector('#btn-sched-next-week')?.addEventListener('click', () => {
+          activeScheduleDate = new Date(activeScheduleDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+          renderSchedule(savedIcs, icsUrl, hasSyncedIcs);
+        });
+
+        banner.querySelector('#btn-sched-today-week')?.addEventListener('click', () => {
+          activeScheduleDate = new Date();
+          renderSchedule(savedIcs, icsUrl, hasSyncedIcs);
+        });
+
         scheduleGrid.appendChild(banner);
       }
 
-      if (cachedSchedule.length === 0) {
+      if (totalEvents === 0) {
         if (!hasSyncedIcs && scheduleEmpty) scheduleEmpty.style.display = 'block';
+        if (hasSyncedIcs) {
+          const emptyWeek = document.createElement('div');
+          emptyWeek.className = 'panel empty-state';
+          emptyWeek.style.cssText = 'grid-column: 1 / -1; padding: 2.5rem; text-align: center;';
+          emptyWeek.innerHTML = `
+            <p class="meta">Aucun cours programmé pour la ${weekLabel.toLowerCase()}.</p>
+          `;
+          scheduleGrid.appendChild(emptyWeek);
+        }
         return;
       }
+
       if (scheduleEmpty) scheduleEmpty.style.display = 'none';
 
-      // Regrouper par jour
-      const grouped: Record<number, DbScheduleEvent[]> = {};
-      for (let day = 1; day <= 7; day++) grouped[day] = [];
-      cachedSchedule.forEach((evt) => {
-        if (!grouped[evt.day_of_week]) grouped[evt.day_of_week] = [];
-        grouped[evt.day_of_week].push(evt);
-      });
-
+      // Afficher les colonnes de chaque jour
       for (let day = 1; day <= 7; day++) {
         const events = grouped[day];
         if (events.length === 0) continue;
+
+        const dayDate = new Date(monday.getTime() + (day - 1) * 24 * 60 * 60 * 1000);
+        const dayDateFormatted = dayDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 
         const dayCol = document.createElement('div');
         dayCol.className = 'panel schedule-day-col';
         dayCol.innerHTML = `
           <div class="day-head">
-            <h4>${DAY_NAMES[day]}</h4>
+            <div>
+              <h4 style="margin: 0;">${DAY_NAMES[day]}</h4>
+              <span class="meta" style="font-size: 0.75rem;">${dayDateFormatted}</span>
+            </div>
             <span class="meta">${events.length} cours</span>
           </div>
           <div class="day-events-list"></div>
@@ -1294,32 +1447,36 @@ const localPresetCourses = getCourses().map((s) => {
         events.forEach((evt) => {
           const item = document.createElement('div');
           item.className = 'schedule-event-item';
-          const start = evt.start_time.slice(0, 5);
-          const end = evt.end_time.slice(0, 5);
           const loc = evt.location ? `<span class="event-loc">${evt.location}</span>` : '';
           const notes = evt.notes ? `<p class="event-notes meta">${evt.notes}</p>` : '';
+          const tag = evt.category ? `<span class="tag-pill tag-kind" style="font-size: 0.65rem; padding: 0.1rem 0.4rem;">${evt.category.toUpperCase()}</span>` : '';
 
           item.innerHTML = `
             <div class="event-top">
-              <span class="event-time">${start} – ${end}</span>
-              <button type="button" class="btn-del-event" title="Supprimer ce créneau">✕</button>
+              <span class="event-time">${evt.startTime} – ${evt.endTime}</span>
+              ${evt.isCustom
+                ? `<button type="button" class="btn-del-event" data-id="${evt.dbId}" title="Supprimer ce créneau">✕</button>`
+                : tag
+              }
             </div>
             <strong class="event-title">${evt.title}</strong>
             ${loc}
             ${notes}
           `;
 
-          item.querySelector('.btn-del-event')?.addEventListener('click', async () => {
-            if (confirm(`Supprimer le créneau "${evt.title}" ?`)) {
-              try {
-                if (evt.id) await deleteUserScheduleEvent(evt.id);
-                notify('Créneau supprimé.');
-                await loadSchedule();
-              } catch (err: any) {
-                notify(err.message, true);
+          if (evt.isCustom && evt.dbId) {
+            item.querySelector('.btn-del-event')?.addEventListener('click', async () => {
+              if (confirm(`Supprimer le créneau "${evt.title}" ?`)) {
+                try {
+                  await deleteUserScheduleEvent(evt.dbId!);
+                  notify('Créneau supprimé.');
+                  await loadSchedule();
+                } catch (err: any) {
+                  notify(err.message, true);
+                }
               }
-            }
-          });
+            });
+          }
 
           eventsList?.appendChild(item);
         });
@@ -1874,6 +2031,16 @@ const localPresetCourses = getCourses().map((s) => {
   }
 
   /* Emploi du temps */
+  .dot-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    display: inline-block;
+  }
+  .dot-status.dot-active {
+    background: #16a34a;
+  }
   .schedule-days-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
