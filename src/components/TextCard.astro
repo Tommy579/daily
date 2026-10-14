@@ -37,13 +37,19 @@ const Heading = `h${headingLevel}` as 'h2' | 'h3';
 <style>
   .card {
     position: relative;
-    padding-block: 1.9rem;
+    padding-block: clamp(1.25rem, 1rem + 1vw, 1.9rem);
   }
 
-  .card-meta { margin: 0 0 .55rem; }
+  .card-meta {
+    margin: 0 0 .55rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .15rem .35rem;
+  }
   .card-type { color: var(--fg); font-weight: 500; }
   .card-draft {
-    margin-left: .6rem;
+    margin-left: .4rem;
     padding: .1rem .45rem;
     border: 1px dashed var(--muted);
     border-radius: 4px;
@@ -54,9 +60,11 @@ const Heading = `h${headingLevel}` as 'h2' | 'h3';
 
   .card-title {
     font-family: var(--font-text);
-    font-size: clamp(1.35rem, 1.15rem + .8vw, 1.65rem);
-    line-height: 1.2;
+    font-size: clamp(1.25rem, 1.1rem + .8vw, 1.65rem);
+    line-height: 1.25;
     margin: 0 0 .5rem;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
   .card-title a {
     text-decoration: underline;

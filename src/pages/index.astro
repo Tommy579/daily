@@ -124,6 +124,8 @@ const shortcuts = [
 </Base>
 
 <script>
+  import ICAL from 'ical.js';
+  import { STORAGE_KEYS, loadPersistent } from '../utils/persistence';
   import { getCurrentSession, fetchUserScheduleEvents } from '../utils/supabase';
 
   interface HomeEvent {
@@ -207,12 +209,23 @@ const shortcuts = [
       dateEl.textContent = s.charAt(0).toUpperCase() + s.slice(1);
     }
 
-    // Cours du jour chargés depuis le compte de l'utilisateur (aucun cours fictif par défaut)
+    // Cours du jour chargés depuis les 3 sources : Supabase > Calendrier ICS importé > LocalStorage
     const monday = mondayOf(now);
-    const nextMonday = new Date(monday);
-    nextMonday.setDate(monday.getDate() + 7);
+    const maxDate = new Date(monday);
+    maxDate.setDate(monday.getDate() + 28); // Couvre 4 semaines pour anticiper les prochains cours
 
     const all: HomeEvent[] = [];
+    const seen = new Set<string>();
+
+    function addEvent(ev: HomeEvent) {
+      const key = `${ev.title}|${ev.start.getTime()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        all.push(ev);
+      }
+    }
+
+    // 1. Tenter de charger depuis Supabase (cours de l'utilisateur)
     try {
       const dbEvents = await fetchUserScheduleEvents();
       if (dbEvents && dbEvents.length > 0) {
@@ -221,19 +234,69 @@ const shortcuts = [
           const [sH, sM] = (dbEv.start_time || '08:30').split(':').map(Number);
           const [eH, eM] = (dbEv.end_time || '10:30').split(':').map(Number);
 
-          const d1 = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + dayOffset);
-          const start1 = new Date(d1);
-          start1.setHours(sH, sM, 0, 0);
-          const end1 = new Date(d1);
-          end1.setHours(eH, eM, 0, 0);
-          all.push({ title: dbEv.title, start: start1, end: end1, location: dbEv.location });
+          for (let w = 0; w < 4; w++) {
+            const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + dayOffset + w * 7);
+            const start = new Date(d);
+            start.setHours(sH, sM, 0, 0);
+            const end = new Date(d);
+            end.setHours(eH, eM, 0, 0);
+            addEvent({ title: dbEv.title, start, end, location: dbEv.location });
+          }
+        });
+      }
+    } catch {}
 
-          const d2 = new Date(nextMonday.getFullYear(), nextMonday.getMonth(), nextMonday.getDate() + dayOffset);
-          const start2 = new Date(d2);
-          start2.setHours(sH, sM, 0, 0);
-          const end2 = new Date(d2);
-          end2.setHours(eH, eM, 0, 0);
-          all.push({ title: dbEv.title, start: start2, end: end2, location: dbEv.location });
+    // 2. Fichier ICS personnalisé importé par l'étudiant
+    try {
+      const savedIcs = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
+      if (savedIcs && savedIcs.trim().length > 30) {
+        const icalLib = (ICAL as any).default || ICAL;
+        if (icalLib && icalLib.parse) {
+          const jcal = icalLib.parse(savedIcs);
+          const comp = new icalLib.Component(jcal);
+          const vevents = comp.getAllSubcomponents('vevent');
+          for (const vevent of vevents) {
+            const ev = new icalLib.Event(vevent);
+            const start = ev.startDate.toJSDate();
+            const end = ev.endDate.toJSDate();
+            if (end >= now && start <= maxDate) {
+              addEvent({
+                title: ev.summary || 'Cours',
+                start,
+                end,
+                location: ev.location || '',
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Erreur lecture ICS accueil:', e);
+    }
+
+    // 3. Événements personnalisés sauvegardés localement (localStorage fallback)
+    try {
+      const localCustom = localStorage.getItem('marges_custom_schedule_events');
+      if (localCustom) {
+        const parsedCustom: Array<{
+          title: string;
+          dayOffset: number;
+          startH: number;
+          startM: number;
+          endH: number;
+          endM: number;
+          location?: string;
+        }> = JSON.parse(localCustom);
+
+        parsedCustom.forEach((c) => {
+          for (let w = 0; w < 4; w++) {
+            const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + (c.dayOffset || 0) + w * 7);
+            const start = new Date(d);
+            start.setHours(c.startH || 8, c.startM || 0, 0, 0);
+            const end = new Date(d);
+            end.setHours(c.endH || 10, c.endM || 0, 0, 0);
+            addEvent({ title: c.title, start, end, location: c.location });
+          }
         });
       }
     } catch {}
@@ -292,6 +355,11 @@ const shortcuts = [
     } catch {}
   }
 
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initHome);
+  } else {
+    initHome();
+  }
   document.addEventListener('astro:page-load', initHome);
 </script>
 

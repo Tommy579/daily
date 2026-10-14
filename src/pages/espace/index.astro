@@ -1429,8 +1429,9 @@ const localPresetCourses = getCourses().map((s) => {
 
   .auth-card {
     max-width: 32rem;
+    width: 100%;
     margin: 2rem auto;
-    padding: 2.25rem;
+    padding: clamp(1.25rem, 1rem + 1vw, 2.25rem);
   }
   .card-head {
     display: flex;
@@ -1439,11 +1440,14 @@ const localPresetCourses = getCourses().map((s) => {
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
   }
   .card-head h2 {
     margin: 0 0 0.2rem;
     font-family: var(--font-text);
     font-size: 1.35rem;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
   .card-head p { margin: 0; font-size: 0.88rem; }
 
@@ -1472,12 +1476,12 @@ const localPresetCourses = getCourses().map((s) => {
     background: var(--surface);
     color: var(--fg);
     font-family: inherit;
-    font-size: 0.92rem;
+    font-size: max(16px, 0.92rem);
     transition: border-color .15s ease;
   }
   .espace-form textarea {
     font-family: var(--font-mono, monospace);
-    font-size: 0.88rem;
+    font-size: max(16px, 0.88rem);
     line-height: 1.5;
     resize: vertical;
   }
@@ -1512,6 +1516,7 @@ const localPresetCourses = getCourses().map((s) => {
     margin-bottom: 2rem;
     border-bottom: 1px solid var(--line);
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
   }
   .tab-btn {
@@ -1576,7 +1581,7 @@ const localPresetCourses = getCourses().map((s) => {
   /* Grille Cours */
   .cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
     gap: 1.25rem;
   }
   .course-card {
@@ -1596,6 +1601,8 @@ const localPresetCourses = getCourses().map((s) => {
     margin: 0;
     font-family: var(--font-text);
     font-size: 1.15rem;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
   .tags-row {
     display: flex;
@@ -1618,12 +1625,13 @@ const localPresetCourses = getCourses().map((s) => {
     display: flex;
     gap: 0.5rem;
     justify-content: flex-end;
+    flex-wrap: wrap;
   }
 
   /* Emploi du temps */
   .schedule-days-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
     gap: 1.25rem;
   }
   .schedule-day-col {
@@ -1755,11 +1763,11 @@ const localPresetCourses = getCourses().map((s) => {
   /* Sécurité */
   .security-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
     gap: 1.5rem;
   }
   .security-card {
-    padding: 1.75rem;
+    padding: clamp(1.1rem, 0.8rem + 1vw, 1.75rem);
   }
   .security-card h3 {
     margin: 0 0 0.25rem;
@@ -1776,26 +1784,28 @@ const localPresetCourses = getCourses().map((s) => {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1.5rem;
+    padding: clamp(0.75rem, 0.5rem + 1vw, 1.5rem);
   }
   .modal-dialog {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    width: 100%;
-    max-width: 520px;
-    max-height: 90vh;
+    width: min(calc(100vw - 1.5rem), 520px);
+    max-height: calc(100dvh - 2rem);
     overflow-y: auto;
+    margin: auto;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   }
   .modal-dialog--wide {
-    max-width: 760px;
+    width: min(calc(100vw - 1.5rem), 760px);
+    max-height: calc(100dvh - 2rem);
+    margin: auto;
   }
   .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.25rem 1.5rem;
+    padding: clamp(0.85rem, 0.65rem + 1vw, 1.5rem);
     border-bottom: 1px solid var(--line);
   }
   .modal-header h3 { margin: 0; font-family: var(--font-text); }
@@ -1808,15 +1818,21 @@ const localPresetCourses = getCourses().map((s) => {
   }
   .btn-close:hover { color: var(--fg); }
   .modal-body {
-    padding: 1.5rem;
+    padding: clamp(0.85rem, 0.65rem + 1vw, 1.5rem);
   }
   .modal-footer {
-    padding: 1rem 1.5rem 1.5rem;
+    padding: 0.75rem clamp(0.85rem, 0.65rem + 1vw, 1.5rem) clamp(0.85rem, 0.65rem + 1vw, 1.5rem);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    flex-wrap: wrap;
   }
   .editor-tabs-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
   .editor-switch {
     display: flex;
@@ -1867,5 +1883,63 @@ const localPresetCourses = getCourses().map((s) => {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
+  }
+
+  @media (max-width: 48rem) {
+    .espace-hero-top {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+  }
+
+  @media (max-width: 36rem) {
+    .espace-auth-actions {
+      width: 100%;
+      justify-content: space-between;
+      border-radius: var(--radius);
+    }
+    .user-email-text {
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .panel-section-head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .panel-section-head .btn {
+      width: 100%;
+    }
+    .reminder-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .reminder-left {
+      width: 100%;
+    }
+    .reminder-actions {
+      width: 100%;
+      justify-content: space-between;
+      padding-top: 0.4rem;
+      border-top: 1px solid var(--line);
+    }
+    .times-subgrid {
+      grid-template-columns: 1fr;
+    }
+    .card-bottom .btn {
+      flex: 1;
+    }
+    .card-head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .modal-footer .btn {
+      width: 100%;
+    }
   }
 </style>
