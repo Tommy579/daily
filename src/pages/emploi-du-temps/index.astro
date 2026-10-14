@@ -445,10 +445,10 @@ import { url } from '../../utils/url';
     }
 
     // 0. Auto-synchronisation Supabase Cloud (PC <-> Mobile)
-    await syncTimetableState().catch(() => {});
+    const syncRes = await syncTimetableState().catch(() => null);
 
     // 1. Fichier ICS personnalisé (analyse précise par date et récurrence)
-    const savedIcs = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
+    const savedIcs = syncRes?.icsContent !== undefined ? syncRes.icsContent : loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
     if (savedIcs && savedIcs.trim().length > 30) {
       const parsed = parseIcsEvents(savedIcs, monday, sunday);
       parsed.forEach((p) => {

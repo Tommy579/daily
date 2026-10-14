@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient, type User, type Session } from '@supabase/supabase-js';
+import { STORAGE_KEYS, deleteCookie } from './persistence';
 
 // Clés par défaut (configurables via localStorage dans la page de configuration ou l'interface de connexion)
 export const DEFAULT_SUPABASE_CONFIG = {
@@ -65,11 +66,36 @@ export function getSupabase(): SupabaseClient {
   return supabaseInstance;
 }
 
+/**
+ * Nettoie toutes les données privées stockées localement sur la machine (EDT, rappels, cours custom)
+ * pour éviter toute contamination entre comptes utilisateurs différents sur le même navigateur.
+ */
+export function clearLocalUserData(): void {
+  if (typeof window === 'undefined') return;
+  const keysToRemove = [
+    STORAGE_KEYS.TIMETABLE_ICS,
+    STORAGE_KEYS.TIMETABLE_URL,
+    STORAGE_KEYS.REMINDERS,
+    STORAGE_KEYS.REMINDERS_CONFIG,
+    STORAGE_KEYS.NOTIFICATIONS_HISTORY,
+    'marges_custom_schedule_events',
+    'marges_custom_subjects',
+    'marges_custom_courses',
+  ];
+  keysToRemove.forEach((k) => {
+    try {
+      localStorage.removeItem(k);
+      deleteCookie(k);
+    } catch {}
+  });
+}
+
 // -------------------------------------------------------------
 // Fonctions d'authentification
 // -------------------------------------------------------------
 
 export async function loginWithPassword(email: string, password: string): Promise<User> {
+  clearLocalUserData();
   const sb = getSupabase();
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) throw error;
@@ -78,6 +104,7 @@ export async function loginWithPassword(email: string, password: string): Promis
 }
 
 export async function logoutUser(): Promise<void> {
+  clearLocalUserData();
   const sb = getSupabase();
   const { error } = await sb.auth.signOut();
   if (error) throw error;
