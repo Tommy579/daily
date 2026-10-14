@@ -518,6 +518,7 @@ const localPresetCourses = getCourses().map((s) => {
     updatePassword,
     updateUserProfile,
     fetchUserCourses,
+    getUserCoursesImmediate,
     getLocalUserCourses,
     createUserCourse,
     createBatchUserCourses,
@@ -730,8 +731,9 @@ const localPresetCourses = getCourses().map((s) => {
             userDisplayEmail.textContent = fullName ? `${fullName} (${session.user.email})` : (session.user.email || 'Connecté');
           }
           const profileInput = document.getElementById('profile-full-name') as HTMLInputElement | null;
-          // Purge de sécurité : si l'ancien profil contient un gros fichier ICS dans les métadonnées auth, on le nettoie
+          // Purge de sécurité : si l'ancien profil contient un gros fichier ICS dans les métadonnées auth, on le nettoie une seule fois
           if (session.user.user_metadata?.timetable_ics) {
+            session.user.user_metadata.timetable_ics = null;
             getSupabase().auth.updateUser({ data: { timetable_ics: null } }).catch(() => {});
           }
 
@@ -804,35 +806,40 @@ const localPresetCourses = getCourses().map((s) => {
     // GESTION DES COURS
     // -------------------------------------------------------------
     async function loadCourses() {
-      if (coursesLoading) {
-        coursesLoading.style.display = 'block';
-        coursesLoading.textContent = 'Chargement de vos cours...';
-      }
-      if (coursesEmpty) coursesEmpty.style.display = 'none';
-      try {
-        cachedCourses = await fetchUserCourses();
+      // 1. Chargement instantané depuis le cache local (0 ms de latence)
+      const immediate = getUserCoursesImmediate();
+      if (immediate && immediate.length > 0) {
+        cachedCourses = immediate;
         if (badgeCourses) badgeCourses.textContent = String(cachedCourses.length);
         renderCourses();
-      } catch (err: any) {
-        console.warn('[Courses] Erreur chargement distant:', err);
-        const user = await getCurrentUser().catch(() => null);
-        if (user) {
-          cachedCourses = getLocalUserCourses(user.id);
+        if (coursesLoading) coursesLoading.style.display = 'none';
+        if (coursesEmpty) coursesEmpty.style.display = 'none';
+      } else if (cachedCourses.length === 0) {
+        if (coursesLoading) {
+          coursesLoading.style.display = 'block';
+          coursesLoading.textContent = 'Chargement de vos cours...';
+        }
+      }
+
+      // 2. Synchronisation distante en arrière-plan sans perturber l'interface
+      try {
+        const remote = await fetchUserCourses().catch(() => immediate);
+        if (remote && remote.length > 0) {
+          const isDifferent =
+            remote.length !== cachedCourses.length ||
+            JSON.stringify(remote.map((r) => r.id)) !== JSON.stringify(cachedCourses.map((c) => c.id));
+
+          cachedCourses = remote;
           if (badgeCourses) badgeCourses.textContent = String(cachedCourses.length);
-          if (cachedCourses.length > 0) {
+          if (isDifferent || !coursesGrid || coursesGrid.children.length === 0) {
             renderCourses();
           }
         }
-        if (cachedCourses.length === 0) {
-          if (coursesLoading) {
-            coursesLoading.style.display = 'block';
-            coursesLoading.innerHTML = `<span style="color: var(--color-danger, #dc2626);">${formatSupabaseError(err)}</span>`;
-          }
-        }
+      } catch (err: any) {
+        console.warn('[Courses] Synchronisation en arrière-plan:', err);
       } finally {
-        if (coursesLoading && (cachedCourses.length > 0 || (coursesEmpty && coursesEmpty.style.display === 'block'))) {
-          coursesLoading.style.display = 'none';
-        }
+        if (coursesLoading) coursesLoading.style.display = 'none';
+        if (coursesEmpty) coursesEmpty.style.display = cachedCourses.length === 0 ? 'block' : 'none';
       }
     }
 
@@ -888,6 +895,8 @@ const localPresetCourses = getCourses().map((s) => {
       }
       if (coursesEmpty) coursesEmpty.style.display = 'none';
       if (coursesSelectionBar) coursesSelectionBar.style.display = 'flex';
+
+      cachedCourses.sort((a, b) => a.title.localeCompare(b.title, 'fr', { numeric: true, sensitivity: 'base' }));
 
       cachedCourses.forEach((c) => {
         const card = document.createElement('div');
@@ -1237,7 +1246,7 @@ const localPresetCourses = getCourses().map((s) => {
     }
 
     async function loadSchedule() {
-      if (scheduleLoading) {
+      if (scheduleLoading && (!scheduleGrid || scheduleGrid.children.length === 0)) {
         scheduleLoading.style.display = 'block';
         scheduleLoading.textContent = 'Chargement de votre planning...';
       }
@@ -1545,7 +1554,7 @@ const localPresetCourses = getCourses().map((s) => {
     // GESTION DES RAPPELS
     // -------------------------------------------------------------
     async function loadReminders() {
-      if (remindersLoading) {
+      if (remindersLoading && (!remindersList || remindersList.children.length === 0)) {
         remindersLoading.style.display = 'block';
         remindersLoading.textContent = 'Chargement de vos rappels...';
       }
@@ -1734,11 +1743,13 @@ const localPresetCourses = getCourses().map((s) => {
       notify('Export JSON téléchargé avec succès.');
     });
 
-    // Écouter les changements d'état Supabase
+    // Écouter les changements d'état Supabase (uniquement connexion ou déconnexion explicite)
     try {
       const sb = getSupabase();
-      sb.auth.onAuthStateChange(() => {
-        refreshSessionState();
+      sb.auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+          refreshSessionState();
+        }
       });
     } catch (e) {
       // Ignorer si pas configuré

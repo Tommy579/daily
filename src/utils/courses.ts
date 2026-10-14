@@ -86,8 +86,8 @@ function scanFolder(dirPath: string, relativeBase: string = ''): CourseFolder {
     }
   }
 
-  subfolders.sort((a, b) => a.name.localeCompare(b.name));
-  files.sort((a, b) => a.name.localeCompare(b.name));
+  subfolders.sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
+  files.sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
 
   return {
     name: folderName,
