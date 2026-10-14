@@ -1162,18 +1162,16 @@ import { url } from '../../utils/url';
       badgeEl.textContent = info.kind;
       badgeEl.className = `dialog-type-tag tag-${info.kind.toLowerCase()}`;
     }
-    if (titleEl) titleEl.textContent = info.cleanTitle;
+    if (titleEl) {
+      titleEl.textContent = info.group ? `${info.cleanTitle} (${info.group})` : info.cleanTitle;
+    }
     if (timeEl) timeEl.textContent = `${formatTime(ev.start)} — ${formatTime(ev.end)} (${formatDuration(ev.start, ev.end)})`;
     if (locEl) locEl.textContent = ev.location || 'Salle non spécifiée';
 
     if (descEl && descRow) {
-      const desc = ev.description || (info.group ? `Groupe ${info.group}` : '');
-      if (desc) {
-        descEl.textContent = desc;
-        descRow.style.display = 'flex';
-      } else {
-        descRow.style.display = 'none';
-      }
+      const desc = (ev.description || '').trim();
+      descEl.textContent = desc || 'Aucune description spécifique renseignée pour ce cours.';
+      descRow.style.display = 'flex';
     }
 
     if (linkCourse) {
@@ -2246,12 +2244,14 @@ import { url } from '../../utils/url';
     padding: 1.25rem;
     gap: 1.5rem;
     box-shadow: var(--shadow-sm);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
   }
 
   .day-course-card:hover {
-    transform: translateY(-1px);
+    transform: translateY(-2px);
     box-shadow: var(--shadow-md);
+    border-color: var(--line-strong);
   }
 
   .card-time-column {

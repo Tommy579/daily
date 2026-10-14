@@ -39,7 +39,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
 
         <div class="storage-info">
           <p>
-            Vos supports de cours et fiches de révisions sont importés directement depuis votre dossier <strong>Semestre 5</strong>. Aucune dépendance externe ni compte en ligne n'est nécessaire : tous vos cours sont disponibles instantanément et consultables dans la visionneuse.
+            Vos supports de cours et fiches de révisions sont disponibles instantanément et consultables dans la visionneuse.
           </p>
           <div class="storage-status-list meta">
             <div class="storage-row">
@@ -48,11 +48,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
             </div>
             <div class="storage-row">
               <span>Fichiers disponibles :</span>
-              <strong>{totalFiles} documents importés</strong>
-            </div>
-            <div class="storage-row">
-              <span>Source :</span>
-              <code>Semestre 5 (Local)</code>
+              <strong>{totalFiles} documents disponibles</strong>
             </div>
           </div>
         </div>
