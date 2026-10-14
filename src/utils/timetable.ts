@@ -574,14 +574,26 @@ export async function syncTimetableState(options?: {
       };
     }
 
-    // Cas 3 : L'utilisateur connecté n'a aucun emploi du temps dans son Cloud Supabase.
-    // Pour ne jamais polluer son compte avec l'ancien fichier d'un autre utilisateur :
-    savePersistent(STORAGE_KEYS.TIMETABLE_ICS, '');
-    savePersistent(STORAGE_KEYS.TIMETABLE_URL, '');
+    // Cas 3 : Si l'utilisateur a configuré son emploi du temps localement (.ics ou URL) mais que le Cloud est encore vide,
+    // on le synchronise automatiquement vers son compte Supabase !
+    if (localIcs || localUrl) {
+      console.log('[Marges Sync] Synchronisation automatique du calendrier local vers le compte Supabase...');
+      await syncTimetableToSupabase({
+        icsContent: localIcs || undefined,
+        icsUrl: localUrl || undefined,
+      }).catch((e) => console.warn('[Marges Sync] Auto-sync échoué:', e));
+
+      return {
+        synced: true,
+        source: 'local',
+        icsContent: localIcs || undefined,
+        icsUrl: localUrl || undefined,
+      };
+    }
 
     return {
       synced: true,
-      source: 'cloud',
+      source: 'none',
       icsContent: '',
       icsUrl: '',
     };
