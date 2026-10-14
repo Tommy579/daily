@@ -215,9 +215,10 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
             </p>
           </div>
 
-          <div class="card-actions">
+          <div class="card-actions" style="flex-wrap: wrap;">
             <button type="submit" class="btn btn--primary btn--sm">Enregistrer les identifiants</button>
             <button type="button" class="btn btn--sm" id="btn-test-supabase">Tester la connexion</button>
+            <button type="button" class="btn btn--sm" id="btn-reset-supabase-default" title="Réinitialiser avec les clés officielles du projet Marges">Restaurer clés officielles</button>
             <a href={url('/espace/')} class="btn btn--sm">
               <Icon name="user" size={14} />
               Accéder à mon espace
@@ -281,6 +282,10 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     getCurrentUser,
     syncTimetableToSupabase,
     clearUserScheduleEvents,
+    getSupabaseCredentials,
+    saveSupabaseCredentials,
+    resetSupabaseCredentialsToDefault,
+    formatSupabaseError,
   } from '../../utils/supabase';
 
   async function initConfigPage() {
@@ -512,23 +517,18 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     const supabaseTitle = document.getElementById('supabase-status-title');
     const supabaseDesc = document.getElementById('supabase-status-desc');
     const btnTestSupabase = document.getElementById('btn-test-supabase');
+    const btnResetSupabaseDefault = document.getElementById('btn-reset-supabase-default');
 
     function updateSupabaseUI() {
-      const storedUrl = localStorage.getItem('marges_supabase_url') || '';
-      const storedAnon = localStorage.getItem('marges_supabase_anon_key') || '';
-      if (supabaseUrlInput && !supabaseUrlInput.value) supabaseUrlInput.value = storedUrl;
-      if (supabaseAnonInput && !supabaseAnonInput.value) supabaseAnonInput.value = storedAnon;
-
-      const isConfigured = Boolean(
-        storedUrl && !storedUrl.includes('xxxx.supabase.co') &&
-        storedAnon && !storedAnon.includes('dummy')
-      );
+      const creds = getSupabaseCredentials();
+      if (supabaseUrlInput && !supabaseUrlInput.value) supabaseUrlInput.value = creds.url;
+      if (supabaseAnonInput && !supabaseAnonInput.value) supabaseAnonInput.value = creds.anonKey;
 
       if (supabaseDot && supabaseTitle && supabaseDesc) {
-        if (isConfigured) {
+        if (creds.isConfigured) {
           supabaseDot.className = 'dot-status dot-active';
-          supabaseTitle.textContent = 'Projet Supabase configuré';
-          supabaseDesc.textContent = `Connecté à l'URL : ${storedUrl}`;
+          supabaseTitle.textContent = 'Projet Supabase connecté';
+          supabaseDesc.textContent = `Connecté à l'instance Cloud : ${creds.url}`;
         } else {
           supabaseDot.className = 'dot-status';
           supabaseDot.style.background = 'var(--muted)';
@@ -540,23 +540,32 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
 
     updateSupabaseUI();
 
+    btnResetSupabaseDefault?.addEventListener('click', () => {
+      resetSupabaseCredentialsToDefault();
+      const creds = getSupabaseCredentials();
+      if (supabaseUrlInput) supabaseUrlInput.value = creds.url;
+      if (supabaseAnonInput) supabaseAnonInput.value = creds.anonKey;
+      updateSupabaseUI();
+      alert('Clés officielles de Supabase restaurées avec succès !');
+    });
+
     supabaseForm?.addEventListener('submit', (e) => {
       e.preventDefault();
-      const urlVal = supabaseUrlInput.value.trim();
+      const urlVal = supabaseUrlInput.value.trim().replace(/\/+$/, '');
       const keyVal = supabaseAnonInput.value.trim();
       if (!urlVal || !keyVal) {
         alert('Veuillez renseigner à la fois le Project URL et la clé publique.');
         return;
       }
-      localStorage.setItem('marges_supabase_url', urlVal);
-      localStorage.setItem('marges_supabase_anon_key', keyVal);
+      saveSupabaseCredentials(urlVal, keyVal);
       updateSupabaseUI();
       alert('Identifiants Supabase enregistrés dans votre navigateur !');
     });
 
     btnTestSupabase?.addEventListener('click', async () => {
-      const urlVal = supabaseUrlInput.value.trim();
-      const keyVal = supabaseAnonInput.value.trim();
+      const creds = getSupabaseCredentials();
+      const urlVal = (supabaseUrlInput.value.trim() || creds.url).replace(/\/+$/, '');
+      const keyVal = supabaseAnonInput.value.trim() || creds.anonKey;
       if (!urlVal || !keyVal) {
         alert('Veuillez d’abord renseigner vos identifiants Supabase.');
         return;
@@ -578,7 +587,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
             headers: { apikey: keyVal },
           });
           if (authRes.ok) {
-            if (supabaseDesc) supabaseDesc.textContent = 'API Supabase Auth joignable. Table ping absente (optionnelle).';
+            if (supabaseDesc) supabaseDesc.textContent = 'API Supabase Auth joignable.';
             alert('Connexion établie avec le service d’authentification Supabase !');
           } else {
             throw new Error(`Statut HTTP : ${res.status}`);
@@ -587,8 +596,9 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
           throw new Error(`Statut HTTP : ${res.status}`);
         }
       } catch (err: any) {
-        if (supabaseDesc) supabaseDesc.textContent = `Erreur de connexion : ${err.message}`;
-        alert(`Échec du test de connexion : ${err.message}. Vérifiez l’URL et la clé publique.`);
+        const formatted = formatSupabaseError(err);
+        if (supabaseDesc) supabaseDesc.textContent = `Erreur de connexion : ${formatted}`;
+        alert(`Échec du test de connexion : ${formatted}`);
       }
     });
 
