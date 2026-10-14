@@ -889,6 +889,8 @@ const localPresetCourses = getCourses().map((s) => {
       if (coursesEmpty) coursesEmpty.style.display = 'none';
       if (coursesSelectionBar) coursesSelectionBar.style.display = 'flex';
 
+      cachedCourses.sort((a, b) => a.title.localeCompare(b.title, 'fr', { numeric: true, sensitivity: 'base' }));
+
       cachedCourses.forEach((c) => {
         const card = document.createElement('div');
         const isSelected = c.id ? selectedCourseIds.has(c.id) : false;

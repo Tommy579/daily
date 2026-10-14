@@ -93,7 +93,10 @@ export async function processFolderUpload(
     if (subCats.length > 0) {
       subCats.forEach(([catName, fileNames]) => {
         md += `### ${catName}\n\n`;
-        fileNames.forEach((fn) => {
+        const sortedFiles = fileNames.slice().sort((a, b) =>
+          a.localeCompare(b, 'fr', { numeric: true, sensitivity: 'base' })
+        );
+        sortedFiles.forEach((fn) => {
           md += `- ${fn}\n`;
         });
         md += `\n`;
@@ -101,7 +104,10 @@ export async function processFolderUpload(
     }
     if (data.rootFiles.length > 0) {
       md += `### Documents généraux\n\n`;
-      data.rootFiles.forEach((fn) => {
+      const sortedRoot = data.rootFiles.slice().sort((a, b) =>
+        a.localeCompare(b, 'fr', { numeric: true, sensitivity: 'base' })
+      );
+      sortedRoot.forEach((fn) => {
         md += `- ${fn}\n`;
       });
       md += `\n`;

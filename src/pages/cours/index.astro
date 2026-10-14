@@ -684,7 +684,9 @@ const subjectsList = subjects.map((s) => ({
         let subjectDocCount = 0;
 
         sortedFolderNames.forEach((folderName) => {
-          const files = sData.folders.get(folderName) || [];
+          const files = (sData.folders.get(folderName) || []).slice().sort((a, b) =>
+            a.title.localeCompare(b.title, 'fr', { numeric: true, sensitivity: 'base' })
+          );
           if (files.length === 0) return;
           subjectDocCount += files.length;
           totalDocCount += files.length;
