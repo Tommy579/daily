@@ -614,8 +614,28 @@ const subjectsList = subjects.map((s) => ({
         document.querySelectorAll('.file-item-supabase').forEach((el) => el.remove());
 
         dbCourses.forEach((c) => {
-          const subject = (c.tags && c.tags[0]) || 'Général';
-          const folder = (c.tags && c.tags[1]) || 'Fiches de révisions';
+          let subject = c.title;
+          let folder = 'Fiches & Notes';
+
+          if (c.tags && c.tags.length > 0) {
+            const cleanTags = c.tags.filter((t) => t !== 'Université' && t !== 'Dossier importé');
+            if (cleanTags.length > 0) {
+              subject = cleanTags[0];
+              folder = cleanTags[1] || 'Fiches de révisions';
+            }
+          }
+
+          // Vérifier si une carte existe déjà pour cette matière (par titre exact ou insensible à la casse)
+          const allCards = Array.from(document.querySelectorAll<HTMLElement>('.subject-card'));
+          const existingCard = allCards.find(
+            (sc) =>
+              sc.getAttribute('data-subject-card')?.toLowerCase().trim() === subject.toLowerCase().trim() ||
+              sc.getAttribute('data-subject-card')?.toLowerCase().trim() === c.title.toLowerCase().trim()
+          );
+
+          if (existingCard) {
+            subject = existingCard.getAttribute('data-subject-card') || subject;
+          }
 
           const slugId = subject
             .toLowerCase()
@@ -624,7 +644,7 @@ const subjectsList = subjects.map((s) => ({
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-|-$/g, '');
 
-          let card = document.getElementById(`folder-${slugId}`);
+          let card = existingCard || document.getElementById(`folder-${slugId}`);
           if (!card && container) {
             card = document.createElement('section');
             card.className = 'panel subject-card';
