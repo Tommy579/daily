@@ -275,8 +275,12 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     deleteCookie,
     type ReminderScheduleConfig,
   } from '../../utils/persistence';
+  import {
+    getUnifiedReminderConfig,
+    saveUnifiedReminderConfig,
+  } from '../../utils/reminders';
 
-  function initConfigPage() {
+  async function initConfigPage() {
     // 1. GESTION DE L'EMPLOI DU TEMPS
     const timetableForm = document.getElementById('form-timetable') as HTMLFormElement;
     const icsFileInput = document.getElementById('ics-file') as HTMLInputElement;
@@ -358,13 +362,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
 
     remindersFreq?.addEventListener('change', updateFreqUI);
 
-    const savedConfig: ReminderScheduleConfig = loadPersistentJSON(STORAGE_KEYS.REMINDERS_CONFIG, {
-      enabled: true,
-      frequency: 'daily',
-      times: ['09:00'],
-      weekday: 1,
-      contentType: 'all',
-    });
+    const savedConfig: ReminderScheduleConfig = await getUnifiedReminderConfig();
 
     if (remindersEnabled) remindersEnabled.checked = savedConfig.enabled;
     if (remindersFreq) remindersFreq.value = savedConfig.frequency;
@@ -375,7 +373,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
 
     updateFreqUI();
 
-    remindersForm?.addEventListener('submit', (e) => {
+    remindersForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const times: string[] = [];
       if (time1Input.value) times.push(time1Input.value);
@@ -389,8 +387,17 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
         contentType: remindersContent.value as any,
       };
 
-      savePersistentJSON(STORAGE_KEYS.REMINDERS_CONFIG, newConfig);
-      alert('Préférences de rappels sauvegardées avec succès pour 1 an !');
+      const submitBtn = remindersForm.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        await saveUnifiedReminderConfig(newConfig);
+        alert('Préférences de rappels synchronisées et sauvegardées avec succès !');
+      } catch (err: any) {
+        alert(err.message || 'Erreur lors de la sauvegarde.');
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
     });
 
     // 3. CONFIGURATION SUPABASE
@@ -527,7 +534,14 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     });
   }
 
-  document.addEventListener('astro:page-load', initConfigPage);
+  if (typeof window !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initConfigPage);
+    } else {
+      initConfigPage();
+    }
+    document.addEventListener('astro:page-load', initConfigPage);
+  }
 </script>
 
 <style>
