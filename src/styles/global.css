@@ -135,7 +135,11 @@ body {
   transition: background-color var(--dur) ease, color var(--dur) ease;
 }
 
-main { flex: 1; }
+main {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
 
 img, svg, video { display: block; max-width: 100%; height: auto; }
 
@@ -155,6 +159,11 @@ h1, h2, h3, h4 {
   overflow-wrap: break-word;
   word-break: break-word;
   hyphens: auto;
+}
+@media (max-width: 38rem) {
+  h1, h2, h3, h4 {
+    text-wrap: pretty;
+  }
 }
 h1 { font-size: clamp(1.85rem, 1.4rem + 2.5vw, 3.6rem); margin: 0 0 .5rem; letter-spacing: -.03em; }
 h2 { font-size: clamp(1.35rem, 1.15rem + 1vw, 1.75rem); margin: 3rem 0 1rem; }
@@ -212,6 +221,8 @@ code, kbd {
 .container {
   width: min(100% - 2 * var(--gutter), var(--measure));
   margin-inline: auto;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .visually-hidden {
@@ -299,7 +310,12 @@ code, kbd {
    Interface sans serif, plus compacte, sur une largeur confortable.
    -------------------------------------------------------------------------- */
 
-.container--wide { width: min(100% - 2 * var(--gutter), var(--wide)); }
+.container--wide {
+  width: min(100% - 2 * var(--gutter), var(--wide));
+  margin-inline: auto;
+  box-sizing: border-box;
+  min-width: 0;
+}
 
 .app-page {
   font-family: var(--font-ui);
@@ -381,6 +397,9 @@ code, kbd {
   border-radius: var(--r-lg);
   padding: clamp(0.95rem, 0.75rem + 1vw, 1.6rem);
   box-shadow: var(--shadow-sm);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 .panel--soft { background: var(--soft); box-shadow: none; }
 .panel--link {
@@ -417,9 +436,11 @@ code, kbd {
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
+  max-width: 100%;
+  box-sizing: border-box;
   transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
 }
-@media (max-width: 28rem) {
+@media (max-width: 36rem) {
   .btn {
     white-space: normal;
     text-align: center;
