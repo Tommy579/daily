@@ -614,8 +614,28 @@ const subjectsList = subjects.map((s) => ({
         document.querySelectorAll('.file-item-supabase').forEach((el) => el.remove());
 
         dbCourses.forEach((c) => {
-          const subject = (c.tags && c.tags[0]) || 'Général';
-          const folder = (c.tags && c.tags[1]) || 'Fiches de révisions';
+          let subject = c.title;
+          let folder = 'Fiches & Notes';
+
+          if (c.tags && c.tags.length > 0) {
+            const cleanTags = c.tags.filter((t) => t !== 'Université' && t !== 'Dossier importé');
+            if (cleanTags.length > 0) {
+              subject = cleanTags[0];
+              folder = cleanTags[1] || 'Fiches de révisions';
+            }
+          }
+
+          // Vérifier si une carte existe déjà pour cette matière (par titre exact ou insensible à la casse)
+          const allCards = Array.from(document.querySelectorAll<HTMLElement>('.subject-card'));
+          const existingCard = allCards.find(
+            (sc) =>
+              sc.getAttribute('data-subject-card')?.toLowerCase().trim() === subject.toLowerCase().trim() ||
+              sc.getAttribute('data-subject-card')?.toLowerCase().trim() === c.title.toLowerCase().trim()
+          );
+
+          if (existingCard) {
+            subject = existingCard.getAttribute('data-subject-card') || subject;
+          }
 
           const slugId = subject
             .toLowerCase()
@@ -624,7 +644,7 @@ const subjectsList = subjects.map((s) => ({
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-|-$/g, '');
 
-          let card = document.getElementById(`folder-${slugId}`);
+          let card = existingCard || document.getElementById(`folder-${slugId}`);
           if (!card && container) {
             card = document.createElement('section');
             card.className = 'panel subject-card';
@@ -807,10 +827,17 @@ const subjectsList = subjects.map((s) => ({
 
   .subjects-grid {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 2rem;
+    width: 100%;
+    min-width: 0;
   }
   .subject-card {
     padding: clamp(1rem, 0.75rem + 1vw, 1.75rem);
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
   }
   .subject-header {
     display: flex;
@@ -821,11 +848,19 @@ const subjectsList = subjects.map((s) => ({
     border-bottom: 1px solid var(--line);
     gap: 1rem;
     flex-wrap: wrap;
+    min-width: 0;
+    width: 100%;
   }
   .subject-title-wrap {
     display: flex;
     align-items: center;
     gap: 1rem;
+    min-width: 0;
+    flex: 1 1 220px;
+  }
+  .subject-title-wrap > div {
+    min-width: 0;
+    flex: 1;
   }
   .subject-initial {
     display: grid;
@@ -843,25 +878,35 @@ const subjectsList = subjects.map((s) => ({
   .subject-title {
     margin: 0 0 0.2rem;
     font-family: var(--font-text);
-    font-size: 1.5rem;
+    font-size: clamp(1.2rem, 1.05rem + 1vw, 1.5rem);
     letter-spacing: -.02em;
     overflow-wrap: break-word;
     word-break: break-word;
+    text-wrap: pretty;
   }
   .subject-meta {
     margin: 0;
     font-size: 0.85rem;
   }
+  .btn-add-in-subject {
+    flex-shrink: 0;
+  }
 
   .folder-tree {
     display: grid;
     gap: 1.25rem;
+    min-width: 0;
+    width: 100%;
   }
   .td-section {
     background: var(--soft);
     border-radius: var(--radius);
     padding: clamp(0.75rem, 0.5rem + 1vw, 1.25rem);
     border: 1px solid var(--line);
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
   }
   .td-header {
     display: flex;
@@ -869,6 +914,8 @@ const subjectsList = subjects.map((s) => ({
     gap: 0.5rem;
     margin-bottom: 0.75rem;
     flex-wrap: wrap;
+    min-width: 0;
+    width: 100%;
   }
   .td-folder-icon {
     color: var(--muted);
@@ -879,6 +926,9 @@ const subjectsList = subjects.map((s) => ({
     font-family: var(--font-ui);
     font-weight: 600;
     letter-spacing: -.01em;
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
   .td-count {
     margin-left: auto;
@@ -892,6 +942,8 @@ const subjectsList = subjects.map((s) => ({
     padding: 0;
     display: grid;
     gap: 0.4rem;
+    min-width: 0;
+    width: 100%;
   }
   .file-item {
     display: flex;
@@ -902,6 +954,9 @@ const subjectsList = subjects.map((s) => ({
     border-radius: var(--r-sm);
     background: var(--surface);
     border: 1px solid var(--line);
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
     transition: border-color .15s ease, background-color .15s ease;
   }
   .file-item:hover {
@@ -912,6 +967,8 @@ const subjectsList = subjects.map((s) => ({
     align-items: center;
     gap: 0.65rem;
     min-width: 0;
+    flex: 1;
+    overflow: hidden;
   }
   .file-name {
     font-size: 0.92rem;
@@ -921,6 +978,8 @@ const subjectsList = subjects.map((s) => ({
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1;
     transition: color .15s ease;
   }
   .file-name:hover {
@@ -968,6 +1027,7 @@ const subjectsList = subjects.map((s) => ({
     gap: 0.75rem;
     white-space: nowrap;
     font-size: 0.8rem;
+    flex-shrink: 0;
   }
   .btn-consulter {
     display: inline-flex;
@@ -999,15 +1059,30 @@ const subjectsList = subjects.map((s) => ({
   }
 
   @media (max-width: 38rem) {
+    .courses-hero-actions {
+      width: 100%;
+      flex-direction: column;
+    }
+    .courses-hero-actions .btn {
+      width: 100%;
+      justify-content: center;
+    }
     .subject-header {
       flex-direction: column;
-      align-items: flex-start;
-      gap: 0.75rem;
+      align-items: stretch;
+      gap: 0.85rem;
+    }
+    .subject-title-wrap {
+      width: 100%;
     }
     .subject-initial {
       width: 2.35rem;
       height: 2.35rem;
       font-size: 1rem;
+    }
+    .btn-add-in-subject {
+      width: 100%;
+      justify-content: center;
     }
     .file-item {
       flex-direction: column;
@@ -1017,14 +1092,25 @@ const subjectsList = subjects.map((s) => ({
     }
     .file-info {
       width: 100%;
+      min-width: 0;
     }
     .file-actions {
-      justify-content: flex-end;
-      padding-top: 0.4rem;
-      border-top: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       width: 100%;
+      padding-top: 0.45rem;
+      border-top: 1px solid var(--line);
+      gap: 0.5rem;
+      font-size: 0.78rem;
     }
-    .btn-consulter {
+    .file-actions span {
+      flex-shrink: 0;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+    .btn-consulter,
+    .btn-consult-db {
       flex: 1;
       justify-content: center;
       padding: 0.35rem 0.65rem;

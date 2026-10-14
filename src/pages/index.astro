@@ -516,8 +516,9 @@ const shortcuts = [
   @media (max-width: 52rem) {
     .shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
-  @media (max-width: 28rem) {
+  @media (max-width: 36rem) {
     .shortcuts { grid-template-columns: 1fr; }
+    .shortcut-text small { white-space: normal; }
     .today-head { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
     .timeline :global(.tl-item) {
       grid-template-columns: 3.25rem minmax(0, 1fr);
