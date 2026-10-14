@@ -174,7 +174,63 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
         </form>
       </section>
 
-      <!-- 4. Persistance des données & Cookies -->
+      <!-- 4. Comptes & Synchronisation Supabase -->
+      <section class="panel config-card" id="supabase-settings">
+        <div class="card-head">
+          <span class="icon-tile"><Icon name="database" size={20} /></span>
+          <div>
+            <h2>Comptes & Synchronisation Supabase</h2>
+            <p class="meta">Connexion à votre projet Supabase pour l'espace personnel, les cours privés et l'emploi du temps</p>
+          </div>
+        </div>
+
+        <form id="form-supabase" class="config-form">
+          <div class="form-group">
+            <label for="supabase-url" class="field-label">Project URL (Supabase) :</label>
+            <input
+              type="url"
+              id="supabase-url"
+              placeholder="https://votre-projet.supabase.co"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <span class="help-text">Trouvez cette URL dans votre tableau de bord Supabase : <em>Project Settings &gt; Data API &gt; Project URL</em>.</span>
+          </div>
+
+          <div class="form-group">
+            <label for="supabase-anon-key" class="field-label">Clé publique (Publishable / Anon key) :</label>
+            <input
+              type="text"
+              id="supabase-anon-key"
+              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <span class="help-text">Clé publique conçue pour le navigateur. <strong>Ne collez jamais</strong> la clé <code>service_role</code> (secrète).</span>
+          </div>
+
+          <div class="status-box" id="supabase-status-box">
+            <div class="status-indicator">
+              <span class="dot-status" id="supabase-dot"></span>
+              <strong id="supabase-status-title">État de la configuration</strong>
+            </div>
+            <p class="status-desc meta" id="supabase-status-desc">
+              Vérification des paramètres Supabase...
+            </p>
+          </div>
+
+          <div class="card-actions">
+            <button type="submit" class="btn btn--primary btn--sm">Enregistrer les identifiants</button>
+            <button type="button" class="btn btn--sm" id="btn-test-supabase">Tester la connexion</button>
+            <a href={url('/espace/')} class="btn btn--sm">
+              <Icon name="user" size={14} />
+              Accéder à mon espace
+            </a>
+          </div>
+        </form>
+      </section>
+
+      <!-- 5. Persistance des données & Cookies -->
       <section class="panel config-card">
         <div class="card-head">
           <span class="icon-tile"><Icon name="book" size={20} /></span>
@@ -337,7 +393,95 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
       alert('Préférences de rappels sauvegardées avec succès pour 1 an !');
     });
 
-    // 3. COOKIES & DONNÉES
+    // 3. CONFIGURATION SUPABASE
+    const supabaseForm = document.getElementById('form-supabase') as HTMLFormElement;
+    const supabaseUrlInput = document.getElementById('supabase-url') as HTMLInputElement;
+    const supabaseAnonInput = document.getElementById('supabase-anon-key') as HTMLInputElement;
+    const supabaseDot = document.getElementById('supabase-dot');
+    const supabaseTitle = document.getElementById('supabase-status-title');
+    const supabaseDesc = document.getElementById('supabase-status-desc');
+    const btnTestSupabase = document.getElementById('btn-test-supabase');
+
+    function updateSupabaseUI() {
+      const storedUrl = localStorage.getItem('marges_supabase_url') || '';
+      const storedAnon = localStorage.getItem('marges_supabase_anon_key') || '';
+      if (supabaseUrlInput && !supabaseUrlInput.value) supabaseUrlInput.value = storedUrl;
+      if (supabaseAnonInput && !supabaseAnonInput.value) supabaseAnonInput.value = storedAnon;
+
+      const isConfigured = Boolean(
+        storedUrl && !storedUrl.includes('xxxx.supabase.co') &&
+        storedAnon && !storedAnon.includes('dummy')
+      );
+
+      if (supabaseDot && supabaseTitle && supabaseDesc) {
+        if (isConfigured) {
+          supabaseDot.className = 'dot-status dot-active';
+          supabaseTitle.textContent = 'Projet Supabase configuré';
+          supabaseDesc.textContent = `Connecté à l'URL : ${storedUrl}`;
+        } else {
+          supabaseDot.className = 'dot-status';
+          supabaseDot.style.background = 'var(--muted)';
+          supabaseTitle.textContent = 'Non configuré';
+          supabaseDesc.textContent = 'Renseignez votre Project URL et votre clé publique ci-dessus pour activer les comptes et la synchronisation.';
+        }
+      }
+    }
+
+    updateSupabaseUI();
+
+    supabaseForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const urlVal = supabaseUrlInput.value.trim();
+      const keyVal = supabaseAnonInput.value.trim();
+      if (!urlVal || !keyVal) {
+        alert('Veuillez renseigner à la fois le Project URL et la clé publique.');
+        return;
+      }
+      localStorage.setItem('marges_supabase_url', urlVal);
+      localStorage.setItem('marges_supabase_anon_key', keyVal);
+      updateSupabaseUI();
+      alert('Identifiants Supabase enregistrés dans votre navigateur !');
+    });
+
+    btnTestSupabase?.addEventListener('click', async () => {
+      const urlVal = supabaseUrlInput.value.trim();
+      const keyVal = supabaseAnonInput.value.trim();
+      if (!urlVal || !keyVal) {
+        alert('Veuillez d’abord renseigner vos identifiants Supabase.');
+        return;
+      }
+      if (supabaseDesc) supabaseDesc.textContent = 'Test de connexion en cours...';
+      try {
+        const res = await fetch(`${urlVal}/rest/v1/ping?select=id&limit=1`, {
+          headers: {
+            apikey: keyVal,
+            Authorization: `Bearer ${keyVal}`,
+          },
+        });
+        if (res.ok) {
+          if (supabaseDesc) supabaseDesc.textContent = 'Connexion à l’API Supabase validée avec succès.';
+          alert('Succès : La connexion à votre projet Supabase fonctionne parfaitement !');
+        } else if (res.status === 404 || res.status === 401) {
+          // Si ping table pas encore créée, tester la racine auth ou schema
+          const authRes = await fetch(`${urlVal}/auth/v1/health`, {
+            headers: { apikey: keyVal },
+          });
+          if (authRes.ok) {
+            if (supabaseDesc) supabaseDesc.textContent = 'API Supabase Auth joignable. Table ping absente (optionnelle).';
+            alert('Connexion établie avec le service d’authentification Supabase !');
+          } else {
+            throw new Error(`Statut HTTP : ${res.status}`);
+          }
+        } else {
+          throw new Error(`Statut HTTP : ${res.status}`);
+        }
+      } catch (err: any) {
+        if (supabaseDesc) supabaseDesc.textContent = `Erreur de connexion : ${err.message}`;
+        alert(`Échec du test de connexion : ${err.message}. Vérifiez l’URL et la clé publique.`);
+      }
+    });
+
+    // 4. COOKIES & DONNÉES
     const cookieStatus = document.getElementById('cookie-status');
     const notifPermStatus = document.getElementById('notif-perm-status');
     const btnReqNotifPerm = document.getElementById('btn-request-notif-perm');
@@ -375,6 +519,8 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
           deleteCookie(k);
           localStorage.removeItem(k);
         });
+        localStorage.removeItem('marges_supabase_url');
+        localStorage.removeItem('marges_supabase_anon_key');
         alert('Toutes les données locales ont été réinitialisées.');
         window.location.reload();
       }
