@@ -250,6 +250,28 @@ if (file.type === 'code' || file.type === 'text') {
       .btn-back-link:hover {
         color: var(--fg);
       }
+      .docx-main {
+        padding: 2rem 1rem;
+        display: flex;
+        justify-content: center;
+        background: #474b4e;
+        min-height: calc(100vh - 56px);
+        overflow-y: auto;
+      }
+      .docx-viewer-container {
+        background: #ffffff;
+        color: #141414;
+        max-width: 900px;
+        width: 100%;
+        min-height: calc(100vh - 120px);
+        padding: 3rem;
+        box-shadow: 0 6px 30px rgba(0, 0, 0, 0.3);
+        border-radius: 4px;
+        font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+        font-size: 1rem;
+        line-height: 1.6;
+        overflow-x: auto;
+      }
     </style>
   </head>
   <body>
@@ -270,6 +292,12 @@ if (file.type === 'code' || file.type === 'text') {
 
     {file.type === 'pdf' ? (
       <iframe src={url(`/cours-files/${encodeURI(file.path)}`)} title={file.name}></iframe>
+    ) : (file.ext.toLowerCase() === '.docx' || file.ext.toLowerCase() === '.doc') ? (
+      <main class="docx-main">
+        <div id="docx-container" class="docx-viewer-container" data-url={url(`/cours-files/${encodeURI(file.path)}`)}>
+          <p class="meta" style="text-align: center; padding: 2rem;">Chargement du document Word...</p>
+        </div>
+      </main>
     ) : (file.type === 'code' || file.type === 'text') ? (
       <pre><code>{content}</code></pre>
     ) : (
@@ -288,5 +316,30 @@ if (file.type === 'code' || file.type === 'text') {
         </div>
       </main>
     )}
+
+    <script>
+      import { renderAsync } from 'docx-preview';
+      const container = document.getElementById('docx-container');
+      const docUrl = container?.getAttribute('data-url');
+      if (container && docUrl) {
+        fetch(docUrl)
+          .then((r) => {
+            if (!r.ok) throw new Error('Document introuvable');
+            return r.arrayBuffer();
+          })
+          .then((buf) => {
+            container.innerHTML = '';
+            return renderAsync(buf, container, undefined, { inWrapper: false });
+          })
+          .catch((err) => {
+            container.innerHTML = `
+              <div style="padding: 2.5rem; text-align: center;">
+                <p style="color: #666; margin-bottom: 1rem;">Ce document Word ne peut pas être prévisualisé directement (ancien format .doc ou fichier protégé).</p>
+                <a href="${docUrl}" download class="btn-header btn-header--primary" style="display: inline-block;">Télécharger le fichier</a>
+              </div>
+            `;
+          });
+      }
+    </script>
   </body>
 </html>
