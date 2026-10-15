@@ -52,11 +52,11 @@ const shortcuts = [
         <!-- Raccourcis -->
         <nav class="shortcuts" aria-label="Accès rapides">
           {shortcuts.map((s) => (
-            <a href={s.href} class="panel panel--link shortcut">
+            <a href={s.href} class="panel panel--link shortcut" data-shortcut-id={s.title.toLowerCase()}>
               <span class="icon-tile"><Icon name={s.icon} size={18} /></span>
               <span class="shortcut-text">
                 <strong>{s.title}</strong>
-                <small>{s.desc}</small>
+                <small data-shortcut-desc={s.title.toLowerCase()}>{s.desc}</small>
               </span>
             </a>
           ))}
@@ -78,28 +78,26 @@ const shortcuts = [
 
       <!-- Colonne latérale -->
       <aside class="home-aside">
-        {subjects.length > 0 && (
-          <section aria-labelledby="matieres-title">
-            <div class="section-head">
-              <h2 id="matieres-title">Matières</h2>
-              <a href={url('/cours/')} class="more">Tout voir <span aria-hidden="true">→</span></a>
-            </div>
-            <ul class="subject-list" role="list" id="home-subject-list">
-              {subjects.map((sub) => (
-                <li>
-                  <a href={url(`/cours/#folder-${sub.id}`)} class="subject-row">
-                    <span class="subject-initial" aria-hidden="true">{sub.name.charAt(0).toUpperCase()}</span>
-                    <span class="subject-text">
-                      <strong>{sub.name}</strong>
-                      <small>{sub.stats.totalFiles} fichiers · {sub.stats.pdfCount} PDF</small>
-                    </span>
-                    <Icon name="arrow-right" size={14} class="subject-arrow" />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        <section aria-labelledby="matieres-title" id="home-matieres-section" style={subjects.length === 0 ? 'display: none;' : ''}>
+          <div class="section-head">
+            <h2 id="matieres-title">Matières</h2>
+            <a href={url('/cours/')} class="more">Tout voir <span aria-hidden="true">→</span></a>
+          </div>
+          <ul class="subject-list" role="list" id="home-subject-list">
+            {subjects.map((sub) => (
+              <li>
+                <a href={url(`/cours/#folder-${sub.id}`)} class="subject-row">
+                  <span class="subject-initial" aria-hidden="true">{sub.name.charAt(0).toUpperCase()}</span>
+                  <span class="subject-text">
+                    <strong>{sub.name}</strong>
+                    <small>{sub.stats.totalFiles} fichiers · {sub.stats.pdfCount} PDF</small>
+                  </span>
+                  <Icon name="arrow-right" size={14} class="subject-arrow" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
 
         {themes.length > 0 && (
           <section class="aside-section" aria-labelledby="themes">
@@ -292,12 +290,18 @@ const shortcuts = [
       }
     }
 
-    // Matières personnalisées de l'utilisateur (affichage instantané + synchro Supabase)
+    // Matières de l'utilisateur (affichage instantané 0ms + synchro Supabase)
     function renderCustomSubjects(courses: any[]) {
       const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
       const subList = document.getElementById('home-subject-list');
-      if (!subList || !courses || courses.length === 0) return;
+      const matieresSec = document.getElementById('home-matieres-section');
+      const coursesDesc = document.querySelector('[data-shortcut-desc="cours"]');
+
+      if (!courses || courses.length === 0) return;
+
       const customSubjects = new Set<string>();
+      const subjectFilesCount = new Map<string, number>();
+
       courses.forEach((c) => {
         let s = '';
         if (c.tags && c.tags.length > 0) {
@@ -305,10 +309,32 @@ const shortcuts = [
           if (clean.length > 0) s = clean[0];
         }
         if (!s && c.title) s = c.title;
-        if (s) customSubjects.add(s);
+        if (s) {
+          customSubjects.add(s);
+          const lines = (c.body_md || '').split('\n').filter((l: string) => l.trim().startsWith('- ') || l.trim().startsWith('* ')).length;
+          subjectFilesCount.set(s, (subjectFilesCount.get(s) || 0) + (lines || 1));
+        }
       });
 
-      customSubjects.forEach((subName) => {
+      const totalCount = customSubjects.size;
+
+      // Actualise le nombre de matières sur le raccourci d'accueil
+      if (coursesDesc && totalCount > 0) {
+        coursesDesc.textContent = `${totalCount} matière${totalCount > 1 ? 's' : ''}`;
+      }
+
+      if (matieresSec && totalCount > 0) {
+        matieresSec.style.display = 'block';
+      }
+
+      if (!subList) return;
+
+      // Trier les matières par ordre alphabétique naturel
+      const sorted = Array.from(customSubjects).sort((a, b) =>
+        a.localeCompare(b, 'fr', { numeric: true, sensitivity: 'base' })
+      );
+
+      sorted.forEach((subName) => {
         const slugId = subName
           .toLowerCase()
           .normalize('NFD')
@@ -316,19 +342,28 @@ const shortcuts = [
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/^-|-$/g, '');
         const targetHref = `${basePath}/cours/#folder-${slugId}`;
-        if (!subList.querySelector(`a[href="${targetHref}"]`)) {
+        const count = subjectFilesCount.get(subName) || 1;
+        const countLabel = `${count} document${count > 1 ? 's' : ''}`;
+
+        let existingLi = subList.querySelector(`a[href="${targetHref}"]`)?.closest('li');
+        if (!existingLi) {
           const li = document.createElement('li');
           li.innerHTML = `
             <a href="${targetHref}" class="subject-row">
               <span class="subject-initial" aria-hidden="true">${subName.charAt(0).toUpperCase()}</span>
               <span class="subject-text">
                 <strong>${subName}</strong>
-                <small>Matière personnelle</small>
+                <small>${countLabel}</small>
               </span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="subject-arrow"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
             </a>
           `;
           subList.appendChild(li);
+        } else {
+          const small = existingLi.querySelector('small');
+          if (small && (small.textContent === 'Matière personnelle' || !small.textContent?.includes('fichier'))) {
+            small.textContent = countLabel;
+          }
         }
       });
     }
