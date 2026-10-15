@@ -1,0 +1,36 @@
+{
+  "name": "Marges",
+  "short_name": "Marges",
+  "description": "Essais, questions ouvertes, dialogues et fragments sur la place de l'intelligence artificielle dans nos vies : travail, relations, création, conscience, éthique, pouvoir.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "/daily/",
+  "scope": "/daily/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/daily/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/daily/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/daily/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/daily/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
