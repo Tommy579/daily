@@ -1,5 +1,10 @@
 import { renderAsync } from 'docx-preview';
-import { findDocumentBlob, saveDocumentBlob, dataUrlToBlob } from './fileStorage';
+import {
+  findDocumentBlob,
+  fetchAndCacheDocumentBlob,
+  saveDocumentFile,
+  dataUrlToBlob,
+} from './fileStorage';
 import { getCurrentUserCached, type DbCourse } from './supabase';
 
 export interface OpenPdfOptions {
@@ -86,11 +91,13 @@ async function handleAttachedDocumentFile(file: File): Promise<void> {
   const subject = currentDocContext.subject || '';
   const folder = currentDocContext.folder || '';
 
-  // Sauvegarde dans IndexedDB
-  await saveDocumentBlob(`doc:${userId}:${subject}:${folder}:${title}`, file);
-  await saveDocumentBlob(`doc:${userId}:${title}`, file);
-  await saveDocumentBlob(`doc:${title}`, file);
-  await saveDocumentBlob(title, file);
+  // Sauvegarde dans IndexedDB (local immédiat) et téléversement transparent vers Supabase Storage
+  await saveDocumentFile(file, {
+    userId,
+    subject,
+    folder,
+    fileName: title,
+  });
 
   // Réaffichage immédiat
   await openDocumentViewer(currentDocContext);
@@ -134,6 +141,11 @@ export async function openDocumentViewer(options: OpenPdfOptions): Promise<void>
   const codePre = document.getElementById('code-viewer-pre');
   const codeContent = document.getElementById('code-viewer-content');
 
+  // Zone chargement Cloud
+  const loadingZone = document.getElementById('doc-loading-zone');
+  const loadingTitle = document.getElementById('doc-loading-title');
+  const loadingDesc = document.getElementById('doc-loading-desc');
+
   // Zone manquant
   const missingZone = document.getElementById('pdf-missing-zone');
   const missingFilename = document.getElementById('pdf-missing-filename');
@@ -173,6 +185,20 @@ export async function openDocumentViewer(options: OpenPdfOptions): Promise<void>
     activeBlobUrl = null;
   }
 
+  // Affichage immédiat de la modale
+  if (typeof modal.showModal === 'function') {
+    if (!modal.open) modal.showModal();
+  } else {
+    modal.style.display = 'flex';
+  }
+
+  // Masquage initial de tous les conteneurs
+  if (frameWrapper) frameWrapper.style.display = 'none';
+  if (docxWrapper) docxWrapper.style.display = 'none';
+  if (textWrapper) textWrapper.style.display = 'none';
+  if (missingZone) missingZone.style.display = 'none';
+  if (loadingZone) loadingZone.style.display = 'none';
+
   let finalBlob: Blob | null = null;
   let finalUrl: string | null = null;
 
@@ -192,18 +218,42 @@ export async function openDocumentViewer(options: OpenPdfOptions): Promise<void>
     }
   }
 
-  // 3. Recherche dans la base locale IndexedDB
+  // 3. Recherche locale immédiate dans IndexedDB (0ms hors-ligne)
+  const user = getCurrentUserCached();
+  const userId = user?.id;
+
   if (!finalBlob && !finalUrl) {
-    const user = getCurrentUserCached();
-    const blob = await findDocumentBlob(user?.id, docSubject, docFolder, docTitle);
-    if (blob) {
-      finalBlob = blob;
-      activeBlobUrl = URL.createObjectURL(blob);
+    const localBlob = await findDocumentBlob(userId, docSubject, docFolder, docTitle);
+    if (localBlob) {
+      finalBlob = localBlob;
+      activeBlobUrl = URL.createObjectURL(localBlob);
       finalUrl = activeBlobUrl;
     }
   }
 
-  // 4. Si introuvable mais présent sur le serveur statique (/cours-files/...)
+  // 4. Si absent en local et utilisateur connecté : téléchargement transparent depuis Supabase Storage
+  if (!finalBlob && !finalUrl && userId) {
+    if (loadingZone) {
+      if (loadingTitle) loadingTitle.textContent = `Téléchargement de ${docTitle}...`;
+      if (loadingDesc) loadingDesc.textContent = 'Récupération sécurisée depuis votre stockage cloud Supabase...';
+      loadingZone.style.display = 'flex';
+    }
+
+    try {
+      const cloudBlob = await fetchAndCacheDocumentBlob(userId, docSubject, docFolder, docTitle);
+      if (cloudBlob) {
+        finalBlob = cloudBlob;
+        activeBlobUrl = URL.createObjectURL(cloudBlob);
+        finalUrl = activeBlobUrl;
+      }
+    } catch (err) {
+      console.warn('[DocViewer] Erreur téléchargement cloud:', err);
+    } finally {
+      if (loadingZone) loadingZone.style.display = 'none';
+    }
+  }
+
+  // 5. Si introuvable mais présent sur le serveur statique (/cours-files/...)
   if (!finalBlob && !finalUrl) {
     const possibleStatic = `/cours-files/${encodeURI(docSubject)}/${encodeURI(docFolder)}/${encodeURI(docTitle)}`;
     try {
@@ -214,7 +264,7 @@ export async function openDocumentViewer(options: OpenPdfOptions): Promise<void>
     } catch {}
   }
 
-  // 5. Contenu textuel direct fourni
+  // 6. Contenu textuel direct fourni
   if (!finalBlob && !finalUrl && options.content && options.content !== docTitle) {
     finalBlob = new Blob([options.content], { type: 'text/plain;charset=utf-8' });
     activeBlobUrl = URL.createObjectURL(finalBlob);
@@ -232,19 +282,6 @@ export async function openDocumentViewer(options: OpenPdfOptions): Promise<void>
       console.warn('[DocViewer] Échec fetch blob depuis finalUrl:', e);
     }
   }
-
-  // Affichage de la modale
-  if (typeof modal.showModal === 'function') {
-    if (!modal.open) modal.showModal();
-  } else {
-    modal.style.display = 'flex';
-  }
-
-  // Masquage initial de tous les conteneurs
-  if (frameWrapper) frameWrapper.style.display = 'none';
-  if (docxWrapper) docxWrapper.style.display = 'none';
-  if (textWrapper) textWrapper.style.display = 'none';
-  if (missingZone) missingZone.style.display = 'none';
 
   if (finalUrl || finalBlob) {
     // 1. Gestion affichage PDF

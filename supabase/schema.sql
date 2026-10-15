@@ -122,3 +122,49 @@ create policy "ping : lecture publique" on public.ping
   for select to anon, authenticated using (true);
 
 grant select on public.ping to anon, authenticated;
+
+-- =====================================================================
+-- 6. STOCKAGE SUPABASE STORAGE (Bucket course-files)
+-- =====================================================================
+-- Création du bucket privé pour stocker les fichiers de cours (PDF, Word, etc.)
+insert into storage.buckets (id, name, public)
+values ('course-files', 'course-files', false)
+on conflict (id) do nothing;
+
+-- RLS sur storage.objects : l'utilisateur authentifié gère uniquement son dossier personnel (${auth.uid()}/*)
+drop policy if exists "course_files_select" on storage.objects;
+create policy "course_files_select" on storage.objects
+  for select to authenticated
+  using (
+    bucket_id = 'course-files'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+drop policy if exists "course_files_insert" on storage.objects;
+create policy "course_files_insert" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'course-files'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+drop policy if exists "course_files_update" on storage.objects;
+create policy "course_files_update" on storage.objects
+  for update to authenticated
+  using (
+    bucket_id = 'course-files'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  )
+  with check (
+    bucket_id = 'course-files'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+drop policy if exists "course_files_delete" on storage.objects;
+create policy "course_files_delete" on storage.objects
+  for delete to authenticated
+  using (
+    bucket_id = 'course-files'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+

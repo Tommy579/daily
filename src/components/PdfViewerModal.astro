@@ -52,7 +52,18 @@
         </div>
       </div>
 
-      <!-- 4. Zone d'aide et dépôt si le document n'a pas encore son contenu binaire en mémoire locale -->
+      <!-- 4. Zone d'état de chargement lors de la récupération depuis Supabase Storage -->
+      <div class="doc-loading-zone" id="doc-loading-zone" style="display: none;">
+        <div class="doc-loading-card">
+          <div class="doc-loading-spinner" aria-hidden="true"></div>
+          <h3 id="doc-loading-title">Chargement du document...</h3>
+          <p class="meta" id="doc-loading-desc">
+            Récupération sécurisée depuis le cloud Supabase Storage...
+          </p>
+        </div>
+      </div>
+
+      <!-- 5. Zone d'aide et dépôt si le document n'a pas encore son contenu binaire en mémoire locale -->
       <div class="pdf-missing-zone" id="pdf-missing-zone" style="display: none;">
         <div class="pdf-missing-card">
           <div class="pdf-icon-symbol" id="doc-missing-icon">
@@ -258,6 +269,60 @@
     white-space: pre-wrap;
     word-break: break-word;
     tab-size: 4;
+  }
+
+  /* Zone de chargement Cloud */
+  .doc-loading-zone {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    background: var(--bg);
+  }
+
+  .doc-loading-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 2.5rem 2rem;
+    max-width: 440px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.85rem;
+  }
+
+  .doc-loading-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--line);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: doc-spin 0.8s linear infinite;
+  }
+
+  @keyframes doc-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .doc-loading-card h3 {
+    margin: 0;
+    font-size: 1.15rem;
+  }
+
+  .doc-loading-card p {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--muted);
+    margin: 0;
   }
 
   /* Zone document manquant */

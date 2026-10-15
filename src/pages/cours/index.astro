@@ -31,6 +31,10 @@ const subjectsList = subjects.map((s) => ({
           <p class="courses-motto">Supports de cours, énoncés de TD et fiches de révisions.</p>
         </div>
         <div class="courses-hero-actions">
+          <button type="button" class="btn btn--sm" id="btn-sync-cloud-files" title="Synchroniser vos documents locaux vers Supabase Storage">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span id="sync-cloud-label">Sync Cloud</span>
+          </button>
           <button type="button" class="btn btn--primary btn--sm" id="btn-open-add-course">
             <Icon name="folder" size={14} />
             Ajouter / Classer un cours
@@ -191,12 +195,17 @@ const subjectsList = subjects.map((s) => ({
   import {
     fetchUserCourses,
     getUserCoursesImmediate,
+    getCurrentUserCached,
     createUserCourse,
     deleteUserCourse,
     type DbCourse,
   } from '../../utils/supabase';
   import { setupPdfViewerModal, openPdfViewer } from '../../utils/pdfViewer';
-  import { saveDocumentBlob } from '../../utils/fileStorage';
+  import {
+    saveDocumentFile,
+    deleteDocumentFile,
+    syncLocalFilesToSupabaseStorage,
+  } from '../../utils/fileStorage';
   import { processFolderUpload } from '../../utils/courseImport';
 
   function renderMarkdown(md: string): string {
@@ -462,17 +471,19 @@ const subjectsList = subjects.map((s) => ({
       const user = getCurrentUserCached();
       const userId = user?.id || '';
 
-      // Sauvegarde immédiate dans IndexedDB pour lecture locale haute performance
-      await saveDocumentBlob(`doc:${userId}:${targetSubject}:${targetFolder}:${file.name}`, file);
-      await saveDocumentBlob(`doc:${userId}:${file.name}`, file);
-      await saveDocumentBlob(`doc:${file.name}`, file);
-      await saveDocumentBlob(file.name, file);
+      // Sauvegarde immédiate dans IndexedDB et téléversement transparent vers Supabase Storage
+      await saveDocumentFile(file, {
+        userId,
+        subject: targetSubject,
+        folder: targetFolder,
+        fileName: file.name,
+      });
 
       const reader = new FileReader();
       reader.onload = async (evt) => {
         const dataUrl = evt.target?.result as string;
         try {
-          const body_md = file.size <= 3 * 1024 * 1024 ? dataUrl : `[Fichier local : ${file.name}]`;
+          const body_md = file.size <= 2 * 1024 * 1024 ? dataUrl : `[Fichier local : ${file.name}]`;
           await createUserCourse({
             title: file.name,
             tags: [targetSubject, targetFolder],
@@ -481,7 +492,7 @@ const subjectsList = subjects.map((s) => ({
           modal?.close();
           fileInput.value = '';
           if (inputCustomFolder) inputCustomFolder.value = '';
-          showToast(`Document « ${file.name} » enregistré et prêt à être lu !`);
+          showToast(`Document « ${file.name} » enregistré et synchronisé !`);
           await loadAndRenderSupabaseCourses();
         } catch (err: any) {
           alert('Erreur enregistrement Supabase: ' + err.message);
@@ -781,6 +792,10 @@ const subjectsList = subjects.map((s) => ({
               if (confirm(`Supprimer définitivement « ${file.title} » ?`)) {
                 try {
                   if (file.id) await deleteUserCourse(file.id);
+                  await deleteDocumentFile(file.title, {
+                    subject,
+                    folder: folderName,
+                  });
                   showToast(`« ${file.title} » supprimé.`);
                   await loadAndRenderSupabaseCourses();
                 } catch (err: any) {
@@ -819,6 +834,44 @@ const subjectsList = subjects.map((s) => ({
       populateSubjectsSelect();
     }
 
+    // Gestion du bouton de synchronisation Cloud
+    const btnSyncCloud = document.getElementById('btn-sync-cloud-files');
+    const syncCloudLabel = document.getElementById('sync-cloud-label');
+    let isSyncing = false;
+
+    async function triggerCloudSync(interactive = false) {
+      if (isSyncing) return;
+      isSyncing = true;
+      if (syncCloudLabel) syncCloudLabel.textContent = 'Sync...';
+
+      try {
+        const res = await syncLocalFilesToSupabaseStorage((progress) => {
+          if (syncCloudLabel) {
+            syncCloudLabel.textContent = `${progress.current}/${progress.total}`;
+          }
+        });
+
+        if (interactive) {
+          if (res.syncedCount > 0) {
+            showToast(`${res.syncedCount} fichier(s) sauvegardé(s) dans le cloud !`);
+          } else if (res.alreadyCount > 0) {
+            showToast(`Vos ${res.alreadyCount} fichiers sont déjà sauvegardés dans le cloud.`);
+          } else if (res.totalCount === 0) {
+            showToast('Aucun fichier local à synchroniser.');
+          }
+        }
+      } catch (err: any) {
+        if (interactive) {
+          showToast(`Erreur synchronisation : ${err.message || err}`);
+        }
+      } finally {
+        isSyncing = false;
+        if (syncCloudLabel) syncCloudLabel.textContent = 'Sync Cloud';
+      }
+    }
+
+    btnSyncCloud?.addEventListener('click', () => triggerCloudSync(true));
+
     async function loadAndRenderSupabaseCourses() {
       // 1. Affichage instantané depuis le cache local (0 milliseconde de latence)
       const immediateCourses = getUserCoursesImmediate();
@@ -840,6 +893,11 @@ const subjectsList = subjects.map((s) => ({
     }
 
     loadAndRenderSupabaseCourses();
+
+    // Synchronisation automatique et discrète des fichiers locaux vers le cloud en arrière-plan
+    setTimeout(() => {
+      triggerCloudSync(false);
+    }, 2000);
   }
 
   if (typeof window !== 'undefined') {
