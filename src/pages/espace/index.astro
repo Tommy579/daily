@@ -1,0 +1,2412 @@
+---
+import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
+import PdfViewerModal from '../../components/PdfViewerModal.astro';
+import { getCourses } from '../../utils/courses';
+import { url } from '../../utils/url';
+
+const localPresetCourses = getCourses().map((s) => {
+  let md = `## Supports de cours & organisation\n\n`;
+  if (s.folder.subfolders && s.folder.subfolders.length > 0) {
+    s.folder.subfolders.forEach((sub) => {
+      md += `### ${sub.name}\n\n`;
+      if (sub.files && sub.files.length > 0) {
+        sub.files.forEach((f) => {
+          const mb = (f.size / (1024 * 1024)).toFixed(1);
+          md += `- [${f.name}](${f.viewerUrl}) (${mb} Mo)\n`;
+        });
+      } else {
+        md += `*Aucun fichier dans ce sous-dossier.*\n`;
+      }
+      md += `\n`;
+    });
+  }
+  if (s.folder.files && s.folder.files.length > 0) {
+    md += `### Documents généraux\n\n`;
+    s.folder.files.forEach((f) => {
+      const mb = (f.size / (1024 * 1024)).toFixed(1);
+      md += `- [${f.name}](${f.viewerUrl}) (${mb} Mo)\n`;
+    });
+    md += `\n`;
+  }
+  return {
+    title: s.name,
+    body_md: md,
+    tags: [s.name, 'Supports de cours'],
+  };
+});
+---
+
+<Base
+  title="Mon Espace Personnel"
+  description="Accédez à vos cours privés, votre emploi du temps et vos rappels synchronisés en toute sécurité."
+>
+  <div class="container container--wide app-page espace-page" data-espace-root data-local-presets={JSON.stringify(localPresetCourses)}>
+    <header class="page-header espace-hero">
+      <div class="espace-hero-top">
+        <div>
+          <p class="crumbs"><a href={url('/')}>Accueil</a> / Espace Personnel</p>
+          <h1 class="espace-title">Mon Espace</h1>
+          <p class="espace-motto">
+            Données privées protégées par Row Level Security (RLS) et synchronisées avec Supabase.
+          </p>
+        </div>
+        <div class="espace-auth-actions" id="user-top-actions" style="display: none;">
+          <div class="user-badge">
+            <span class="user-status-dot"></span>
+            <span id="user-display-email" class="user-email-text">utilisateur</span>
+          </div>
+          <button type="button" class="btn btn--sm" id="btn-reset-session" title="Purger le jeton local et forcer une reconnexion propre">
+            <Icon name="refresh" size={14} />
+            Réinitialiser la session
+          </button>
+          <button type="button" class="btn btn--sm" id="btn-logout">
+            <Icon name="log-out" size={14} />
+            Se déconnecter
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Zone de messages / notifications -->
+    <div id="espace-banner" class="panel espace-banner" style="display: none;">
+      <span class="banner-dot"></span>
+      <span id="espace-banner-text">Message</span>
+    </div>
+
+    <!-- 1. VUE NON CONNECTÉ (FORMULAIRE DE CONNEXION) -->
+    <div id="view-login" class="espace-section">
+      <div class="panel auth-card">
+        <div class="card-head">
+          <span class="icon-tile"><Icon name="user" size={20} /></span>
+          <div>
+            <h2>Connexion à votre espace</h2>
+            <p class="meta">Entrez les identifiants fournis par l'administrateur</p>
+          </div>
+        </div>
+
+        <form id="form-login" class="espace-form">
+          <div class="form-group">
+            <label for="login-email" class="field-label">Adresse email :</label>
+            <input
+              type="email"
+              id="login-email"
+              placeholder="votre-nom@exemple.fr"
+              required
+              autocomplete="username"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="login-password" class="field-label">Mot de passe :</label>
+            <input
+              type="password"
+              id="login-password"
+              placeholder="••••••••••••"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+
+          <div id="login-error-box" class="login-error" style="display: none;">
+            <span id="login-error-text">Identifiants invalides.</span>
+          </div>
+
+          <div class="card-actions">
+            <button type="submit" class="btn btn--primary" id="btn-submit-login">
+              Se connecter
+            </button>
+            <button type="button" class="btn btn--sm" id="btn-toggle-supabase-config">
+              <Icon name="settings" size={14} />
+              Paramètres Supabase
+            </button>
+          </div>
+        </form>
+
+        <!-- Configuration Supabase intégrée (évite les blocages d'accès) -->
+        <div id="box-supabase-inline" class="auth-supabase-inline" style="display: none; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color, #e5e5e5);">
+          <h3 style="font-size: 1rem; margin-bottom: 0.35rem;">Configuration directe de Supabase</h3>
+          <p class="meta" style="font-size: 0.85rem; margin-bottom: 1rem;">
+            Renseignez votre Project URL et clé publique ci-dessous pour connecter l'application à votre instance Supabase.
+          </p>
+          <form id="form-inline-supabase" class="espace-form">
+            <div class="form-group">
+              <label for="inline-supabase-url" class="field-label">Project URL (Supabase) :</label>
+              <input type="url" id="inline-supabase-url" placeholder="https://votre-projet.supabase.co" required />
+            </div>
+            <div class="form-group">
+              <label for="inline-supabase-key" class="field-label">Clé publique (Anon / Publishable) :</label>
+              <input type="text" id="inline-supabase-key" placeholder="sb_publishable_... ou eyJhbGci..." required />
+            </div>
+            <div class="card-actions" style="flex-wrap: wrap;">
+              <button type="submit" class="btn btn--primary btn--sm" id="btn-save-inline-supabase">
+                Enregistrer et activer
+              </button>
+              <button type="button" class="btn btn--sm" id="btn-reset-default-supabase" title="Réinitialiser avec les clés officielles du projet">
+                Restaurer clés officielles
+              </button>
+              <button type="button" class="btn btn--sm" id="btn-close-inline-supabase">
+                Masquer
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="auth-security-notice meta">
+          <p>
+            <strong>Protection des données :</strong> Les comptes sont créés sur invitation. Chaque utilisateur dispose de son espace étanche : grâce aux politiques PostgreSQL Row Level Security (RLS), vos cours privés, plannings et rappels ne sont accessibles que par vous.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. VUE CONNECTÉ (TABLEAU DE BORD PERSONNEL) -->
+    <div id="view-dashboard" class="espace-section" style="display: none;">
+      <!-- Navigation par onglets -->
+      <nav class="espace-tabs" aria-label="Sections de mon espace">
+        <button type="button" class="tab-btn active" data-tab="courses">
+          <Icon name="folder" size={16} />
+          <span>Mes Cours Privés</span>
+          <span class="tab-badge" id="badge-courses-count">0</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="schedule">
+          <Icon name="calendar" size={16} />
+          <span>Mon Emploi du Temps</span>
+          <span class="tab-badge" id="badge-schedule-count">0</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="reminders">
+          <Icon name="bell" size={16} />
+          <span>Mes Rappels</span>
+          <span class="tab-badge" id="badge-reminders-count">0</span>
+        </button>
+        <button type="button" class="tab-btn" data-tab="security">
+          <Icon name="settings" size={16} />
+          <span>Compte & Sécurité</span>
+        </button>
+      </nav>
+
+      <!-- ONGLET A : COURS PRIVÉS -->
+      <section id="tab-panel-courses" class="tab-panel active">
+        <div class="panel-section-head">
+          <div>
+            <h2>Mes Cours et Notes Personnels</h2>
+            <p class="meta">Rédigez et consultez vos fiches au format Markdown, stockées de manière privée</p>
+          </div>
+          <div class="courses-actions-group" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button type="button" class="btn btn--sm" id="btn-import-local-preset" title="Importer automatiquement les 6 matières locales détectées">
+              <Icon name="folder" size={14} />
+              Importer mes 6 matières locales
+            </button>
+            <label class="btn btn--sm" style="margin: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;" title="Choisir un dossier sur votre ordinateur avec arborescence automatique">
+              <Icon name="file" size={14} />
+              Importer un dossier de cours...
+              <input type="file" id="input-import-folder" multiple style="display: none;" {...{ webkitdirectory: '', directory: '' }} />
+            </label>
+            <button type="button" class="btn btn--primary btn--sm" id="btn-open-course-modal">
+              <Icon name="plus" size={14} />
+              Nouveau cours
+            </button>
+          </div>
+        </div>
+
+        <div id="courses-list-loading" class="meta loading-state">Chargement de vos cours...</div>
+        <div id="courses-list-empty" class="panel empty-state" style="display: none;">
+          <p>Aucun cours privé enregistré pour le moment.</p>
+          <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-top: 1rem;">
+            <button type="button" class="btn btn--primary btn--sm" id="btn-import-local-preset-empty">
+              <Icon name="folder" size={14} />
+              Importer mes 6 matières locales
+            </button>
+            <label class="btn btn--sm" style="margin: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem;">
+              <Icon name="file" size={14} />
+              Importer un dossier complet...
+              <input type="file" id="input-import-folder-empty" multiple style="display: none;" {...{ webkitdirectory: '', directory: '' }} />
+            </label>
+            <button type="button" class="btn btn--sm" id="btn-create-first-course">
+              Créer manuellement
+            </button>
+          </div>
+        </div>
+
+        <!-- Barre de sélection et actions groupées -->
+        <div id="courses-selection-bar" class="panel courses-selection-bar" style="display: none; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem; padding: 0.65rem 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap;">
+            <label style="display: inline-flex; align-items: center; gap: 0.45rem; cursor: pointer; font-size: 0.875rem; user-select: none; margin: 0; font-weight: 500;">
+              <input type="checkbox" id="chk-select-all-courses" style="cursor: pointer; width: 16px; height: 16px;" />
+              <span id="label-select-all">Tout sélectionner</span>
+            </label>
+            <span class="meta" id="selected-courses-text" style="font-size: 0.85rem;">0 cours sélectionné</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <button type="button" class="btn btn--danger btn--sm" id="btn-delete-selected-courses" style="display: none;">
+              <Icon name="trash" size={14} />
+              Supprimer la sélection (<span id="selected-courses-count">0</span>)
+            </button>
+            <button type="button" class="btn btn--danger btn--sm" id="btn-purge-all-courses" title="Supprimer tous vos cours d'un coup">
+              <Icon name="trash" size={14} />
+              Tout supprimer
+            </button>
+          </div>
+        </div>
+
+        <div id="courses-grid" class="cards-grid"></div>
+      </section>
+
+      <!-- ONGLET B : EMPLOI DU TEMPS -->
+      <section id="tab-panel-schedule" class="tab-panel" style="display: none;">
+        <div class="panel-section-head">
+          <div>
+            <h2>Mon Emploi du Temps Personnel</h2>
+            <p class="meta">Vos créneaux personnalisés de cours, TD ou séances de travail</p>
+          </div>
+          <button type="button" class="btn btn--primary btn--sm" id="btn-open-schedule-modal">
+            <Icon name="plus" size={14} />
+            Ajouter un créneau
+          </button>
+        </div>
+
+        <div id="schedule-list-loading" class="meta loading-state">Chargement de votre planning...</div>
+        <div id="schedule-list-empty" class="panel empty-state" style="display: none;">
+          <p>Aucun créneau personnalisé enregistré.</p>
+          <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
+            <a href={url('/configuration/#calendar-settings')} class="btn btn--primary btn--sm">
+              <Icon name="calendar" size={14} />
+              Importer mon emploi du temps (.ics / flux)
+            </a>
+            <button type="button" class="btn btn--sm" id="btn-create-first-schedule">
+              Ajouter manuellement un créneau
+            </button>
+          </div>
+        </div>
+        <div id="schedule-days-container" class="schedule-days-grid"></div>
+      </section>
+
+      <!-- ONGLET C : RAPPELS -->
+      <section id="tab-panel-reminders" class="tab-panel" style="display: none;">
+        <div class="panel-section-head">
+          <div>
+            <h2>Mes Rappels Personnels</h2>
+            <p class="meta">Vos alertes quotidiennes de révisions et lectures</p>
+          </div>
+          <button type="button" class="btn btn--primary btn--sm" id="btn-open-reminder-modal">
+            <Icon name="plus" size={14} />
+            Nouveau rappel
+          </button>
+        </div>
+
+        <div id="reminders-list-loading" class="meta loading-state">Chargement de vos rappels...</div>
+        <div id="reminders-list-empty" class="panel empty-state" style="display: none;">
+          <p>Aucun rappel personnel configuré.</p>
+          <button type="button" class="btn btn--sm" id="btn-create-first-reminder">
+            Créer un rappel
+          </button>
+        </div>
+        <div id="reminders-list" class="reminders-list"></div>
+      </section>
+
+      <!-- ONGLET D : COMPTE & SÉCURITÉ -->
+      <section id="tab-panel-security" class="tab-panel" style="display: none;">
+        <div class="security-grid">
+          <div class="panel security-card">
+            <h3>Mon Profil</h3>
+            <p class="meta">Personnalisez votre nom ou prénom affiché sur le site</p>
+
+            <form id="form-update-profile" class="espace-form">
+              <div class="form-group">
+                <label for="profile-full-name" class="field-label">Nom ou prénom affiché :</label>
+                <input type="text" id="profile-full-name" placeholder="Ex: Tom" />
+              </div>
+              <div class="card-actions">
+                <button type="submit" class="btn btn--primary btn--sm" id="btn-submit-profile">
+                  Enregistrer mon nom
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="panel security-card">
+            <h3>Changer mon mot de passe</h3>
+            <p class="meta">Mettez à jour le mot de passe initial attribué par l'administrateur</p>
+
+            <form id="form-change-password" class="espace-form">
+              <div class="form-group">
+                <label for="new-password" class="field-label">Nouveau mot de passe :</label>
+                <input type="password" id="new-password" minlength="8" required placeholder="8 caractères minimum" />
+              </div>
+              <div class="form-group">
+                <label for="confirm-password" class="field-label">Confirmer le mot de passe :</label>
+                <input type="password" id="confirm-password" minlength="8" required placeholder="Confirmez" />
+              </div>
+              <div class="card-actions">
+                <button type="submit" class="btn btn--primary btn--sm" id="btn-submit-pwd">
+                  Mettre à jour le mot de passe
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="panel security-card">
+            <h3>Sauvegarde et Export de mes données</h3>
+            <p class="meta">Téléchargez l'intégralité de vos cours, planning et rappels au format JSON</p>
+            <div class="card-actions" style="margin-top: 1.5rem;">
+              <button type="button" class="btn btn--sm" id="btn-export-data">
+                <Icon name="book" size={14} />
+                Exporter mes données (JSON)
+              </button>
+            </div>
+            <p class="help-text" style="margin-top: 1rem;">
+              En cas de suppression de compte, toutes vos données Supabase sont automatiquement supprimées en cascade (politique <code>ON DELETE CASCADE</code>).
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- MODAL : AJOUT / ÉDITION DE COURS -->
+    <div id="modal-course" class="modal-overlay" style="display: none;">
+      <div class="modal-dialog modal-dialog--wide">
+        <div class="modal-header">
+          <h3 id="modal-course-title">Rédiger un cours privé</h3>
+          <button type="button" class="btn-close" id="btn-close-course-modal" aria-label="Fermer">✕</button>
+        </div>
+        <form id="form-save-course" class="modal-body espace-form">
+          <div class="form-group">
+            <label for="course-input-title" class="field-label">Titre du cours ou de la fiche :</label>
+            <input type="text" id="course-input-title" placeholder="Ex: Philosophie de l'Esprit — Séance 1" required />
+          </div>
+          <div class="form-group">
+            <label for="course-input-tags" class="field-label">Étiquettes (séparées par des virgules) :</label>
+            <input type="text" id="course-input-tags" placeholder="Ex: Métaphysique, Conscience, Fiche" />
+          </div>
+          <div class="form-group">
+            <div class="editor-tabs-head">
+              <label for="course-input-body" class="field-label">Contenu (Markdown) :</label>
+              <div class="editor-switch">
+                <button type="button" class="btn-subtab active" id="tab-write">Écrire</button>
+                <button type="button" class="btn-subtab" id="tab-preview">Aperçu</button>
+              </div>
+            </div>
+            <textarea id="course-input-body" rows="12" placeholder="Écrivez vos notes en Markdown ici... (# Titre, **gras**, listes, citations)"></textarea>
+            <div id="course-preview-area" class="markdown-preview" style="display: none;"></div>
+          </div>
+          <div class="modal-footer card-actions">
+            <button type="submit" class="btn btn--primary" id="btn-submit-course">Enregistrer le cours</button>
+            <button type="button" class="btn btn--sm" id="btn-cancel-course">Annuler</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODALE LECTEUR PDF HAUTE PERFORMANCE -->
+    <PdfViewerModal />
+
+    <!-- MODAL : LECTURE DE COURS -->
+    <div id="modal-view-course" class="modal-overlay" style="display: none;">
+      <div class="modal-dialog modal-dialog--wide">
+        <div class="modal-header">
+          <div>
+            <h3 id="view-course-modal-title">Titre</h3>
+            <p class="meta" id="view-course-modal-meta">Tags</p>
+          </div>
+          <button type="button" class="btn-close" id="btn-close-view-modal" aria-label="Fermer">✕</button>
+        </div>
+        <div class="modal-body">
+          <div id="view-course-body" class="markdown-rendered-view"></div>
+        </div>
+        <div class="modal-footer card-actions">
+          <button type="button" class="btn btn--sm" id="btn-close-view-bottom">Fermer la lecture</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL : AJOUT DE CRÉNEAU D'EMPLOI DU TEMPS -->
+    <div id="modal-schedule" class="modal-overlay" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>Ajouter un créneau d'emploi du temps</h3>
+          <button type="button" class="btn-close" id="btn-close-schedule-modal" aria-label="Fermer">✕</button>
+        </div>
+        <form id="form-save-schedule" class="modal-body espace-form">
+          <div class="form-group">
+            <label for="schedule-input-title" class="field-label">Intitulé du cours / créneau :</label>
+            <input type="text" id="schedule-input-title" placeholder="Ex: TD Éthique contemporaine" required />
+          </div>
+          <div class="form-group">
+            <label for="schedule-input-day" class="field-label">Jour de la semaine :</label>
+            <select id="schedule-input-day" required>
+              <option value="1">Lundi</option>
+              <option value="2">Mardi</option>
+              <option value="3">Mercredi</option>
+              <option value="4">Jeudi</option>
+              <option value="5">Vendredi</option>
+              <option value="6">Samedi</option>
+              <option value="7">Dimanche</option>
+            </select>
+          </div>
+          <div class="times-subgrid">
+            <div class="form-group">
+              <label for="schedule-input-start" class="field-label">Début :</label>
+              <input type="time" id="schedule-input-start" value="08:30" required />
+            </div>
+            <div class="form-group">
+              <label for="schedule-input-end" class="field-label">Fin :</label>
+              <input type="time" id="schedule-input-end" value="10:30" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="schedule-input-location" class="field-label">Salle / Bâtiment (optionnel) :</label>
+            <input type="text" id="schedule-input-location" placeholder="Ex: Bâtiment B, Salle 204" />
+          </div>
+          <div class="form-group">
+            <label for="schedule-input-notes" class="field-label">Notes (optionnel) :</label>
+            <input type="text" id="schedule-input-notes" placeholder="Ex: Professeur M. Dupont, apporter le recueil de textes" />
+          </div>
+          <div class="modal-footer card-actions">
+            <button type="submit" class="btn btn--primary" id="btn-submit-schedule">Enregistrer le créneau</button>
+            <button type="button" class="btn btn--sm" id="btn-cancel-schedule">Annuler</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL : AJOUT DE RAPPEL -->
+    <div id="modal-reminder" class="modal-overlay" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>Nouveau rappel personnel</h3>
+          <button type="button" class="btn-close" id="btn-close-reminder-modal" aria-label="Fermer">✕</button>
+        </div>
+        <form id="form-save-reminder" class="modal-body espace-form">
+          <div class="form-group">
+            <label for="reminder-input-label" class="field-label">Intitulé du rappel :</label>
+            <input type="text" id="reminder-input-label" placeholder="Ex: Relire le texte du jour" required />
+          </div>
+          <div class="form-group">
+            <label for="reminder-input-kind" class="field-label">Type d'élément visé :</label>
+            <select id="reminder-input-kind" required>
+              <option value="texte">Texte philosophique</option>
+              <option value="cours">Support de cours</option>
+              <option value="libre">Rappel libre</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="reminder-input-time" class="field-label">Heure du rappel :</label>
+            <input type="time" id="reminder-input-time" value="09:00" required />
+          </div>
+          <div class="modal-footer card-actions">
+            <button type="submit" class="btn btn--primary" id="btn-submit-reminder">Créer le rappel</button>
+            <button type="button" class="btn btn--sm" id="btn-cancel-reminder">Annuler</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</Base>
+
+<script>
+  import {
+    getSupabase,
+    getSupabaseCredentials,
+    saveSupabaseCredentials,
+    resetSupabaseCredentialsToDefault,
+    formatSupabaseError,
+    loginWithPassword,
+    logoutUser,
+    getCurrentUser,
+    getCurrentSession,
+    updatePassword,
+    updateUserProfile,
+    fetchUserCourses,
+    getUserCoursesImmediate,
+    getLocalUserCourses,
+    createUserCourse,
+    createBatchUserCourses,
+    deleteUserCourse,
+    deleteBatchUserCourses,
+    clearUserCourses,
+    fetchUserScheduleEvents,
+    createUserScheduleEvent,
+    deleteUserScheduleEvent,
+    fetchUserReminders,
+    createUserReminder,
+    toggleUserReminder,
+    deleteUserReminder,
+    type DbCourse,
+    type DbScheduleEvent,
+    type DbReminder,
+  } from '../../utils/supabase';
+  import { STORAGE_KEYS, loadPersistent, savePersistent } from '../../utils/persistence';
+  import { syncTimetableState, parseIcsEvents, type ParsedCalendarEvent } from '../../utils/timetable';
+  import { url } from '../../utils/url';
+  import { setupPdfViewerModal, openPdfViewer } from '../../utils/pdfViewer';
+  import { processFolderUpload } from '../../utils/courseImport';
+
+  // Parser Markdown ultra-léger et sécurisé
+  function renderMarkdown(md: string): string {
+    if (!md) return '<p class="meta">Aucun contenu.</p>';
+    const escaped = md
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    return escaped
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      .replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: var(--color-accent, #0066cc); text-decoration: underline;">$1</a>')
+      .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+      .replace(/`([^`]+)`/gim, '<code>$1</code>')
+      .replace(/^\- (.*$)/gim, '<li>$1</li>')
+      .replace(/\n\n+/g, '</p><p>')
+      .replace(/\n/g, '<br />');
+  }
+
+  const DAY_NAMES = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
+  function initEspace() {
+    const viewLogin = document.getElementById('view-login');
+    const viewDashboard = document.getElementById('view-dashboard');
+    const userTopActions = document.getElementById('user-top-actions');
+    const userDisplayEmail = document.getElementById('user-display-email');
+    const btnLogout = document.getElementById('btn-logout');
+
+    const formLogin = document.getElementById('form-login') as HTMLFormElement;
+    const loginEmailInput = document.getElementById('login-email') as HTMLInputElement;
+    const loginPwdInput = document.getElementById('login-password') as HTMLInputElement;
+    const loginErrorBox = document.getElementById('login-error-box');
+    const loginErrorText = document.getElementById('login-error-text');
+
+    const espaceBanner = document.getElementById('espace-banner');
+    const espaceBannerText = document.getElementById('espace-banner-text');
+
+    // Configuration Supabase intégrée
+    const boxSupabaseInline = document.getElementById('box-supabase-inline');
+    const btnToggleSupabase = document.getElementById('btn-toggle-supabase-config');
+    const btnCloseInlineSupabase = document.getElementById('btn-close-inline-supabase');
+    const formInlineSupabase = document.getElementById('form-inline-supabase') as HTMLFormElement | null;
+    const inlineSupabaseUrl = document.getElementById('inline-supabase-url') as HTMLInputElement | null;
+    const inlineSupabaseKey = document.getElementById('inline-supabase-key') as HTMLInputElement | null;
+    const btnResetDefaultSupabase = document.getElementById('btn-reset-default-supabase');
+
+    btnToggleSupabase?.addEventListener('click', () => {
+      if (!boxSupabaseInline) return;
+      const isHidden = boxSupabaseInline.style.display === 'none';
+      boxSupabaseInline.style.display = isHidden ? 'block' : 'none';
+      const creds = getSupabaseCredentials();
+      if (inlineSupabaseUrl) inlineSupabaseUrl.value = creds.url;
+      if (inlineSupabaseKey) inlineSupabaseKey.value = creds.anonKey;
+    });
+
+    btnCloseInlineSupabase?.addEventListener('click', () => {
+      if (boxSupabaseInline) boxSupabaseInline.style.display = 'none';
+    });
+
+    btnResetDefaultSupabase?.addEventListener('click', async () => {
+      resetSupabaseCredentialsToDefault();
+      const creds = getSupabaseCredentials();
+      if (inlineSupabaseUrl) inlineSupabaseUrl.value = creds.url;
+      if (inlineSupabaseKey) inlineSupabaseKey.value = creds.anonKey;
+      notify('Clés officielles de Supabase restaurées.');
+      await refreshSessionState();
+    });
+
+    formInlineSupabase?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!inlineSupabaseUrl || !inlineSupabaseKey) return;
+      const u = inlineSupabaseUrl.value.trim();
+      const k = inlineSupabaseKey.value.trim();
+      if (!u || !k) return;
+      saveSupabaseCredentials(u, k);
+      notify('Configuration Supabase enregistrée avec succès.');
+      if (boxSupabaseInline) boxSupabaseInline.style.display = 'none';
+      await refreshSessionState();
+    });
+
+    // Badges
+    const badgeCourses = document.getElementById('badge-courses-count');
+    const badgeSchedule = document.getElementById('badge-schedule-count');
+    const badgeReminders = document.getElementById('badge-reminders-count');
+
+    // Containers
+    const coursesGrid = document.getElementById('courses-grid');
+    const coursesLoading = document.getElementById('courses-list-loading');
+    const coursesEmpty = document.getElementById('courses-list-empty');
+    const coursesSelectionBar = document.getElementById('courses-selection-bar');
+    const chkSelectAllCourses = document.getElementById('chk-select-all-courses') as HTMLInputElement | null;
+    const selectedCoursesCount = document.getElementById('selected-courses-count');
+    const selectedCoursesText = document.getElementById('selected-courses-text');
+    const btnDeleteSelectedCourses = document.getElementById('btn-delete-selected-courses');
+    const btnPurgeAllCourses = document.getElementById('btn-purge-all-courses');
+
+    let selectedCourseIds = new Set<string>();
+
+    const scheduleGrid = document.getElementById('schedule-days-container');
+    const scheduleLoading = document.getElementById('schedule-list-loading');
+    const scheduleEmpty = document.getElementById('schedule-list-empty');
+
+    const remindersList = document.getElementById('reminders-list');
+    const remindersLoading = document.getElementById('reminders-list-loading');
+    const remindersEmpty = document.getElementById('reminders-list-empty');
+
+    let cachedCourses: DbCourse[] = [];
+    let cachedSchedule: DbScheduleEvent[] = [];
+    let cachedReminders: DbReminder[] = [];
+    let activeScheduleDate = new Date();
+
+    function notify(msg: string, isError = false) {
+      if (!espaceBanner || !espaceBannerText) return;
+      espaceBannerText.textContent = msg;
+      espaceBanner.className = isError ? 'panel espace-banner banner-error' : 'panel espace-banner';
+      espaceBanner.style.display = 'flex';
+      setTimeout(() => {
+        if (espaceBanner) espaceBanner.style.display = 'none';
+      }, 5000);
+    }
+
+    // Gestion des onglets
+    const tabButtons = document.querySelectorAll<HTMLButtonElement>('.tab-btn');
+    const tabPanels: Record<string, HTMLElement | null> = {
+      courses: document.getElementById('tab-panel-courses'),
+      schedule: document.getElementById('tab-panel-schedule'),
+      reminders: document.getElementById('tab-panel-reminders'),
+      security: document.getElementById('tab-panel-security'),
+    };
+
+    tabButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tab = btn.getAttribute('data-tab');
+        if (!tab) return;
+        tabButtons.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        Object.entries(tabPanels).forEach(([k, panel]) => {
+          if (panel) panel.style.display = k === tab ? 'block' : 'none';
+        });
+        if (tab === 'schedule') {
+          loadSchedule().catch(() => {});
+        } else if (tab === 'courses') {
+          loadCourses().catch(() => {});
+        }
+      });
+    });
+
+    // Écoute de session
+    async function refreshSessionState() {
+      const { url: currentUrl, anonKey: currentKey, isConfigured } = getSupabaseCredentials();
+      const isExplicitSetup = window.location.search.includes('setup=1') || window.location.hash.includes('supabase');
+
+      if (!isConfigured) {
+        if (loginErrorBox && loginErrorText) {
+          loginErrorBox.style.display = 'block';
+          loginErrorText.textContent =
+            'Supabase n’est pas encore configuré avec vos clés réelles. Renseignez votre Project URL et clé publique ci-dessous pour vous connecter.';
+        }
+        if (boxSupabaseInline) boxSupabaseInline.style.display = 'block';
+      } else {
+        if (loginErrorBox && loginErrorText && loginErrorText.textContent?.includes('Supabase n’est pas encore configuré')) {
+          loginErrorBox.style.display = 'none';
+        }
+        if (boxSupabaseInline && !isExplicitSetup) {
+          boxSupabaseInline.style.display = 'none';
+        }
+      }
+
+      if (inlineSupabaseUrl && !inlineSupabaseUrl.value && !currentUrl.includes('xxxx.supabase.co')) {
+        inlineSupabaseUrl.value = currentUrl;
+      }
+      if (inlineSupabaseKey && !inlineSupabaseKey.value && !currentKey.includes('dummy')) {
+        inlineSupabaseKey.value = currentKey;
+      }
+
+      try {
+        const session = await getCurrentSession();
+        if (session && session.user) {
+          if (viewLogin) viewLogin.style.display = 'none';
+          if (viewDashboard) viewDashboard.style.display = 'block';
+          if (userTopActions) userTopActions.style.display = 'flex';
+          if (userDisplayEmail) {
+            const fullName = session.user.user_metadata?.full_name;
+            userDisplayEmail.textContent = fullName ? `${fullName} (${session.user.email})` : (session.user.email || 'Connecté');
+          }
+          const profileInput = document.getElementById('profile-full-name') as HTMLInputElement | null;
+          // Purge de sécurité : si l'ancien profil contient un gros fichier ICS dans les métadonnées auth, on le nettoie une seule fois
+          if (session.user.user_metadata?.timetable_ics) {
+            session.user.user_metadata.timetable_ics = null;
+            getSupabase().auth.updateUser({ data: { timetable_ics: null } }).catch(() => {});
+          }
+
+          try {
+            await Promise.all([loadCourses(), loadSchedule(), loadReminders()]);
+          } catch (loadErr: any) {
+            console.error('Erreur globale dashboard:', loadErr);
+          }
+        } else {
+          if (viewLogin) viewLogin.style.display = 'block';
+          if (viewDashboard) viewDashboard.style.display = 'none';
+          if (userTopActions) userTopActions.style.display = 'none';
+        }
+      } catch (err: any) {
+        console.error('Erreur session:', err);
+      }
+    }
+
+    // Connexion
+    formLogin?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (loginErrorBox) loginErrorBox.style.display = 'none';
+      const email = loginEmailInput.value.trim();
+      const pwd = loginPwdInput.value;
+
+      try {
+        const btn = document.getElementById('btn-submit-login') as HTMLButtonElement;
+        if (btn) btn.disabled = true;
+        await loginWithPassword(email, pwd);
+        notify('Connexion réussie.');
+        document.documentElement.classList.add('is-authenticated');
+        const redirectParam = new URLSearchParams(window.location.search).get('redirect');
+        if (redirectParam && redirectParam.startsWith('/')) {
+          window.location.replace(redirectParam);
+          return;
+        }
+        await refreshSessionState();
+      } catch (err: any) {
+        if (loginErrorBox && loginErrorText) {
+          loginErrorBox.style.display = 'block';
+          loginErrorText.textContent = err.message || 'Échec de connexion. Vérifiez vos identifiants.';
+        }
+      } finally {
+        const btn = document.getElementById('btn-submit-login') as HTMLButtonElement;
+        if (btn) btn.disabled = false;
+      }
+    });
+
+    // Déconnexion
+    btnLogout?.addEventListener('click', async () => {
+      try {
+        await logoutUser();
+        document.documentElement.classList.remove('is-authenticated');
+        notify('Vous avez été déconnecté.');
+        await refreshSessionState();
+      } catch (err: any) {
+        notify(err.message, true);
+      }
+    });
+
+    const btnResetSession = document.getElementById('btn-reset-session');
+    btnResetSession?.addEventListener('click', async () => {
+      await logoutUser();
+      document.documentElement.classList.remove('is-authenticated');
+      notify('Session locale purgée. Reconnectez-vous pour obtenir un jeton neuf.');
+      await refreshSessionState();
+    });
+
+    // -------------------------------------------------------------
+    // GESTION DES COURS
+    // -------------------------------------------------------------
+    async function loadCourses() {
+      // 1. Chargement instantané depuis le cache local (0 ms de latence)
+      const immediate = getUserCoursesImmediate();
+      cachedCourses = immediate;
+      if (badgeCourses) badgeCourses.textContent = String(cachedCourses.length);
+      renderCourses();
+      if (coursesLoading) coursesLoading.style.display = 'none';
+      if (coursesEmpty) coursesEmpty.style.display = cachedCourses.length === 0 ? 'block' : 'none';
+
+      // 2. Synchronisation distante en arrière-plan sans perturber l'interface
+      try {
+        const remote = await fetchUserCourses().catch(() => immediate);
+        if (remote) {
+          const isDifferent =
+            remote.length !== cachedCourses.length ||
+            JSON.stringify(remote.map((r) => r.id)) !== JSON.stringify(cachedCourses.map((c) => c.id));
+
+          cachedCourses = remote;
+          if (badgeCourses) badgeCourses.textContent = String(cachedCourses.length);
+          if (isDifferent || !coursesGrid || coursesGrid.children.length === 0) {
+            renderCourses();
+          }
+        }
+      } catch (err: any) {
+        console.warn('[Courses] Synchronisation en arrière-plan:', err);
+      } finally {
+        if (coursesLoading) coursesLoading.style.display = 'none';
+        if (coursesEmpty) coursesEmpty.style.display = cachedCourses.length === 0 ? 'block' : 'none';
+      }
+    }
+
+    // Réagir immédiatement aux créations/suppressions de cours déclenchées depuis d'autres pages ou onglets
+    window.addEventListener('marges:courses-changed', () => {
+      loadCourses().catch(() => {});
+    });
+    window.addEventListener('storage', (e) => {
+      if (e.key && (e.key.startsWith('marges_user_courses_') || e.key === 'marges_deleted_courses_tombstones')) {
+        loadCourses().catch(() => {});
+      }
+    });
+
+    function updateSelectionUI() {
+      const validSelected = Array.from(selectedCourseIds).filter((id) =>
+        cachedCourses.some((c) => c.id === id)
+      );
+      selectedCourseIds = new Set(validSelected);
+      const count = selectedCourseIds.size;
+
+      if (selectedCoursesCount) selectedCoursesCount.textContent = String(count);
+      if (selectedCoursesText) {
+        selectedCoursesText.textContent =
+          count === 0 ? '0 cours sélectionné' : `${count} cours sélectionné${count > 1 ? 's' : ''}`;
+      }
+
+      if (btnDeleteSelectedCourses) {
+        btnDeleteSelectedCourses.style.display = count > 0 ? 'inline-flex' : 'none';
+      }
+
+      if (chkSelectAllCourses) {
+        if (cachedCourses.length > 0 && count === cachedCourses.length) {
+          chkSelectAllCourses.checked = true;
+          chkSelectAllCourses.indeterminate = false;
+        } else if (count > 0) {
+          chkSelectAllCourses.checked = false;
+          chkSelectAllCourses.indeterminate = true;
+        } else {
+          chkSelectAllCourses.checked = false;
+          chkSelectAllCourses.indeterminate = false;
+        }
+      }
+
+      coursesGrid?.querySelectorAll<HTMLDivElement>('.course-card').forEach((card) => {
+        const chk = card.querySelector<HTMLInputElement>('.chk-select-course');
+        if (chk && chk.dataset.id) {
+          const isSelected = selectedCourseIds.has(chk.dataset.id);
+          chk.checked = isSelected;
+          card.classList.toggle('course-card--selected', isSelected);
+        }
+      });
+    }
+
+    function renderCourses() {
+      if (!coursesGrid) return;
+      coursesGrid.innerHTML = '';
+      if (cachedCourses.length === 0) {
+        if (coursesEmpty) coursesEmpty.style.display = 'block';
+        if (coursesSelectionBar) coursesSelectionBar.style.display = 'none';
+        selectedCourseIds.clear();
+        updateSelectionUI();
+        return;
+      }
+      if (coursesEmpty) coursesEmpty.style.display = 'none';
+      if (coursesSelectionBar) coursesSelectionBar.style.display = 'flex';
+
+      cachedCourses.sort((a, b) => a.title.localeCompare(b.title, 'fr', { numeric: true, sensitivity: 'base' }));
+
+      cachedCourses.forEach((c) => {
+        const card = document.createElement('div');
+        const isSelected = c.id ? selectedCourseIds.has(c.id) : false;
+        card.className = `panel course-card${isSelected ? ' course-card--selected' : ''}`;
+        const tags = c.tags && c.tags.length ? c.tags.map((t) => `<span class="tag-pill">${t}</span>`).join(' ') : '';
+        const dateStr = c.updated_at ? new Date(c.updated_at).toLocaleDateString('fr-FR') : '';
+
+        card.innerHTML = `
+          <div class="card-top">
+            <div style="display: flex; align-items: flex-start; gap: 0.6rem; min-width: 0;">
+              <input type="checkbox" class="chk-select-course" data-id="${c.id || ''}" title="Sélectionner ce cours" style="margin-top: 0.25rem; cursor: pointer; width: 16px; height: 16px; flex-shrink: 0;" ${isSelected ? 'checked' : ''} />
+              <h3 class="course-card-title">${c.title}</h3>
+            </div>
+            <span class="meta" style="flex-shrink: 0;">${dateStr}</span>
+          </div>
+          <div class="tags-row">${tags}</div>
+          <div class="card-bottom">
+            <button type="button" class="btn btn--sm btn-read-course" data-id="${c.id}">Lire</button>
+            <button type="button" class="btn btn--danger btn--sm btn-del-course" data-id="${c.id}">Supprimer</button>
+          </div>
+        `;
+
+        card.querySelector('.chk-select-course')?.addEventListener('change', (e) => {
+          const target = e.target as HTMLInputElement;
+          if (c.id) {
+            if (target.checked) {
+              selectedCourseIds.add(c.id);
+            } else {
+              selectedCourseIds.delete(c.id);
+            }
+            updateSelectionUI();
+          }
+        });
+
+        card.querySelector('.btn-read-course')?.addEventListener('click', () => {
+          openCourseReader(c);
+        });
+
+        card.querySelector('.btn-del-course')?.addEventListener('click', async () => {
+          if (confirm(`Supprimer définitivement le cours "${c.title}" ?`)) {
+            // 1. Suppression optimiste immédiate dans l'UI (0 ms)
+            card.remove();
+            if (c.id) selectedCourseIds.delete(c.id);
+            cachedCourses = cachedCourses.filter((item) => (c.id ? item.id !== c.id : item.title !== c.title));
+            if (badgeCourses) badgeCourses.textContent = String(cachedCourses.length);
+            updateSelectionUI();
+            if (cachedCourses.length === 0 && coursesEmpty) {
+              coursesEmpty.style.display = 'block';
+              if (coursesSelectionBar) coursesSelectionBar.style.display = 'none';
+            }
+
+            try {
+              const courseIdentifier = c.id || c.title;
+              await deleteUserCourse(courseIdentifier);
+              notify('Cours supprimé avec succès.');
+            } catch (err: any) {
+              notify(formatSupabaseError(err), true);
+              await loadCourses();
+            }
+          }
+        });
+
+        coursesGrid.appendChild(card);
+      });
+
+      updateSelectionUI();
+    }
+
+    chkSelectAllCourses?.addEventListener('change', () => {
+      if (chkSelectAllCourses.checked) {
+        cachedCourses.forEach((c) => {
+          if (c.id) selectedCourseIds.add(c.id);
+        });
+      } else {
+        selectedCourseIds.clear();
+      }
+      updateSelectionUI();
+    });
+
+    btnDeleteSelectedCourses?.addEventListener('click', async () => {
+      const count = selectedCourseIds.size;
+      if (count === 0) return;
+      const confirmMsg =
+        count === 1
+          ? 'Supprimer définitivement ce cours ?'
+          : `Supprimer définitivement les ${count} cours sélectionnés ? Cette action est irréversible.`;
+
+      if (confirm(confirmMsg)) {
+        const idsToDelete = Array.from(selectedCourseIds);
+        const toDeleteSet = new Set(idsToDelete);
+
+        // 1. Suppression optimiste immédiate dans l'interface (0 ms)
+        cachedCourses = cachedCourses.filter((c) => c.id && !toDeleteSet.has(c.id));
+        selectedCourseIds.clear();
+        if (badgeCourses) badgeCourses.textContent = String(cachedCourses.length);
+        renderCourses();
+        updateSelectionUI();
+
+        try {
+          notify(`Suppression de ${count} cours en cours...`);
+          await deleteBatchUserCourses(idsToDelete);
+          notify(count === 1 ? 'Cours supprimé avec succès.' : `${count} cours supprimés avec succès.`);
+        } catch (err: any) {
+          notify('Erreur lors de la suppression : ' + formatSupabaseError(err), true);
+          await loadCourses();
+        }
+      }
+    });
+
+    btnPurgeAllCourses?.addEventListener('click', async () => {
+      if (cachedCourses.length === 0) return;
+      if (confirm(`Attention : Voulez-vous vraiment supprimer l'intégralité de vos ${cachedCourses.length} cours ?\n\nCette action est irréversible. Votre emploi du temps sera conservé.\n\nContinuer ?`)) {
+        // 1. Suppression optimiste immédiate dans l'interface (0 ms)
+        cachedCourses = [];
+        selectedCourseIds.clear();
+        if (badgeCourses) badgeCourses.textContent = '0';
+        renderCourses();
+        updateSelectionUI();
+
+        try {
+          notify('Suppression de tous vos cours en cours...');
+          await clearUserCourses();
+          notify('Tous vos cours ont été supprimés avec succès.');
+        } catch (err: any) {
+          notify('Erreur lors de la suppression : ' + formatSupabaseError(err), true);
+          await loadCourses();
+        }
+      }
+    });
+
+    // Importation des 6 matières locales pré-configurées
+    async function importLocalPresetCourses() {
+      const root = document.querySelector('[data-local-presets]') as HTMLElement | null;
+      let presets: Array<{ title: string; body_md: string; tags: string[] }> = [];
+      if (root) {
+        const raw = root.getAttribute('data-local-presets');
+        if (raw) {
+          try {
+            presets = JSON.parse(raw);
+          } catch (e) {}
+        }
+      }
+
+      if (presets.length === 0) {
+        presets = [
+          {
+            title: 'Algèbre linéaire numérique & Scilab',
+            body_md: '## Algèbre linéaire numérique & Scilab\n\n- Méthodes directes et itératives de résolution de systèmes linéaires\n- Décomposition LU, Cholesky, QR et SVD\n- Travaux pratiques et scripts Scilab / MATLAB',
+            tags: ['Algèbre linéaire numérique & Scilab', 'Université'],
+          },
+          {
+            title: 'Analyse numérique',
+            body_md: '## Analyse numérique\n\n- Interpolation polynomiale (Lagrange, Newton)\n- Dérivation et intégration numérique (trapèzes, Simpson, Gauss)\n- Résolution numérique des équations différentielles ordinaires (Euler, Runge-Kutta)',
+            tags: ['Analyse numérique', 'Université'],
+          },
+          {
+            title: 'EDO',
+            body_md: '## Équations Différentielles Ordinaires (EDO)\n\n- Systèmes différentiels linéaires et exponentielle de matrice\n- Portraits de phase, stabilité et équilibres\n- Fiches de révisions et annales d\'examens',
+            tags: ['EDO', 'Université'],
+          },
+          {
+            title: 'Informatique théorique',
+            body_md: '## Informatique théorique\n\n- Logique des propositions et calcul des prédicats\n- Représentation des entiers et flottants, complément à deux\n- Induction structurelle, programmation dynamique et diviser pour régner',
+            tags: ['Informatique théorique', 'Université'],
+          },
+          {
+            title: 'IPA',
+            body_md: '## Informatique pour l\'ingénieur & Algorithmique (IPA)\n\n- Programmation en C et Java (POO, héritage, exceptions)\n- Pointeurs, allocation dynamique et gestion mémoire\n- Structures de données : listes chaînées, arbres binaires, tables de hachage',
+            tags: ['IPA', 'Université'],
+          },
+          {
+            title: 'Maths de l_ingénieur',
+            body_md: '## Mathématiques de l\'ingénieur\n\n- Séries et transformées de Fourier, transformée de Laplace\n- Fonctions holomorphes, intégrales curvilignes et théorème des résidus\n- Calcul variationnel et fiches de révisions',
+            tags: ['Maths de l_ingénieur', 'Université'],
+          },
+        ];
+      }
+
+      // Filtrer les cours déjà présents pour éviter les doublons accidentels
+      const existingTitles = new Set(cachedCourses.map((c) => c.title.toLowerCase().trim()));
+      let toImport = presets.filter((p) => !existingTitles.has(p.title.toLowerCase().trim()));
+
+      if (toImport.length === 0) {
+        if (!confirm('Toutes les 6 matières sont déjà enregistrées dans votre compte. Souhaitez-vous quand même les réimporter ?')) {
+          return;
+        }
+        toImport = [...presets];
+      }
+
+      try {
+        notify('Importation en cours...');
+        await createBatchUserCourses(toImport);
+        notify(`${toImport.length} matière(s) locale(s) importée(s) avec succès dans votre espace !`);
+        await loadCourses();
+      } catch (err: any) {
+        notify('Erreur lors de l’import : ' + formatSupabaseError(err), true);
+      }
+    }
+
+    const btnImportPreset = document.getElementById('btn-import-local-preset');
+    const btnImportPresetEmpty = document.getElementById('btn-import-local-preset-empty');
+    btnImportPreset?.addEventListener('click', importLocalPresetCourses);
+    btnImportPresetEmpty?.addEventListener('click', importLocalPresetCourses);
+
+    // Importation d'un dossier complet depuis le disque (arborescence automatique et stockage des PDF)
+    async function handleFolderUpload(fileList: FileList | null) {
+      if (!fileList || fileList.length === 0) return;
+      try {
+        notify(`Lecture et indexation du dossier (${fileList.length} fichiers détectés)...`);
+        const res = await processFolderUpload(fileList, (msg) => notify(msg));
+        notify(`${res.subjectCount} matière(s) et ${res.fileCount} document(s) importés avec succès !`);
+        await loadCourses();
+      } catch (err: any) {
+        notify('Erreur lors de l’enregistrement : ' + formatSupabaseError(err), true);
+      }
+    }
+
+    const inputFolder = document.getElementById('input-import-folder') as HTMLInputElement | null;
+    const inputFolderEmpty = document.getElementById('input-import-folder-empty') as HTMLInputElement | null;
+
+    inputFolder?.addEventListener('change', () => {
+      handleFolderUpload(inputFolder.files);
+      inputFolder.value = '';
+    });
+    inputFolderEmpty?.addEventListener('change', () => {
+      handleFolderUpload(inputFolderEmpty.files);
+      inputFolderEmpty.value = '';
+    });
+
+    // Modals Cours
+    const modalCourse = document.getElementById('modal-course');
+    const btnOpenCourseModal = document.getElementById('btn-open-course-modal');
+    const btnCreateFirstCourse = document.getElementById('btn-create-first-course');
+    const btnCloseCourseModal = document.getElementById('btn-close-course-modal');
+    const btnCancelCourse = document.getElementById('btn-cancel-course');
+    const formSaveCourse = document.getElementById('form-save-course') as HTMLFormElement;
+
+    const courseTitleInput = document.getElementById('course-input-title') as HTMLInputElement;
+    const courseTagsInput = document.getElementById('course-input-tags') as HTMLInputElement;
+    const courseBodyInput = document.getElementById('course-input-body') as HTMLTextAreaElement;
+    const coursePreviewArea = document.getElementById('course-preview-area');
+    const tabWrite = document.getElementById('tab-write');
+    const tabPreview = document.getElementById('tab-preview');
+
+    function openCourseModal() {
+      if (formSaveCourse) formSaveCourse.reset();
+      if (coursePreviewArea) coursePreviewArea.style.display = 'none';
+      if (courseBodyInput) courseBodyInput.style.display = 'block';
+      if (tabWrite) tabWrite.classList.add('active');
+      if (tabPreview) tabPreview.classList.remove('active');
+      if (modalCourse) modalCourse.style.display = 'flex';
+    }
+
+    btnOpenCourseModal?.addEventListener('click', openCourseModal);
+    btnCreateFirstCourse?.addEventListener('click', openCourseModal);
+    btnCloseCourseModal?.addEventListener('click', () => {
+      if (modalCourse) modalCourse.style.display = 'none';
+    });
+    btnCancelCourse?.addEventListener('click', () => {
+      if (modalCourse) modalCourse.style.display = 'none';
+    });
+
+    tabWrite?.addEventListener('click', () => {
+      tabWrite.classList.add('active');
+      tabPreview?.classList.remove('active');
+      if (courseBodyInput) courseBodyInput.style.display = 'block';
+      if (coursePreviewArea) coursePreviewArea.style.display = 'none';
+    });
+
+    tabPreview?.addEventListener('click', () => {
+      tabPreview.classList.add('active');
+      tabWrite?.classList.remove('active');
+      if (courseBodyInput) courseBodyInput.style.display = 'none';
+      if (coursePreviewArea) {
+        coursePreviewArea.innerHTML = renderMarkdown(courseBodyInput?.value || '');
+        coursePreviewArea.style.display = 'block';
+      }
+    });
+
+    formSaveCourse?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = courseTitleInput.value.trim();
+      const rawTags = courseTagsInput.value.trim();
+      const body_md = courseBodyInput.value.trim();
+      const tags = rawTags ? rawTags.split(',').map((t) => t.trim()).filter(Boolean) : [];
+
+      try {
+        await createUserCourse({ title, body_md, tags });
+        if (modalCourse) modalCourse.style.display = 'none';
+        notify('Cours enregistré dans Supabase !');
+        await loadCourses();
+      } catch (err: any) {
+        notify(formatSupabaseError(err), true);
+      }
+    });
+
+    // Modal Lecture Cours
+    const modalViewCourse = document.getElementById('modal-view-course');
+    const viewCourseTitle = document.getElementById('view-course-modal-title');
+    const viewCourseMeta = document.getElementById('view-course-modal-meta');
+    const viewCourseBody = document.getElementById('view-course-body');
+    const btnCloseViewModal = document.getElementById('btn-close-view-modal');
+    const btnCloseViewBottom = document.getElementById('btn-close-view-bottom');
+
+    function openCourseReader(c: DbCourse) {
+      const extMatch = c.title.match(/\.([a-zA-Z0-9]+)$/);
+      const ext = extMatch ? extMatch[1].toLowerCase() : '';
+      const isDirectDoc = ['pdf', 'docx', 'doc', 'txt', 'c', 'h', 'cpp', 'java', 'py'].includes(ext) ||
+        (c.body_md && c.body_md.startsWith('data:'));
+
+      if (isDirectDoc) {
+        openPdfViewer({
+          title: c.title,
+          subject: c.tags?.[0] || 'Matière',
+          folder: c.tags?.[1] || 'Document',
+          rawCourse: c,
+        });
+        return;
+      }
+
+      if (viewCourseTitle) viewCourseTitle.textContent = c.title;
+      if (viewCourseMeta) {
+        const tags = (c.tags || []).join(', ') || 'Général';
+        const date = c.updated_at ? new Date(c.updated_at).toLocaleDateString('fr-FR') : '';
+        viewCourseMeta.textContent = `${tags} · Mis à jour le ${date}`;
+      }
+      if (viewCourseBody) {
+        viewCourseBody.innerHTML = renderMarkdown(c.body_md);
+
+        // Permet d'ouvrir n'importe quel document (PDF, Word DOCX, Textes, Code) listé dans le cours directement dans le lecteur !
+        viewCourseBody.querySelectorAll('li').forEach((li) => {
+          const txt = li.textContent?.trim() || '';
+          const cleanName = txt.replace(/^[-*]\s*/, '').trim();
+          const itemExtMatch = cleanName.match(/\.([a-zA-Z0-9]+)$/);
+          if (itemExtMatch) {
+            const itemExt = itemExtMatch[1].toLowerCase();
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn--sm';
+            btn.style.marginLeft = '0.6rem';
+            btn.style.padding = '0.15rem 0.5rem';
+            btn.style.fontSize = '0.78rem';
+            const icon = itemExt === 'pdf' ? '📄' : (itemExt === 'docx' || itemExt === 'doc') ? '📝' : '💻';
+            btn.textContent = `${icon} Consulter (${itemExt.toUpperCase()})`;
+            btn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              openPdfViewer({
+                title: cleanName,
+                subject: c.title,
+                folder: 'Document',
+                rawCourse: c,
+              });
+            });
+            li.appendChild(btn);
+          }
+        });
+      }
+      if (modalViewCourse) modalViewCourse.style.display = 'flex';
+    }
+
+    btnCloseViewModal?.addEventListener('click', () => {
+      if (modalViewCourse) modalViewCourse.style.display = 'none';
+    });
+    btnCloseViewBottom?.addEventListener('click', () => {
+      if (modalViewCourse) modalViewCourse.style.display = 'none';
+    });
+
+    // -------------------------------------------------------------
+    // GESTION DE L'EMPLOI DU TEMPS
+    // -------------------------------------------------------------
+    function getStartOfWeek(d: Date): Date {
+      const date = new Date(d);
+      const day = date.getDay();
+      const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+      date.setDate(diff);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    }
+
+    async function loadSchedule() {
+      if (scheduleLoading && (!scheduleGrid || scheduleGrid.children.length === 0)) {
+        scheduleLoading.style.display = 'block';
+        scheduleLoading.textContent = 'Chargement de votre planning...';
+      }
+      if (scheduleEmpty) scheduleEmpty.style.display = 'none';
+
+      try {
+        const syncRes = await syncTimetableState().catch(() => null);
+        cachedSchedule = await fetchUserScheduleEvents().catch(() => []);
+
+        const localIcs = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
+        const savedIcs = (syncRes?.icsContent && syncRes.icsContent.trim().length > 30)
+          ? syncRes.icsContent
+          : (localIcs && localIcs.trim().length > 30 ? localIcs : '');
+
+        const localUrl = loadPersistent(STORAGE_KEYS.TIMETABLE_URL);
+        const icsUrl = syncRes?.icsUrl || localUrl || '';
+        const hasSyncedIcs = Boolean(savedIcs || icsUrl);
+
+        if (syncRes?.icsContent && !localIcs) {
+          savePersistent(STORAGE_KEYS.TIMETABLE_ICS, syncRes.icsContent);
+        }
+
+        renderSchedule(savedIcs, icsUrl, hasSyncedIcs);
+      } catch (err: any) {
+        if (scheduleLoading) {
+          scheduleLoading.style.display = 'block';
+          scheduleLoading.innerHTML = `<span style="color: var(--color-danger, #dc2626);">${formatSupabaseError(err)}</span>`;
+        }
+      } finally {
+        if (scheduleLoading) scheduleLoading.style.display = 'none';
+      }
+    }
+
+    function renderSchedule(savedIcs = '', icsUrl = '', hasSyncedIcs = false) {
+      if (!scheduleGrid) return;
+      scheduleGrid.innerHTML = '';
+
+      let monday = getStartOfWeek(activeScheduleDate);
+      let sunday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+
+      let icsEvents: ParsedCalendarEvent[] = [];
+      if (savedIcs) {
+        icsEvents = parseIcsEvents(savedIcs, monday, sunday);
+
+        // Si la semaine courante est vide, chercher la première semaine contenant des cours
+        if (icsEvents.length === 0) {
+          const forwardEnd = new Date(monday.getTime() + 12 * 7 * 24 * 60 * 60 * 1000);
+          const futureEvents = parseIcsEvents(savedIcs, monday, forwardEnd);
+          if (futureEvents.length > 0) {
+            activeScheduleDate = new Date(futureEvents[0].start);
+            monday = getStartOfWeek(activeScheduleDate);
+            sunday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+            icsEvents = parseIcsEvents(savedIcs, monday, sunday);
+          } else {
+            const pastStart = new Date(monday.getTime() - 8 * 7 * 24 * 60 * 60 * 1000);
+            const pastEvents = parseIcsEvents(savedIcs, pastStart, monday);
+            if (pastEvents.length > 0) {
+              activeScheduleDate = new Date(pastEvents[pastEvents.length - 1].start);
+              monday = getStartOfWeek(activeScheduleDate);
+              sunday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
+              icsEvents = parseIcsEvents(savedIcs, monday, sunday);
+            }
+          }
+        }
+      }
+
+      const weekLabel = `Semaine du ${monday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} au ${sunday.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+
+      interface UnifiedEvent {
+        id: string;
+        title: string;
+        startTime: string;
+        endTime: string;
+        location?: string;
+        notes?: string;
+        category?: string;
+        isCustom: boolean;
+        dbId?: string;
+      }
+
+      const grouped: Record<number, UnifiedEvent[]> = {};
+      for (let day = 1; day <= 7; day++) grouped[day] = [];
+
+      // A. Cours issus du calendrier ICS synchronisé
+      icsEvents.forEach((ev) => {
+        const jsDay = ev.start.getDay();
+        const dayOfWeek = jsDay === 0 ? 7 : jsDay;
+        const startStr = ev.start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        const endStr = ev.end.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+        grouped[dayOfWeek].push({
+          id: ev.id,
+          title: ev.title,
+          startTime: startStr,
+          endTime: endStr,
+          location: ev.location,
+          notes: ev.description,
+          category: ev.category,
+          isCustom: false,
+        });
+      });
+
+      // B. Créneaux personnalisés créés manuellement dans Supabase
+      cachedSchedule.forEach((dbEv) => {
+        const day = dbEv.day_of_week;
+        if (grouped[day]) {
+          grouped[day].push({
+            id: dbEv.id || `manual-${Math.random()}`,
+            title: dbEv.title,
+            startTime: (dbEv.start_time || '08:00').slice(0, 5),
+            endTime: (dbEv.end_time || '10:00').slice(0, 5),
+            location: dbEv.location,
+            notes: dbEv.notes,
+            isCustom: true,
+            dbId: dbEv.id,
+          });
+        }
+      });
+
+      // Trier les événements par heure pour chaque jour
+      for (let day = 1; day <= 7; day++) {
+        grouped[day].sort((a, b) => a.startTime.localeCompare(b.startTime));
+      }
+
+      const totalEvents = Object.values(grouped).reduce((sum, list) => sum + list.length, 0);
+
+      if (badgeSchedule) {
+        badgeSchedule.textContent = String(totalEvents);
+      }
+
+      // Bannière et navigation de semaine
+      if (hasSyncedIcs) {
+        const banner = document.createElement('div');
+        banner.className = 'panel schedule-sync-bar';
+        banner.style.cssText = 'grid-column: 1 / -1; margin-bottom: 1.25rem; border-left: 3px solid var(--accent); padding: 0.85rem 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;';
+        banner.innerHTML = `
+          <div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span class="dot-status dot-active"></span>
+              <h4 style="margin: 0; font-size: 1rem;">Emploi du temps synchronisé (${totalEvents} cours cette semaine)</h4>
+            </div>
+            <p class="meta" style="margin: 0.2rem 0 0 0; font-size: 0.825rem;">
+              ${icsUrl ? 'Flux iCalendar direct' : 'Fichier ADE .ics'} actif sur votre compte.
+            </p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+            <div class="week-nav" style="display: inline-flex; align-items: center; gap: 0.35rem; background: var(--soft); padding: 0.25rem 0.5rem; border-radius: 6px;">
+              <button type="button" class="btn btn--sm" id="btn-sched-prev-week" title="Semaine précédente" style="padding: 0.2rem 0.6rem;">&larr;</button>
+              <span class="meta" style="font-weight: 600; font-size: 0.825rem; padding: 0 0.4rem; white-space: nowrap;">${weekLabel}</span>
+              <button type="button" class="btn btn--sm" id="btn-sched-next-week" title="Semaine suivante" style="padding: 0.2rem 0.6rem;">&rarr;</button>
+              <button type="button" class="btn btn--sm" id="btn-sched-today-week" title="Aujourd'hui" style="padding: 0.2rem 0.6rem; margin-left: 0.25rem;">Aujourd'hui</button>
+            </div>
+            <a href="${url('/emploi-du-temps/')}" class="btn btn--sm btn--primary">
+              Grille complète
+            </a>
+          </div>
+        `;
+
+        banner.querySelector('#btn-sched-prev-week')?.addEventListener('click', () => {
+          activeScheduleDate = new Date(activeScheduleDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+          renderSchedule(savedIcs, icsUrl, hasSyncedIcs);
+        });
+
+        banner.querySelector('#btn-sched-next-week')?.addEventListener('click', () => {
+          activeScheduleDate = new Date(activeScheduleDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+          renderSchedule(savedIcs, icsUrl, hasSyncedIcs);
+        });
+
+        banner.querySelector('#btn-sched-today-week')?.addEventListener('click', () => {
+          activeScheduleDate = new Date();
+          renderSchedule(savedIcs, icsUrl, hasSyncedIcs);
+        });
+
+        scheduleGrid.appendChild(banner);
+      }
+
+      if (totalEvents === 0) {
+        if (!hasSyncedIcs && scheduleEmpty) scheduleEmpty.style.display = 'block';
+        if (hasSyncedIcs) {
+          const emptyWeek = document.createElement('div');
+          emptyWeek.className = 'panel empty-state';
+          emptyWeek.style.cssText = 'grid-column: 1 / -1; padding: 2.5rem; text-align: center;';
+          emptyWeek.innerHTML = `
+            <p class="meta">Aucun cours programmé pour la ${weekLabel.toLowerCase()}.</p>
+          `;
+          scheduleGrid.appendChild(emptyWeek);
+        }
+        return;
+      }
+
+      if (scheduleEmpty) scheduleEmpty.style.display = 'none';
+
+      // Afficher les colonnes de chaque jour
+      for (let day = 1; day <= 7; day++) {
+        const events = grouped[day];
+        if (events.length === 0) continue;
+
+        const dayDate = new Date(monday.getTime() + (day - 1) * 24 * 60 * 60 * 1000);
+        const dayDateFormatted = dayDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+
+        const dayCol = document.createElement('div');
+        dayCol.className = 'panel schedule-day-col';
+        dayCol.innerHTML = `
+          <div class="day-head">
+            <div>
+              <h4 style="margin: 0;">${DAY_NAMES[day]}</h4>
+              <span class="meta" style="font-size: 0.75rem;">${dayDateFormatted}</span>
+            </div>
+            <span class="meta">${events.length} cours</span>
+          </div>
+          <div class="day-events-list"></div>
+        `;
+
+        const eventsList = dayCol.querySelector('.day-events-list');
+        events.forEach((evt) => {
+          const item = document.createElement('div');
+          item.className = 'schedule-event-item';
+          const loc = evt.location ? `<span class="event-loc">${evt.location}</span>` : '';
+          const notes = evt.notes ? `<p class="event-notes meta">${evt.notes}</p>` : '';
+          const tag = evt.category ? `<span class="tag-pill tag-kind" style="font-size: 0.65rem; padding: 0.1rem 0.4rem;">${evt.category.toUpperCase()}</span>` : '';
+
+          item.innerHTML = `
+            <div class="event-top">
+              <span class="event-time">${evt.startTime} – ${evt.endTime}</span>
+              ${evt.isCustom
+                ? `<button type="button" class="btn-del-event" data-id="${evt.dbId}" title="Supprimer ce créneau">✕</button>`
+                : tag
+              }
+            </div>
+            <strong class="event-title">${evt.title}</strong>
+            ${loc}
+            ${notes}
+          `;
+
+          if (evt.isCustom && evt.dbId) {
+            item.querySelector('.btn-del-event')?.addEventListener('click', async () => {
+              if (confirm(`Supprimer le créneau "${evt.title}" ?`)) {
+                try {
+                  await deleteUserScheduleEvent(evt.dbId!);
+                  notify('Créneau supprimé.');
+                  await loadSchedule();
+                } catch (err: any) {
+                  notify(err.message, true);
+                }
+              }
+            });
+          }
+
+          eventsList?.appendChild(item);
+        });
+
+        scheduleGrid.appendChild(dayCol);
+      }
+    }
+
+    // Modal Schedule
+    const modalSchedule = document.getElementById('modal-schedule');
+    const btnOpenScheduleModal = document.getElementById('btn-open-schedule-modal');
+    const btnCreateFirstSchedule = document.getElementById('btn-create-first-schedule');
+    const btnCloseScheduleModal = document.getElementById('btn-close-schedule-modal');
+    const btnCancelSchedule = document.getElementById('btn-cancel-schedule');
+    const formSaveSchedule = document.getElementById('form-save-schedule') as HTMLFormElement;
+
+    function openScheduleModal() {
+      if (formSaveSchedule) formSaveSchedule.reset();
+      if (modalSchedule) modalSchedule.style.display = 'flex';
+    }
+
+    btnOpenScheduleModal?.addEventListener('click', openScheduleModal);
+    btnCreateFirstSchedule?.addEventListener('click', openScheduleModal);
+    btnCloseScheduleModal?.addEventListener('click', () => {
+      if (modalSchedule) modalSchedule.style.display = 'none';
+    });
+    btnCancelSchedule?.addEventListener('click', () => {
+      if (modalSchedule) modalSchedule.style.display = 'none';
+    });
+
+    formSaveSchedule?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = (document.getElementById('schedule-input-title') as HTMLInputElement).value.trim();
+      const day_of_week = parseInt((document.getElementById('schedule-input-day') as HTMLSelectElement).value, 10);
+      const start_time = (document.getElementById('schedule-input-start') as HTMLInputElement).value;
+      const end_time = (document.getElementById('schedule-input-end') as HTMLInputElement).value;
+      const location = (document.getElementById('schedule-input-location') as HTMLInputElement).value.trim();
+      const notes = (document.getElementById('schedule-input-notes') as HTMLInputElement).value.trim();
+
+      try {
+        await createUserScheduleEvent({
+          title,
+          day_of_week,
+          start_time,
+          end_time,
+          location: location || undefined,
+          notes: notes || undefined,
+        });
+        if (modalSchedule) modalSchedule.style.display = 'none';
+        notify('Créneau ajouté à l’emploi du temps.');
+        await loadSchedule();
+      } catch (err: any) {
+        notify(formatSupabaseError(err), true);
+      }
+    });
+
+    // -------------------------------------------------------------
+    // GESTION DES RAPPELS
+    // -------------------------------------------------------------
+    async function loadReminders() {
+      if (remindersLoading && (!remindersList || remindersList.children.length === 0)) {
+        remindersLoading.style.display = 'block';
+        remindersLoading.textContent = 'Chargement de vos rappels...';
+      }
+      if (remindersEmpty) remindersEmpty.style.display = 'none';
+      try {
+        cachedReminders = await fetchUserReminders();
+        if (badgeReminders) badgeReminders.textContent = String(cachedReminders.length);
+        renderReminders();
+      } catch (err: any) {
+        if (remindersLoading) {
+          remindersLoading.style.display = 'block';
+          remindersLoading.innerHTML = `<span style="color: var(--color-danger, #dc2626);">${formatSupabaseError(err)}</span>`;
+        }
+      } finally {
+        if (remindersLoading && (cachedReminders.length > 0 || (remindersEmpty && remindersEmpty.style.display === 'block'))) {
+          remindersLoading.style.display = 'none';
+        }
+      }
+    }
+
+    function renderReminders() {
+      if (!remindersList) return;
+      remindersList.innerHTML = '';
+      if (cachedReminders.length === 0) {
+        if (remindersEmpty) remindersEmpty.style.display = 'block';
+        return;
+      }
+      if (remindersEmpty) remindersEmpty.style.display = 'none';
+
+      cachedReminders.forEach((r) => {
+        const item = document.createElement('div');
+        item.className = 'panel reminder-row';
+        const timeFormatted = r.time_of_day.slice(0, 5);
+
+        item.innerHTML = `
+          <div class="reminder-left">
+            <span class="tag-pill tag-kind">${r.kind}</span>
+            <strong class="reminder-label">${r.label || 'Rappel'}</strong>
+            <span class="reminder-time-tag">${timeFormatted}</span>
+          </div>
+          <div class="reminder-actions">
+            <label class="toggle-switch" title="Activer / Désactiver">
+              <input type="checkbox" class="chk-toggle-reminder" ${r.enabled ? 'checked' : ''} />
+              <span class="toggle-slider"></span>
+            </label>
+            <button type="button" class="btn btn--danger btn--sm btn-del-reminder">Supprimer</button>
+          </div>
+        `;
+
+        item.querySelector('.chk-toggle-reminder')?.addEventListener('change', async (e) => {
+          const target = e.target as HTMLInputElement;
+          try {
+            if (r.id) await toggleUserReminder(r.id, target.checked);
+            notify(`Rappel ${target.checked ? 'activé' : 'désactivé'}.`);
+          } catch (err: any) {
+            notify(err.message, true);
+            target.checked = !target.checked;
+          }
+        });
+
+        item.querySelector('.btn-del-reminder')?.addEventListener('click', async () => {
+          if (confirm(`Supprimer le rappel "${r.label}" ?`)) {
+            try {
+              if (r.id) await deleteUserReminder(r.id);
+              notify('Rappel supprimé.');
+              await loadReminders();
+            } catch (err: any) {
+              notify(err.message, true);
+            }
+          }
+        });
+
+        remindersList.appendChild(item);
+      });
+    }
+
+    // Modal Rappel
+    const modalReminder = document.getElementById('modal-reminder');
+    const btnOpenReminderModal = document.getElementById('btn-open-reminder-modal');
+    const btnCreateFirstReminder = document.getElementById('btn-create-first-reminder');
+    const btnCloseReminderModal = document.getElementById('btn-close-reminder-modal');
+    const btnCancelReminder = document.getElementById('btn-cancel-reminder');
+    const formSaveReminder = document.getElementById('form-save-reminder') as HTMLFormElement;
+
+    function openReminderModal() {
+      if (formSaveReminder) formSaveReminder.reset();
+      if (modalReminder) modalReminder.style.display = 'flex';
+    }
+
+    btnOpenReminderModal?.addEventListener('click', openReminderModal);
+    btnCreateFirstReminder?.addEventListener('click', openReminderModal);
+    btnCloseReminderModal?.addEventListener('click', () => {
+      if (modalReminder) modalReminder.style.display = 'none';
+    });
+    btnCancelReminder?.addEventListener('click', () => {
+      if (modalReminder) modalReminder.style.display = 'none';
+    });
+
+    formSaveReminder?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const label = (document.getElementById('reminder-input-label') as HTMLInputElement).value.trim();
+      const kind = (document.getElementById('reminder-input-kind') as HTMLSelectElement).value as any;
+      const time_of_day = (document.getElementById('reminder-input-time') as HTMLInputElement).value;
+
+      try {
+        await createUserReminder({
+          label,
+          kind,
+          time_of_day,
+          enabled: true,
+          days_of_week: [1, 2, 3, 4, 5, 6, 7],
+        });
+        if (modalReminder) modalReminder.style.display = 'none';
+        notify('Rappel personnel enregistré.');
+        await loadReminders();
+      } catch (err: any) {
+        notify(err.message, true);
+      }
+    });
+
+    // -------------------------------------------------------------
+    // PROFIL UTILISATEUR (NOM & PRÉNOM)
+    // -------------------------------------------------------------
+    const formProfile = document.getElementById('form-update-profile') as HTMLFormElement | null;
+    formProfile?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const inputProfile = document.getElementById('profile-full-name') as HTMLInputElement | null;
+      const name = inputProfile?.value.trim() || '';
+      const btn = document.getElementById('btn-submit-profile') as HTMLButtonElement | null;
+      if (btn) btn.disabled = true;
+      try {
+        await updateUserProfile({ full_name: name });
+        notify('Votre nom a été enregistré avec succès.');
+        await refreshSessionState();
+      } catch (err: any) {
+        notify('Erreur: ' + (err.message || 'Impossible d’enregistrer le nom.'), true);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+
+    // -------------------------------------------------------------
+    // SÉCURITÉ & CHANGEMENT DE MOT DE PASSE
+    // -------------------------------------------------------------
+    const formPwd = document.getElementById('form-change-password') as HTMLFormElement;
+    formPwd?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const newPwd = (document.getElementById('new-password') as HTMLInputElement).value;
+      const confPwd = (document.getElementById('confirm-password') as HTMLInputElement).value;
+
+      if (newPwd !== confPwd) {
+        notify('Les deux mots de passe ne correspondent pas.', true);
+        return;
+      }
+
+      try {
+        const btn = document.getElementById('btn-submit-pwd') as HTMLButtonElement;
+        if (btn) btn.disabled = true;
+        await updatePassword(newPwd);
+        notify('Mot de passe mis à jour avec succès.');
+        formPwd.reset();
+      } catch (err: any) {
+        notify('Erreur: ' + err.message, true);
+      } finally {
+        const btn = document.getElementById('btn-submit-pwd') as HTMLButtonElement;
+        if (btn) btn.disabled = false;
+      }
+    });
+
+    // Export des données JSON
+    const btnExport = document.getElementById('btn-export-data');
+    btnExport?.addEventListener('click', () => {
+      const dump = {
+        exportedAt: new Date().toISOString(),
+        courses: cachedCourses,
+        schedule: cachedSchedule,
+        reminders: cachedReminders,
+      };
+      const blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' });
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = dlUrl;
+      a.download = `marges-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(dlUrl);
+      notify('Export JSON téléchargé avec succès.');
+    });
+
+    // Écouter les changements d'état Supabase (uniquement connexion ou déconnexion explicite)
+    try {
+      const sb = getSupabase();
+      sb.auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+          refreshSessionState();
+        }
+      });
+    } catch (e) {
+      // Ignorer si pas configuré
+    }
+
+    // Initialisation au chargement
+    setupPdfViewerModal();
+    refreshSessionState();
+  }
+
+  if (typeof window !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initEspace);
+    } else {
+      initEspace();
+    }
+    document.addEventListener('astro:page-load', initEspace);
+  }
+</script>
+
+<style is:global>
+  .espace-page {
+    padding-bottom: 6rem;
+  }
+  .espace-hero {
+    padding-block: clamp(1.5rem, 1rem + 2vw, 3rem) clamp(1rem, 0.75rem + 1vw, 2rem);
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+  .espace-hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .espace-title {
+    font-family: var(--font-text);
+    font-size: clamp(2rem, 1.5rem + 2vw, 3rem);
+    letter-spacing: -.03em;
+    margin: .35rem 0 .35rem;
+  }
+  .espace-motto {
+    font-family: var(--font-text);
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--muted);
+    margin: 0;
+  }
+  .espace-auth-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--soft);
+    padding: 0.5rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+  }
+  .user-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+  }
+  .user-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+  }
+  .user-email-text {
+    font-weight: 500;
+  }
+
+  .espace-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1.25rem;
+    margin-bottom: 2rem;
+    border-left: 3px solid var(--fg);
+    font-size: 0.9rem;
+  }
+  .banner-error {
+    border-left-color: #ef4444;
+    color: #ef4444;
+  }
+  .banner-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .auth-card {
+    max-width: 32rem;
+    width: 100%;
+    margin: 2rem auto;
+    padding: clamp(1.25rem, 1rem + 1vw, 2.25rem);
+  }
+  .card-head {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .card-head h2 {
+    margin: 0 0 0.2rem;
+    font-family: var(--font-text);
+    font-size: 1.35rem;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+  .card-head p { margin: 0; font-size: 0.88rem; }
+
+  .espace-form {
+    display: grid;
+    gap: 1.25rem;
+  }
+  .form-group {
+    display: grid;
+    gap: 0.4rem;
+  }
+  .field-label {
+    font-family: var(--font-ui);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .espace-form input[type="text"],
+  .espace-form input[type="email"],
+  .espace-form input[type="password"],
+  .espace-form input[type="time"],
+  .espace-form select,
+  .espace-form textarea {
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: max(16px, 0.92rem);
+    transition: border-color .15s ease;
+  }
+  .espace-form textarea {
+    font-family: var(--font-mono, monospace);
+    font-size: max(16px, 0.88rem);
+    line-height: 1.5;
+    resize: vertical;
+  }
+  .espace-form input:focus,
+  .espace-form select:focus,
+  .espace-form textarea:focus {
+    border-color: var(--fg);
+    outline: none;
+  }
+
+  .login-error {
+    background: color-mix(in srgb, #ef4444 15%, transparent);
+    color: #ef4444;
+    padding: 0.65rem 0.85rem;
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    border: 1px solid color-mix(in srgb, #ef4444 30%, transparent);
+  }
+
+  .auth-security-notice {
+    margin-top: 1.75rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  /* Onglets */
+  .espace-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.15rem;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all .15s ease;
+    white-space: nowrap;
+  }
+  .tab-btn:hover {
+    color: var(--fg);
+  }
+  .tab-btn.active {
+    color: var(--fg);
+    border-bottom-color: var(--fg);
+  }
+  .tab-badge {
+    background: var(--soft);
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .panel-section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .panel-section-head h2 {
+    margin: 0 0 0.2rem;
+    font-family: var(--font-text);
+    font-size: 1.35rem;
+  }
+  .panel-section-head p { margin: 0; }
+
+  .empty-state {
+    padding: 3rem 2rem;
+    text-align: center;
+    display: grid;
+    place-items: center;
+    gap: 1rem;
+    color: var(--muted);
+  }
+  .loading-state {
+    padding: 2rem 0;
+  }
+
+  /* Grille Cours */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+    gap: 1.25rem;
+  }
+  .course-card {
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1rem;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .course-card--selected {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  }
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .course-card-title {
+    margin: 0;
+    font-family: var(--font-text);
+    font-size: 1.15rem;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+  .tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .tag-pill {
+    background: var(--soft);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+  .tag-kind {
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    font-weight: 600;
+  }
+  .card-bottom {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  /* Emploi du temps */
+  .dot-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    display: inline-block;
+  }
+  .dot-status.dot-active {
+    background: #16a34a;
+  }
+  .schedule-days-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+    gap: 1.25rem;
+  }
+  .schedule-day-col {
+    padding: 1.25rem;
+  }
+  .day-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .day-head h4 {
+    margin: 0;
+    font-family: var(--font-text);
+    font-size: 1.1rem;
+  }
+  .day-events-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .schedule-event-item {
+    background: var(--soft);
+    padding: 0.85rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    display: grid;
+    gap: 0.3rem;
+  }
+  .event-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .event-time {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .btn-del-event {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0.2rem 0.4rem;
+  }
+  .btn-del-event:hover { color: #ef4444; }
+  .event-title {
+    font-size: 0.92rem;
+  }
+  .event-loc {
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .event-notes {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  /* Rappels */
+  .reminders-list {
+    display: grid;
+    gap: 0.75rem;
+  }
+  .reminder-row {
+    padding: 0.85rem 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+  }
+  .reminder-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .reminder-label {
+    font-size: 0.95rem;
+  }
+  .reminder-time-tag {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.85rem;
+    background: var(--soft);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .reminder-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  /* Toggle Switch */
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--line);
+    transition: .2s;
+    border-radius: 20px;
+  }
+  .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: var(--surface);
+    transition: .2s;
+    border-radius: 50%;
+  }
+  input:checked + .toggle-slider { background-color: var(--fg); }
+  input:checked + .toggle-slider:before { transform: translateX(16px); }
+
+  /* Sécurité */
+  .security-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    gap: 1.5rem;
+  }
+  .security-card {
+    padding: clamp(1.1rem, 0.8rem + 1vw, 1.75rem);
+  }
+  .security-card h3 {
+    margin: 0 0 0.25rem;
+    font-family: var(--font-text);
+  }
+
+  /* Modals */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(0.75rem, 0.5rem + 1vw, 1.5rem);
+  }
+  .modal-dialog {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    width: min(calc(100vw - 1.5rem), 520px);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    margin: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  }
+  .modal-dialog--wide {
+    width: min(calc(100vw - 1.5rem), 760px);
+    max-height: calc(100dvh - 2rem);
+    margin: auto;
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: clamp(0.85rem, 0.65rem + 1vw, 1.5rem);
+    border-bottom: 1px solid var(--line);
+  }
+  .modal-header h3 { margin: 0; font-family: var(--font-text); }
+  .btn-close {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .btn-close:hover { color: var(--fg); }
+  .modal-body {
+    padding: clamp(0.85rem, 0.65rem + 1vw, 1.5rem);
+  }
+  .modal-footer {
+    padding: 0.75rem clamp(0.85rem, 0.65rem + 1vw, 1.5rem) clamp(0.85rem, 0.65rem + 1vw, 1.5rem);
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+  .editor-tabs-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .editor-switch {
+    display: flex;
+    gap: 0.25rem;
+  }
+  .btn-subtab {
+    background: transparent;
+    border: 1px solid var(--line);
+    padding: 0.25rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .btn-subtab.active {
+    background: var(--soft);
+    color: var(--fg);
+    border-color: var(--fg);
+  }
+  .markdown-preview,
+  .markdown-rendered-view {
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--soft);
+    min-height: 180px;
+    line-height: 1.6;
+    font-family: var(--font-text);
+  }
+  .markdown-preview h1,
+  .markdown-rendered-view h1,
+  .markdown-preview h2,
+  .markdown-rendered-view h2,
+  .markdown-preview h3,
+  .markdown-rendered-view h3 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  .markdown-preview blockquote,
+  .markdown-rendered-view blockquote {
+    border-left: 3px solid var(--fg);
+    padding-left: 1rem;
+    margin-left: 0;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .times-subgrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  @media (max-width: 48rem) {
+    .espace-hero-top {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+  }
+
+  @media (max-width: 36rem) {
+    .espace-auth-actions {
+      width: 100%;
+      justify-content: space-between;
+      border-radius: var(--radius);
+    }
+    .user-email-text {
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .panel-section-head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .panel-section-head .btn {
+      width: 100%;
+    }
+    .reminder-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .reminder-left {
+      width: 100%;
+    }
+    .reminder-actions {
+      width: 100%;
+      justify-content: space-between;
+      padding-top: 0.4rem;
+      border-top: 1px solid var(--line);
+    }
+    .times-subgrid {
+      grid-template-columns: 1fr;
+    }
+    .card-bottom .btn {
+      flex: 1;
+    }
+    .card-head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .modal-footer .btn {
+      width: 100%;
+    }
+  }
+</style>

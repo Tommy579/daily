@@ -1,0 +1,20 @@
+---
+import { url } from '../utils/url';
+const target = url('/mentions-legales/');
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="refresh" content={`0;url=${target}`} />
+    <link rel="canonical" href={target} />
+    <title>Redirection — Mentions légales &amp; Crédits</title>
+  </head>
+  <body>
+    <p>Redirection vers les <a href={target}>mentions légales &amp; crédits</a>...</p>
+    <script define:vars={{ target }}>
+      window.location.replace(target);
+    </script>
+  </body>
+</html>

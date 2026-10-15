@@ -3,7 +3,7 @@
  */
 export const SITE = {
   title: 'Marges',
-  tagline: 'Penser lentement ce que les machines font vite',
+  tagline: '',
   description:
     "Essais, questions ouvertes, dialogues et fragments sur la place de l'intelligence artificielle dans nos vies : travail, relations, création, conscience, éthique, pouvoir.",
   lang: 'fr',
@@ -17,9 +17,9 @@ export const SITE = {
   },
   /** Hébergeur (obligatoire dans les mentions légales en France). */
   host: {
-    name: 'Cloudflare, Inc.',
-    address: '101 Townsend St, San Francisco, CA 94107, États-Unis',
-    url: 'https://www.cloudflare.com',
+    name: 'GitHub, Inc. (GitHub Pages)',
+    address: '88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, États-Unis',
+    url: 'https://pages.github.com',
   },
 } as const;
 

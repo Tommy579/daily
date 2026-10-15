@@ -29,6 +29,7 @@ const {
   epigraphAuthor,
   dropcap,
   references,
+  isAiGenerated,
 } = entry.data;
 
 const minutes = readingTime(entry.body ?? '');
@@ -111,6 +112,14 @@ const jsonLd = {
           >
             Rappel
           </a>
+          {
+            isAiGenerated && (
+              <>
+                <span class="sep" aria-hidden="true">·</span>
+                <span class="ai-generated-badge" title="Généré par le modèle IA Gemini via GitHub Actions">Texte généré par IA</span>
+              </>
+            )
+          }
         </p>
       </header>
 
@@ -248,12 +257,30 @@ const jsonLd = {
 
   .byline { margin: 0; }
   .themes a { color: var(--fg); text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); }
+  .ai-generated-badge {
+    font-size: 0.72rem;
+    font-style: italic;
+    opacity: 0.85;
+    background: var(--soft);
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+  }
 
-  /* Épigraphe : italique, alignée à droite */
+  /* Épigraphe : italique, alignée à droite sur grand écran, intégrée sur mobile */
   .epigraph {
     margin: 0 0 3.5rem auto;
     max-width: 36ch;
     text-align: right;
+  }
+  @media (max-width: 40rem) {
+    .epigraph {
+      margin: 0 0 2.25rem 0;
+      max-width: 100%;
+      text-align: left;
+      border-left: 2px solid var(--line-strong);
+      padding-left: 1rem;
+    }
   }
   .epigraph blockquote {
     margin: 0;
@@ -274,7 +301,7 @@ const jsonLd = {
   /* Pour aller plus loin */
   .further {
     margin-top: 4rem;
-    padding: 1.6rem 1.75rem;
+    padding: clamp(1.1rem, 0.85rem + 1vw, 1.75rem);
     background: var(--soft);
     border-radius: var(--radius);
     font-size: .92em;
@@ -292,6 +319,13 @@ const jsonLd = {
     justify-content: space-between;
     gap: 1rem;
     margin-top: 3rem;
+  }
+  @media (max-width: 32rem) {
+    .article-end {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.6rem;
+    }
   }
   .fin { color: var(--fg); font-size: .9rem; }
 
@@ -323,8 +357,8 @@ const jsonLd = {
   }
   .nav-card:hover .nav-title { text-decoration-color: currentColor; }
 
-  @media (max-width: 34rem) {
-    .article-nav { grid-template-columns: 1fr; }
+  @media (max-width: 44rem) {
+    .article-nav { grid-template-columns: 1fr; gap: 1.25rem; }
     .nav-card--right { text-align: left; }
   }
 </style>

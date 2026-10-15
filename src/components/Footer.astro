@@ -18,7 +18,7 @@ const year = new Date().getFullYear();
       <a href={url('/rappels/')}>Rappels</a>
       <a href={url('/configuration/')}>Configuration</a>
       <a href={url('/rss.xml')}>RSS</a>
-      <a href={url('/mentions-legales/')}>Mentions légales</a>
+      <a href={url('/mentions-legales/')}>Mentions légales &amp; crédits</a>
       <a href={`mailto:${SITE.email}`}>Contact</a>
     </nav>
     <p class="footer-copy">
@@ -30,7 +30,7 @@ const year = new Date().getFullYear();
 
 <style>
   .site-footer {
-    margin-top: 5rem;
+    margin-top: clamp(3rem, 2rem + 3vw, 5rem);
     border-top: 1px solid var(--line);
     font-family: var(--font-ui);
     font-size: .84rem;
@@ -40,7 +40,7 @@ const year = new Date().getFullYear();
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 1.25rem 2rem;
-    padding-block: 2.25rem 2.5rem;
+    padding-block: clamp(1.75rem, 1.25rem + 1vw, 2.5rem);
   }
   .footer-title {
     font-family: var(--font-text);
@@ -56,16 +56,21 @@ const year = new Date().getFullYear();
     flex-wrap: wrap;
     justify-content: flex-end;
     align-content: start;
-    gap: .35rem 1.1rem;
+    gap: .5rem 1.1rem;
     max-width: 34rem;
   }
-  .footer-links a { color: var(--muted); text-decoration: none; }
+  .footer-links a {
+    color: var(--muted);
+    text-decoration: none;
+    padding: .2rem 0;
+    display: inline-block;
+  }
   .footer-links a:hover { color: var(--fg); }
-  .footer-copy { grid-column: 1 / -1; margin: 0; font-size: .78rem; }
+  .footer-copy { grid-column: 1 / -1; margin: 0; font-size: .78rem; line-height: 1.5; }
   .footer-copy a { color: inherit; }
 
-  @media (max-width: 40rem) {
+  @media (max-width: 44rem) {
     .footer-inner { grid-template-columns: 1fr; }
-    .footer-links { justify-content: flex-start; }
+    .footer-links { justify-content: flex-start; gap: .4rem .9rem; }
   }
 </style>

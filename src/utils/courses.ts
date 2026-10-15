@@ -35,7 +35,13 @@ export interface CourseSubject {
   };
 }
 
-export const COURS_ROOT = '/home/tom/Documents/Cours';
+const LOCAL_COURS_DIR = '/home/tom/Documents/Cours';
+const BUNDLED_COURS_DIR = path.resolve('public/cours-files');
+
+export const COURS_ROOT =
+  fs.existsSync(LOCAL_COURS_DIR) && fs.readdirSync(LOCAL_COURS_DIR).filter((i) => !i.startsWith('.')).length > 0
+    ? LOCAL_COURS_DIR
+    : BUNDLED_COURS_DIR;
 
 function getFileType(ext: string): CourseFileType {
   const e = ext.toLowerCase();
@@ -80,8 +86,8 @@ function scanFolder(dirPath: string, relativeBase: string = ''): CourseFolder {
     }
   }
 
-  subfolders.sort((a, b) => a.name.localeCompare(b.name));
-  files.sort((a, b) => a.name.localeCompare(b.name));
+  subfolders.sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
+  files.sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true, sensitivity: 'base' }));
 
   return {
     name: folderName,

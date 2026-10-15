@@ -39,7 +39,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
 
         <div class="storage-info">
           <p>
-            Vos supports de cours et fiches de révisions sont importés directement depuis votre dossier <strong>Semestre 5</strong>. Aucune dépendance externe ni compte en ligne n'est nécessaire : tous vos cours sont disponibles instantanément et consultables dans la visionneuse.
+            Vos supports de cours et fiches de révisions sont disponibles instantanément et consultables dans la visionneuse.
           </p>
           <div class="storage-status-list meta">
             <div class="storage-row">
@@ -48,11 +48,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
             </div>
             <div class="storage-row">
               <span>Fichiers disponibles :</span>
-              <strong>{totalFiles} documents importés</strong>
-            </div>
-            <div class="storage-row">
-              <span>Source :</span>
-              <code>Semestre 5 (Local)</code>
+              <strong>{totalFiles} documents disponibles</strong>
             </div>
           </div>
         </div>
@@ -95,13 +91,13 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
               <strong id="timetable-status-title">Calendrier actif</strong>
             </div>
             <p class="status-desc meta" id="timetable-status-desc">
-              Calendrier par défaut chargé (Licence Philosophie / L2-L3).
+              Synchronisé avec votre compte. Aucun calendrier iCal importé.
             </p>
           </div>
 
           <div class="card-actions">
             <button type="submit" class="btn btn--primary btn--sm">Mettre à jour le calendrier</button>
-            <button type="button" class="btn btn--danger btn--sm" id="btn-reset-timetable">Réinitialiser par défaut</button>
+            <button type="button" class="btn btn--danger btn--sm" id="btn-reset-timetable">Effacer le calendrier importé</button>
           </div>
         </form>
       </section>
@@ -174,7 +170,64 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
         </form>
       </section>
 
-      <!-- 4. Persistance des données & Cookies -->
+      <!-- 4. Comptes & Synchronisation Supabase -->
+      <section class="panel config-card" id="supabase-settings">
+        <div class="card-head">
+          <span class="icon-tile"><Icon name="database" size={20} /></span>
+          <div>
+            <h2>Comptes & Synchronisation Supabase</h2>
+            <p class="meta">Connexion à votre projet Supabase pour l'espace personnel, les cours privés et l'emploi du temps</p>
+          </div>
+        </div>
+
+        <form id="form-supabase" class="config-form">
+          <div class="form-group">
+            <label for="supabase-url" class="field-label">Project URL (Supabase) :</label>
+            <input
+              type="url"
+              id="supabase-url"
+              placeholder="https://votre-projet.supabase.co"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <span class="help-text">Trouvez cette URL dans votre tableau de bord Supabase : <em>Project Settings &gt; Data API &gt; Project URL</em>.</span>
+          </div>
+
+          <div class="form-group">
+            <label for="supabase-anon-key" class="field-label">Clé publique (Publishable / Anon key) :</label>
+            <input
+              type="text"
+              id="supabase-anon-key"
+              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <span class="help-text">Clé publique conçue pour le navigateur. <strong>Ne collez jamais</strong> la clé <code>service_role</code> (secrète).</span>
+          </div>
+
+          <div class="status-box" id="supabase-status-box">
+            <div class="status-indicator">
+              <span class="dot-status" id="supabase-dot"></span>
+              <strong id="supabase-status-title">État de la configuration</strong>
+            </div>
+            <p class="status-desc meta" id="supabase-status-desc">
+              Vérification des paramètres Supabase...
+            </p>
+          </div>
+
+          <div class="card-actions" style="flex-wrap: wrap;">
+            <button type="submit" class="btn btn--primary btn--sm">Enregistrer les identifiants</button>
+            <button type="button" class="btn btn--sm" id="btn-test-supabase">Tester la connexion</button>
+            <button type="button" class="btn btn--sm" id="btn-reset-supabase-default" title="Réinitialiser avec les clés officielles du projet Marges">Restaurer clés officielles</button>
+            <a href={url('/espace/')} class="btn btn--sm">
+              <Icon name="user" size={14} />
+              Accéder à mon espace
+            </a>
+          </div>
+        </form>
+      </section>
+
+      <!-- 5. Persistance des données & Cookies -->
       <section class="panel config-card">
         <div class="card-head">
           <span class="icon-tile"><Icon name="book" size={20} /></span>
@@ -200,8 +253,12 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
           </div>
         </div>
 
-        <div class="card-actions">
+        <div class="card-actions" style="flex-wrap: wrap; gap: 0.5rem;">
           <button type="button" class="btn btn--sm" id="btn-request-notif-perm">Activer les notifications navigateur</button>
+          <button type="button" class="btn btn--danger btn--sm" id="btn-delete-all-courses" title="Supprimer tous les cours de votre compte Supabase et du stockage local">
+            <Icon name="trash" size={14} />
+            Supprimer tous les cours
+          </button>
           <button type="button" class="btn btn--danger btn--sm" id="btn-clear-all-data">Effacer toutes mes données</button>
         </div>
       </section>
@@ -214,59 +271,176 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     STORAGE_KEYS,
     savePersistent,
     loadPersistent,
-    savePersistentJSON,
-    loadPersistentJSON,
     deleteCookie,
     type ReminderScheduleConfig,
   } from '../../utils/persistence';
+  import {
+    getUnifiedReminderConfig,
+    saveUnifiedReminderConfig,
+  } from '../../utils/reminders';
+  import {
+    fetchCalendarFromUrl,
+    syncTimetableState,
+  } from '../../utils/timetable';
+  import {
+    getCurrentUser,
+    syncTimetableToSupabase,
+    clearUserScheduleEvents,
+    clearUserCourses,
+    getSupabaseCredentials,
+    saveSupabaseCredentials,
+    resetSupabaseCredentialsToDefault,
+    formatSupabaseError,
+  } from '../../utils/supabase';
 
-  function initConfigPage() {
-    // 1. GESTION DE L'EMPLOI DU TEMPS
+  async function initConfigPage() {
+    // 1. GESTION DE L'EMPLOI DU TEMPS & SYNCHRONISATION SUPABASE
     const timetableForm = document.getElementById('form-timetable') as HTMLFormElement;
     const icsFileInput = document.getElementById('ics-file') as HTMLInputElement;
     const icsUrlInput = document.getElementById('ics-url') as HTMLInputElement;
     const timetableDesc = document.getElementById('timetable-status-desc');
     const btnResetTimetable = document.getElementById('btn-reset-timetable');
 
+    // Auto-synchronisation Supabase en arrière-plan
+    const syncRes = await syncTimetableState().catch(() => null);
+
     const savedIcsUrl = loadPersistent(STORAGE_KEYS.TIMETABLE_URL);
     if (savedIcsUrl && icsUrlInput) icsUrlInput.value = savedIcsUrl;
 
     const savedIcsRaw = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
     if (savedIcsRaw && timetableDesc) {
-      timetableDesc.textContent = 'Emploi du temps personnalisé actif (importé par vos soins).';
+      if (syncRes?.synced) {
+        timetableDesc.textContent = 'Emploi du temps synchronisé avec votre compte Supabase Cloud (accessible sur votre mobile et PC).';
+      } else {
+        timetableDesc.textContent = 'Emploi du temps personnalisé actif (importé par vos soins).';
+      }
     }
 
-    timetableForm?.addEventListener('submit', (e) => {
+    timetableForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (icsFileInput.files && icsFileInput.files[0]) {
-        const file = icsFileInput.files[0];
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-          const content = evt.target?.result as string;
-          if (content) {
-            savePersistent(STORAGE_KEYS.TIMETABLE_ICS, content);
-            if (timetableDesc) timetableDesc.textContent = `Fichier "${file.name}" importé avec succès.`;
-            alert('Emploi du temps mis à jour à partir de votre fichier .ics !');
+      const submitBtn = timetableForm.querySelector<HTMLButtonElement>('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Traitement en cours...';
+      }
+
+      try {
+        if (icsFileInput.files && icsFileInput.files[0]) {
+          const file = icsFileInput.files[0];
+          if (timetableDesc) timetableDesc.textContent = `Lecture et synchronisation de "${file.name}"...`;
+          const reader = new FileReader();
+          reader.onload = async (evt) => {
+            const content = evt.target?.result as string;
+            if (content) {
+              savePersistent(STORAGE_KEYS.TIMETABLE_ICS, content);
+              let syncMsg = `Fichier "${file.name}" importé avec succès.`;
+
+              try {
+                const user = await getCurrentUser();
+                if (user) {
+                  await syncTimetableToSupabase({
+                    icsContent: content,
+                    icsUrl: icsUrlInput.value.trim() || undefined,
+                  });
+                  await clearUserScheduleEvents().catch(() => {});
+                  syncMsg += ` Synchronisé avec Supabase Cloud. Accessible sur votre mobile et tous vos écrans !`;
+                } else {
+                  syncMsg += ` Sauvegardé en local. Connectez-vous à votre Espace pour synchroniser sur mobile.`;
+                }
+              } catch (err: any) {
+                console.warn('[Sync Config] Erreur sync Supabase:', err);
+                syncMsg += ` (Sauvegardé localement. Note Supabase: ${err.message || 'connexion échouée'})`;
+              }
+
+              if (timetableDesc) timetableDesc.textContent = syncMsg;
+              alert(syncMsg);
+            }
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Mettre à jour le calendrier';
+            }
+          };
+          reader.readAsText(file);
+        } else if (icsUrlInput.value.trim()) {
+          const rawUrl = icsUrlInput.value.trim();
+          savePersistent(STORAGE_KEYS.TIMETABLE_URL, rawUrl);
+          if (timetableDesc) timetableDesc.textContent = `Téléchargement du flux distant en cours... (${rawUrl})`;
+
+          try {
+            const content = await fetchCalendarFromUrl(rawUrl);
+            if (content) {
+              savePersistent(STORAGE_KEYS.TIMETABLE_ICS, content);
+              let syncMsg = `Flux distant synchronisé avec succès.`;
+
+              const user = await getCurrentUser();
+              if (user) {
+                await syncTimetableToSupabase({
+                  icsContent: content,
+                  icsUrl: rawUrl,
+                });
+                await clearUserScheduleEvents().catch(() => {});
+                syncMsg += ` Synchronisé avec Supabase Cloud. Accessible sur votre mobile et tous vos écrans !`;
+              } else {
+                syncMsg += ` Sauvegardé en local. Connectez-vous à votre Espace pour synchroniser sur mobile.`;
+              }
+
+              if (timetableDesc) timetableDesc.textContent = syncMsg;
+              alert(syncMsg);
+            }
+          } catch (fetchErr: any) {
+            console.warn('[Sync Config] Fetch distant échoué:', fetchErr);
+            try {
+              const user = await getCurrentUser();
+              if (user) {
+                await syncTimetableToSupabase({ icsUrl: rawUrl });
+              }
+            } catch {}
+
+            const msg = `URL enregistrée, mais impossible de récupérer le flux en direct : ${fetchErr.message || fetchErr}\n\nConseil : Pour les ENT ou agendas universitaires avec restrictions de sécurité (CORS ou mot de passe ENT), téléchargez le fichier .ics depuis votre ENT et déposez-le dans le champ "Importer un fichier iCalendar" ci-dessus.`;
+            if (timetableDesc) timetableDesc.textContent = `URL enregistrée. Téléchargement direct bloqué par l'ENT : utilisez le fichier .ics.`;
+            alert(msg);
+          } finally {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Mettre à jour le calendrier';
+            }
           }
-        };
-        reader.readAsText(file);
-      } else if (icsUrlInput.value.trim()) {
-        savePersistent(STORAGE_KEYS.TIMETABLE_URL, icsUrlInput.value.trim());
-        if (timetableDesc) timetableDesc.textContent = `Flux distant configuré : ${icsUrlInput.value.trim()}`;
-        alert('URL de flux d’emploi du temps enregistrée.');
+        } else {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Mettre à jour le calendrier';
+          }
+        }
+      } catch (err: any) {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Mettre à jour le calendrier';
+        }
+        alert('Erreur: ' + (err.message || err));
       }
     });
 
-    btnResetTimetable?.addEventListener('click', () => {
-      if (confirm('Voulez-vous réinitialiser l’emploi du temps avec le calendrier par défaut de la faculté ?')) {
+    btnResetTimetable?.addEventListener('click', async () => {
+      if (confirm('Voulez-vous effacer le calendrier importé (sur cet appareil et sur Supabase) ?')) {
         savePersistent(STORAGE_KEYS.TIMETABLE_ICS, '');
         savePersistent(STORAGE_KEYS.TIMETABLE_URL, '');
         deleteCookie(STORAGE_KEYS.TIMETABLE_ICS);
         deleteCookie(STORAGE_KEYS.TIMETABLE_URL);
         if (icsFileInput) icsFileInput.value = '';
         if (icsUrlInput) icsUrlInput.value = '';
-        if (timetableDesc) timetableDesc.textContent = 'Calendrier par défaut chargé (Licence Philosophie / L2-L3).';
-        alert('Emploi du temps réinitialisé aux cours standards.');
+
+        try {
+          const user = await getCurrentUser();
+          if (user) {
+            await syncTimetableToSupabase({ icsContent: '', icsUrl: '' });
+            await clearUserScheduleEvents();
+          }
+        } catch (err) {
+          console.warn('[Sync Config] Erreur suppression Supabase:', err);
+        }
+
+        if (timetableDesc) timetableDesc.textContent = 'Aucun calendrier iCal importé.';
+        alert('Calendrier importé effacé avec succès.');
       }
     });
 
@@ -302,13 +476,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
 
     remindersFreq?.addEventListener('change', updateFreqUI);
 
-    const savedConfig: ReminderScheduleConfig = loadPersistentJSON(STORAGE_KEYS.REMINDERS_CONFIG, {
-      enabled: true,
-      frequency: 'daily',
-      times: ['09:00'],
-      weekday: 1,
-      contentType: 'all',
-    });
+    const savedConfig: ReminderScheduleConfig = await getUnifiedReminderConfig();
 
     if (remindersEnabled) remindersEnabled.checked = savedConfig.enabled;
     if (remindersFreq) remindersFreq.value = savedConfig.frequency;
@@ -319,7 +487,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
 
     updateFreqUI();
 
-    remindersForm?.addEventListener('submit', (e) => {
+    remindersForm?.addEventListener('submit', async (e) => {
       e.preventDefault();
       const times: string[] = [];
       if (time1Input.value) times.push(time1Input.value);
@@ -333,11 +501,113 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
         contentType: remindersContent.value as any,
       };
 
-      savePersistentJSON(STORAGE_KEYS.REMINDERS_CONFIG, newConfig);
-      alert('Préférences de rappels sauvegardées avec succès pour 1 an !');
+      const submitBtn = remindersForm.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        await saveUnifiedReminderConfig(newConfig);
+        alert('Préférences de rappels synchronisées et sauvegardées avec succès !');
+      } catch (err: any) {
+        alert(err.message || 'Erreur lors de la sauvegarde.');
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
     });
 
-    // 3. COOKIES & DONNÉES
+    // 3. CONFIGURATION SUPABASE
+    const supabaseForm = document.getElementById('form-supabase') as HTMLFormElement;
+    const supabaseUrlInput = document.getElementById('supabase-url') as HTMLInputElement;
+    const supabaseAnonInput = document.getElementById('supabase-anon-key') as HTMLInputElement;
+    const supabaseDot = document.getElementById('supabase-dot');
+    const supabaseTitle = document.getElementById('supabase-status-title');
+    const supabaseDesc = document.getElementById('supabase-status-desc');
+    const btnTestSupabase = document.getElementById('btn-test-supabase');
+    const btnResetSupabaseDefault = document.getElementById('btn-reset-supabase-default');
+
+    function updateSupabaseUI() {
+      const creds = getSupabaseCredentials();
+      if (supabaseUrlInput && !supabaseUrlInput.value) supabaseUrlInput.value = creds.url;
+      if (supabaseAnonInput && !supabaseAnonInput.value) supabaseAnonInput.value = creds.anonKey;
+
+      if (supabaseDot && supabaseTitle && supabaseDesc) {
+        if (creds.isConfigured) {
+          supabaseDot.className = 'dot-status dot-active';
+          supabaseTitle.textContent = 'Projet Supabase connecté';
+          supabaseDesc.textContent = `Connecté à l'instance Cloud : ${creds.url}`;
+        } else {
+          supabaseDot.className = 'dot-status';
+          supabaseDot.style.background = 'var(--muted)';
+          supabaseTitle.textContent = 'Non configuré';
+          supabaseDesc.textContent = 'Renseignez votre Project URL et votre clé publique ci-dessus pour activer les comptes et la synchronisation.';
+        }
+      }
+    }
+
+    updateSupabaseUI();
+
+    btnResetSupabaseDefault?.addEventListener('click', () => {
+      resetSupabaseCredentialsToDefault();
+      const creds = getSupabaseCredentials();
+      if (supabaseUrlInput) supabaseUrlInput.value = creds.url;
+      if (supabaseAnonInput) supabaseAnonInput.value = creds.anonKey;
+      updateSupabaseUI();
+      alert('Clés officielles de Supabase restaurées avec succès !');
+    });
+
+    supabaseForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const urlVal = supabaseUrlInput.value.trim().replace(/\/+$/, '');
+      const keyVal = supabaseAnonInput.value.trim();
+      if (!urlVal || !keyVal) {
+        alert('Veuillez renseigner à la fois le Project URL et la clé publique.');
+        return;
+      }
+      saveSupabaseCredentials(urlVal, keyVal);
+      updateSupabaseUI();
+      alert('Identifiants Supabase enregistrés dans votre navigateur !');
+    });
+
+    btnTestSupabase?.addEventListener('click', async () => {
+      const creds = getSupabaseCredentials();
+      const urlVal = (supabaseUrlInput.value.trim() || creds.url).replace(/\/+$/, '');
+      const keyVal = supabaseAnonInput.value.trim() || creds.anonKey;
+      if (!urlVal || !keyVal) {
+        alert('Veuillez d’abord renseigner vos identifiants Supabase.');
+        return;
+      }
+      if (supabaseDesc) supabaseDesc.textContent = 'Test de connexion en cours...';
+      try {
+        const res = await fetch(`${urlVal}/rest/v1/ping?select=id&limit=1`, {
+          headers: {
+            apikey: keyVal,
+            Authorization: `Bearer ${keyVal}`,
+          },
+        });
+        if (res.ok) {
+          if (supabaseDesc) supabaseDesc.textContent = 'Connexion à l’API Supabase validée avec succès.';
+          alert('Succès : La connexion à votre projet Supabase fonctionne parfaitement !');
+        } else if (res.status === 404 || res.status === 401) {
+          // Si ping table pas encore créée, tester la racine auth ou schema
+          const authRes = await fetch(`${urlVal}/auth/v1/health`, {
+            headers: { apikey: keyVal },
+          });
+          if (authRes.ok) {
+            if (supabaseDesc) supabaseDesc.textContent = 'API Supabase Auth joignable.';
+            alert('Connexion établie avec le service d’authentification Supabase !');
+          } else {
+            throw new Error(`Statut HTTP : ${res.status}`);
+          }
+        } else {
+          throw new Error(`Statut HTTP : ${res.status}`);
+        }
+      } catch (err: any) {
+        const formatted = formatSupabaseError(err);
+        if (supabaseDesc) supabaseDesc.textContent = `Erreur de connexion : ${formatted}`;
+        alert(`Échec du test de connexion : ${formatted}`);
+      }
+    });
+
+    // 4. COOKIES & DONNÉES
     const cookieStatus = document.getElementById('cookie-status');
     const notifPermStatus = document.getElementById('notif-perm-status');
     const btnReqNotifPerm = document.getElementById('btn-request-notif-perm');
@@ -369,19 +639,45 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
       }
     });
 
-    btnClearAll?.addEventListener('click', () => {
+    const btnDeleteAllCourses = document.getElementById('btn-delete-all-courses');
+
+    btnDeleteAllCourses?.addEventListener('click', async () => {
+      if (confirm('Attention : Voulez-vous vraiment supprimer DÉFINITIVEMENT tous vos cours ?\n\nCette action supprimera tous les cours et fiches de révision enregistrés sur votre compte Supabase et dans votre navigateur. Votre emploi du temps sera conservé.\n\nContinuer ?')) {
+        try {
+          await clearUserCourses();
+          alert('Tous vos cours ont été supprimés avec succès.');
+        } catch (err: any) {
+          alert('Erreur lors de la suppression des cours : ' + formatSupabaseError(err));
+        }
+      }
+    });
+
+    btnClearAll?.addEventListener('click', async () => {
       if (confirm('Attention : cela supprimera tous vos cours personnalisés, vos rappels et votre calendrier. Continuer ?')) {
+        try {
+          await clearUserCourses().catch(() => {});
+          await clearUserScheduleEvents().catch(() => {});
+        } catch {}
         Object.values(STORAGE_KEYS).forEach((k) => {
           deleteCookie(k);
           localStorage.removeItem(k);
         });
+        localStorage.removeItem('marges_supabase_url');
+        localStorage.removeItem('marges_supabase_anon_key');
         alert('Toutes les données locales ont été réinitialisées.');
         window.location.reload();
       }
     });
   }
 
-  document.addEventListener('astro:page-load', initConfigPage);
+  if (typeof window !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initConfigPage);
+    } else {
+      initConfigPage();
+    }
+    document.addEventListener('astro:page-load', initConfigPage);
+  }
 </script>
 
 <style>
@@ -413,7 +709,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     gap: 2rem;
   }
   .config-card {
-    padding: 1.75rem 2rem;
+    padding: clamp(1.1rem, 0.8rem + 1vw, 2rem);
   }
   .card-head {
     display: flex;
@@ -422,12 +718,15 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
   }
   .card-head h2 {
     margin: 0 0 0.2rem;
     font-family: var(--font-text);
     font-size: 1.35rem;
     letter-spacing: -.02em;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
   .card-head p {
     margin: 0;
@@ -458,7 +757,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     background: var(--surface);
     color: var(--fg);
     font-family: inherit;
-    font-size: 0.92rem;
+    font-size: max(16px, 0.92rem);
     transition: border-color .15s ease;
   }
   .config-form input:focus,
@@ -487,7 +786,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
   }
   .times-subgrid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
     gap: 1rem;
     background: var(--soft);
     padding: 1rem 1.25rem;
@@ -535,6 +834,7 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
   .storage-row {
     display: flex;
     justify-content: space-between;
+    gap: 0.5rem;
   }
   .card-actions {
     display: flex;
@@ -542,5 +842,34 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     flex-wrap: wrap;
     align-items: center;
     margin-top: 0.5rem;
+  }
+
+  @media (max-width: 48rem) {
+    .config-hero {
+      padding-block: 1.5rem 1rem;
+    }
+  }
+
+  @media (max-width: 36rem) {
+    .card-head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+    .times-subgrid {
+      grid-template-columns: 1fr;
+      padding: 0.85rem 1rem;
+    }
+    .card-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .card-actions .btn {
+      width: 100%;
+    }
+    .storage-row {
+      flex-direction: column;
+      gap: 0.2rem;
+    }
   }
 </style>

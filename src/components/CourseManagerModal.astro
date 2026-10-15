@@ -20,7 +20,15 @@ import Icon from './Icon.astro';
       </button>
       <button type="button" class="modal-tab" data-tab="tab-file" role="tab" aria-selected="false">
         <Icon name="file" size={15} />
-        Importer un Cours / TD
+        Importer un Fichier
+      </button>
+      <button type="button" class="modal-tab" data-tab="tab-folder" role="tab" aria-selected="false">
+        <Icon name="folder" size={15} />
+        Importer un Dossier
+      </button>
+      <button type="button" class="modal-tab" data-tab="tab-note" role="tab" aria-selected="false">
+        <Icon name="edit" size={15} />
+        Rédiger un Cours (Markdown)
       </button>
     </div>
 
@@ -114,6 +122,81 @@ import Icon from './Icon.astro';
         <button type="submit" class="btn btn--primary btn--sm">Importer et répertorier</button>
       </div>
     </form>
+
+    <!-- 2b. Formulaire : Importer un dossier complet -->
+    <div id="panel-import-folder" class="modal-tab-panel" data-panel="tab-folder">
+      <p class="meta tab-desc">
+        Importez un dossier entier depuis votre machine (avec ses matières, sous-dossiers CM, TD et fichiers PDF). L'arborescence sera automatiquement structurée et tous les fichiers PDF pourront être lus instantanément dans le lecteur.
+      </p>
+
+      <div class="form-group">
+        <label for="course-folder-input" class="field-label">Dossier de cours à importer :</label>
+        <input
+          type="file"
+          id="course-folder-input"
+          {...{ webkitdirectory: '', directory: '' }}
+          multiple
+          class="input-file"
+        />
+        <span class="help-text meta">Tous les documents PDF et supports détectés seront sauvegardés dans votre mémoire locale sécurisée pour lecture immédiate.</span>
+      </div>
+
+      <div id="folder-import-status" class="meta" style="display: none; padding: 0.5rem 0; font-weight: 500; color: var(--accent);"></div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn--sm" id="btn-cancel-folder">Annuler</button>
+        <button type="button" class="btn btn--primary btn--sm" id="btn-start-folder-import">Lancer l'importation</button>
+      </div>
+    </div>
+
+    <!-- 3. Formulaire : Rédiger un cours / note en Markdown -->
+    <form id="form-create-note" class="modal-tab-panel" data-panel="tab-note">
+      <p class="meta tab-desc">
+        Rédigez directement vos notes ou fiches de révisions en Markdown. Elles seront stockées de manière privée dans votre base de données Supabase.
+      </p>
+
+      <div class="form-group">
+        <label for="select-note-subject" class="field-label">Matière :</label>
+        <select id="select-note-subject" required>
+          <option value="" disabled selected>Sélectionner une matière...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="select-note-folder" class="field-label">Catégorie :</label>
+        <select id="select-note-folder">
+          <option value="CM">CM (Cours Magistral)</option>
+          <option value="TD">TD (Travaux Dirigés)</option>
+          <option value="Fiches de révisions" selected>Fiches de révisions</option>
+          <option value="Documents racines">Général</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="note-title-input" class="field-label">Titre du cours / de la note :</label>
+        <input
+          type="text"
+          id="note-title-input"
+          placeholder="ex : Séance 2 — La Critique de la Raison Pure"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="note-body-input" class="field-label">Contenu (Markdown) :</label>
+        <textarea
+          id="note-body-input"
+          rows="8"
+          placeholder="Rédigez ici vos notes (# Titre, **gras**, listes, citations...)"
+          required
+        ></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn--sm" id="btn-cancel-note">Annuler</button>
+        <button type="submit" class="btn btn--primary btn--sm">Enregistrer dans Supabase</button>
+      </div>
+    </form>
   </div>
 </dialog>
 
@@ -122,7 +205,9 @@ import Icon from './Icon.astro';
     border-radius: var(--radius);
     padding: 0;
     max-width: 540px;
-    width: 90%;
+    width: min(calc(100vw - 1.5rem), 540px);
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
     margin: auto;
     border: 1px solid var(--line);
     background: var(--surface);
@@ -135,7 +220,7 @@ import Icon from './Icon.astro';
     -webkit-backdrop-filter: blur(4px);
   }
   .modal-inner {
-    padding: 1.5rem 1.75rem;
+    padding: clamp(1rem, 0.75rem + 1vw, 1.75rem);
     display: grid;
     gap: 1.25rem;
   }
@@ -169,15 +254,20 @@ import Icon from './Icon.astro';
 
   .modal-tabs {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.4rem;
     border-bottom: 1px solid var(--line);
     padding-bottom: 0.5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
   }
+  .modal-tabs::-webkit-scrollbar { display: none; }
   .modal-tab {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.4rem 0.85rem;
+    padding: 0.4rem 0.75rem;
     border-radius: var(--r-sm);
     background: transparent;
     border: 1px solid transparent;
@@ -186,6 +276,8 @@ import Icon from './Icon.astro';
     font-size: 0.85rem;
     font-weight: 500;
     cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
     transition: all .15s ease;
   }
   .modal-tab:hover {
@@ -269,5 +361,15 @@ import Icon from './Icon.astro';
     margin-top: 0.5rem;
     padding-top: 1rem;
     border-top: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  @media (max-width: 30rem) {
+    .modal-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .modal-actions .btn {
+      width: 100%;
+    }
   }
 </style>

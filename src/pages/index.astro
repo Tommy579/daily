@@ -29,7 +29,6 @@ const shortcuts = [
     <header class="home-hero">
       <p class="crumbs" data-today-date>&nbsp;</p>
       <h1 class="home-greeting"><span data-greeting>Bonjour</span>.</h1>
-      <p class="home-motto">Penser lentement ce que les machines font&nbsp;vite.</p>
     </header>
 
     <div class="home-grid">
@@ -53,11 +52,11 @@ const shortcuts = [
         <!-- Raccourcis -->
         <nav class="shortcuts" aria-label="Accès rapides">
           {shortcuts.map((s) => (
-            <a href={s.href} class="panel panel--link shortcut">
+            <a href={s.href} class="panel panel--link shortcut" data-shortcut-id={s.title.toLowerCase()}>
               <span class="icon-tile"><Icon name={s.icon} size={18} /></span>
               <span class="shortcut-text">
                 <strong>{s.title}</strong>
-                <small>{s.desc}</small>
+                <small data-shortcut-desc={s.title.toLowerCase()}>{s.desc}</small>
               </span>
             </a>
           ))}
@@ -79,28 +78,26 @@ const shortcuts = [
 
       <!-- Colonne latérale -->
       <aside class="home-aside">
-        {subjects.length > 0 && (
-          <section aria-labelledby="matieres-title">
-            <div class="section-head">
-              <h2 id="matieres-title">Matières</h2>
-              <a href={url('/cours/')} class="more">Tout voir <span aria-hidden="true">→</span></a>
-            </div>
-            <ul class="subject-list" role="list" id="home-subject-list">
-              {subjects.map((sub) => (
-                <li>
-                  <a href={url(`/cours/#folder-${sub.id}`)} class="subject-row">
-                    <span class="subject-initial" aria-hidden="true">{sub.name.charAt(0).toUpperCase()}</span>
-                    <span class="subject-text">
-                      <strong>{sub.name}</strong>
-                      <small>{sub.stats.totalFiles} fichiers · {sub.stats.pdfCount} PDF</small>
-                    </span>
-                    <Icon name="arrow-right" size={14} class="subject-arrow" />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        <section aria-labelledby="matieres-title" id="home-matieres-section" style={subjects.length === 0 ? 'display: none;' : ''}>
+          <div class="section-head">
+            <h2 id="matieres-title">Matières</h2>
+            <a href={url('/cours/')} class="more">Tout voir <span aria-hidden="true">→</span></a>
+          </div>
+          <ul class="subject-list" role="list" id="home-subject-list">
+            {subjects.map((sub) => (
+              <li>
+                <a href={url(`/cours/#folder-${sub.id}`)} class="subject-row">
+                  <span class="subject-initial" aria-hidden="true">{sub.name.charAt(0).toUpperCase()}</span>
+                  <span class="subject-text">
+                    <strong>{sub.name}</strong>
+                    <small>{sub.stats.totalFiles} fichiers · {sub.stats.pdfCount} PDF</small>
+                  </span>
+                  <Icon name="arrow-right" size={14} class="subject-arrow" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
 
         {themes.length > 0 && (
           <section class="aside-section" aria-labelledby="themes">
@@ -125,9 +122,16 @@ const shortcuts = [
 </Base>
 
 <script>
-  import { generateWeekEvents } from '../utils/timetable';
+  import { STORAGE_KEYS, loadPersistent } from '../utils/persistence';
+  import { getCurrentSession, fetchUserScheduleEvents, fetchUserCourses, getUserCoursesImmediate } from '../utils/supabase';
+  import { syncTimetableState, parseIcsEvents } from '../utils/timetable';
 
-  type Ev = ReturnType<typeof generateWeekEvents>[number];
+  interface HomeEvent {
+    title: string;
+    start: Date;
+    end: Date;
+    location?: string;
+  }
 
   const fmtTime = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
@@ -153,7 +157,7 @@ const shortcuts = [
     return node;
   }
 
-  function renderItem(ev: Ev, now: Date, showDay = false): HTMLLIElement {
+  function renderItem(ev: HomeEvent, now: Date, showDay = false): HTMLLIElement {
     const li = el('li', 'tl-item');
     const state = now > ev.end ? 'past' : now >= ev.start ? 'live' : 'next';
     li.dataset.state = state;
@@ -177,7 +181,7 @@ const shortcuts = [
     return li;
   }
 
-  function initHome() {
+  async function initHome() {
     const root = document.querySelector<HTMLElement>('[data-today]');
     if (!root) return;
     const now = new Date();
@@ -185,22 +189,84 @@ const shortcuts = [
     // Salutation & date
     const h = now.getHours();
     const greeting = document.querySelector('[data-greeting]');
-    if (greeting) greeting.textContent = h < 5 ? 'Bonne nuit' : h < 18 ? 'Bonjour' : 'Bonsoir';
+    const salute = h < 5 ? 'Bonne nuit' : h < 18 ? 'Bonjour' : 'Bonsoir';
+    if (greeting) {
+      greeting.textContent = salute;
+      try {
+        getCurrentSession().then((session) => {
+          const name = session?.user?.user_metadata?.full_name;
+          if (name && greeting) {
+            greeting.textContent = `${salute}, ${name}`;
+          }
+        });
+      } catch {}
+    }
     const dateEl = document.querySelector('[data-today-date]');
     if (dateEl) {
       const s = now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
       dateEl.textContent = s.charAt(0).toUpperCase() + s.slice(1);
     }
 
-    // Cours du jour (hors habitudes)
-    const monday = mondayOf(now);
-    const nextMonday = new Date(monday);
-    nextMonday.setDate(monday.getDate() + 7);
-    const all = [...generateWeekEvents(monday), ...generateWeekEvents(nextMonday)]
-      .filter((e) => e.category !== 'habit')
-      .sort((a, b) => a.start.getTime() - b.start.getTime());
+    // 0. Auto-synchronisation Supabase Cloud (PC <-> Mobile)
+    const syncRes = await syncTimetableState().catch(() => null);
 
-    const today = all.filter((e) => e.start.toDateString() === now.toDateString());
+    // Définition de la fenêtre du jour strict et des 14 prochains jours
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const maxUpcoming = new Date(startOfToday.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+    const allEvents: HomeEvent[] = [];
+    const seen = new Set<string>();
+
+    function addEvent(ev: HomeEvent) {
+      const key = `${ev.title}|${ev.start.getTime()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        allEvents.push(ev);
+      }
+    }
+
+    // 1. Calendrier ICS de l'étudiant (analyse précise avec dates et récurrences)
+    const savedIcs = syncRes?.icsContent !== undefined ? syncRes.icsContent : loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
+    if (savedIcs && savedIcs.trim().length > 30) {
+      const parsed = parseIcsEvents(savedIcs, startOfToday, maxUpcoming);
+      parsed.forEach((ev) => {
+        addEvent({
+          title: ev.title,
+          start: ev.start,
+          end: ev.end,
+          location: ev.location,
+        });
+      });
+    }
+
+    // 2. Créneaux hebdomadaires créés manuellement par l'étudiant (fallback)
+    try {
+      const dbEvents = await fetchUserScheduleEvents();
+      if (dbEvents && dbEvents.length > 0) {
+        const monday = mondayOf(now);
+        dbEvents.forEach((dbEv) => {
+          const dayOffset = (dbEv.day_of_week || 1) - 1;
+          const [sH, sM] = (dbEv.start_time || '08:30').split(':').map(Number);
+          const [eH, eM] = (dbEv.end_time || '10:30').split(':').map(Number);
+
+          for (let w = 0; w < 2; w++) {
+            const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + dayOffset + w * 7);
+            const start = new Date(d);
+            start.setHours(sH, sM, 0, 0);
+            const end = new Date(d);
+            end.setHours(eH, eM, 0, 0);
+            if (end >= startOfToday && start <= maxUpcoming) {
+              addEvent({ title: dbEv.title, start, end, location: dbEv.location });
+            }
+          }
+        });
+      }
+    } catch {}
+
+    allEvents.sort((a, b) => a.start.getTime() - b.start.getTime());
+
+    // FILTRAGE STRICT : Uniquement les cours qui ont lieu AUJOURD'HUI
+    const today = allEvents.filter((e) => e.start.toDateString() === now.toDateString());
     const list = root.querySelector<HTMLOListElement>('[data-today-list]');
     const summary = root.querySelector('[data-today-summary]');
     if (!list || !summary) return;
@@ -211,45 +277,115 @@ const shortcuts = [
       const live = today.find((e) => now >= e.start && now <= e.end);
       if (live) summary.textContent = `En cours jusqu'à ${fmtTime(live.end)} · ${remaining.length} cours restant${remaining.length > 1 ? 's' : ''}`;
       else if (remaining.length) summary.textContent = `Prochain cours à ${fmtTime(remaining[0].start)} · ${remaining.length} restant${remaining.length > 1 ? 's' : ''}`;
-      else summary.textContent = 'Journée de cours terminée.';
+      else summary.textContent = `Journée de cours terminée (${today.length} créneau${today.length > 1 ? 'x' : ''} aujourd’hui).`;
       today.forEach((ev) => list.append(renderItem(ev, now)));
     } else {
-      const next = all.find((e) => e.start > now);
       summary.textContent = 'Aucun cours aujourd’hui.';
-      if (next) {
-        list.append(el('li', 'tl-caption', 'Prochain cours'));
-        list.append(renderItem(next, now, true));
+      list.innerHTML = '<li class="meta" style="padding: 0.75rem 0;">Aucun cours planifié pour cette journée.</li>';
+      const nextUpcoming = allEvents.find((e) => e.start > now);
+      if (nextUpcoming) {
+        const nextCaption = el('li', 'tl-caption', 'Prochain cours à venir');
+        const nextItem = renderItem(nextUpcoming, now, true);
+        list.append(nextCaption, nextItem);
       }
     }
 
-    // Matières personnalisées ajoutées par l'utilisateur
-    try {
+    // Matières de l'utilisateur (affichage instantané 0ms + synchro Supabase)
+    function renderCustomSubjects(courses: any[]) {
       const basePath = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
-      const rawCustom = localStorage.getItem('marges_custom_subjects');
-      const customSubs: Array<{ id: string; name: string }> = rawCustom ? JSON.parse(rawCustom) : [];
       const subList = document.getElementById('home-subject-list');
-      if (subList && customSubs.length > 0) {
-        customSubs.forEach((sub) => {
-          const targetHref = `${basePath}/cours/#folder-${sub.id}`;
-          if (!subList.querySelector(`a[href="${targetHref}"]`)) {
-            const li = document.createElement('li');
-            li.innerHTML = `
-              <a href="${targetHref}" class="subject-row">
-                <span class="subject-initial" aria-hidden="true">${sub.name.charAt(0).toUpperCase()}</span>
-                <span class="subject-text">
-                  <strong>${sub.name}</strong>
-                  <small>Matière personnalisée</small>
-                </span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="subject-arrow"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-              </a>
-            `;
-            subList.appendChild(li);
-          }
-        });
+      const matieresSec = document.getElementById('home-matieres-section');
+      const coursesDesc = document.querySelector('[data-shortcut-desc="cours"]');
+
+      if (!courses || courses.length === 0) return;
+
+      const customSubjects = new Set<string>();
+      const subjectFilesCount = new Map<string, number>();
+
+      courses.forEach((c) => {
+        let s = '';
+        if (c.tags && c.tags.length > 0) {
+          const clean = c.tags.filter((t: string) => t !== 'Université' && t !== 'Dossier importé' && t !== 'Matière' && t !== 'Supports de cours');
+          if (clean.length > 0) s = clean[0];
+        }
+        if (!s && c.title) s = c.title;
+        if (s) {
+          customSubjects.add(s);
+          const lines = (c.body_md || '').split('\n').filter((l: string) => l.trim().startsWith('- ') || l.trim().startsWith('* ')).length;
+          subjectFilesCount.set(s, (subjectFilesCount.get(s) || 0) + (lines || 1));
+        }
+      });
+
+      const totalCount = customSubjects.size;
+
+      // Actualise le nombre de matières sur le raccourci d'accueil
+      if (coursesDesc && totalCount > 0) {
+        coursesDesc.textContent = `${totalCount} matière${totalCount > 1 ? 's' : ''}`;
       }
+
+      if (matieresSec && totalCount > 0) {
+        matieresSec.style.display = 'block';
+      }
+
+      if (!subList) return;
+
+      // Trier les matières par ordre alphabétique naturel
+      const sorted = Array.from(customSubjects).sort((a, b) =>
+        a.localeCompare(b, 'fr', { numeric: true, sensitivity: 'base' })
+      );
+
+      sorted.forEach((subName) => {
+        const slugId = subName
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+        const targetHref = `${basePath}/cours/#folder-${slugId}`;
+        const count = subjectFilesCount.get(subName) || 1;
+        const countLabel = `${count} document${count > 1 ? 's' : ''}`;
+
+        let existingLi = subList.querySelector(`a[href="${targetHref}"]`)?.closest('li');
+        if (!existingLi) {
+          const li = document.createElement('li');
+          li.innerHTML = `
+            <a href="${targetHref}" class="subject-row">
+              <span class="subject-initial" aria-hidden="true">${subName.charAt(0).toUpperCase()}</span>
+              <span class="subject-text">
+                <strong>${subName}</strong>
+                <small>${countLabel}</small>
+              </span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="subject-arrow"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+          `;
+          subList.appendChild(li);
+        } else {
+          const small = existingLi.querySelector('small');
+          if (small && (small.textContent === 'Matière personnelle' || !small.textContent?.includes('fichier'))) {
+            small.textContent = countLabel;
+          }
+        }
+      });
+    }
+
+    try {
+      const immediateCourses = getUserCoursesImmediate();
+      if (immediateCourses.length > 0) {
+        renderCustomSubjects(immediateCourses);
+      }
+      fetchUserCourses()
+        .then((remote) => {
+          if (remote && remote.length > 0) renderCustomSubjects(remote);
+        })
+        .catch(() => {});
     } catch {}
   }
 
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initHome);
+  } else {
+    initHome();
+  }
   document.addEventListener('astro:page-load', initHome);
 </script>
 
@@ -401,9 +537,19 @@ const shortcuts = [
 
   @media (max-width: 62rem) {
     .home-grid { grid-template-columns: 1fr; }
-    .home-aside { position: static; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+    .home-aside { position: static; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
   }
-  @media (max-width: 40rem) {
+  @media (max-width: 52rem) {
     .shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 36rem) {
+    .shortcuts { grid-template-columns: 1fr; }
+    .shortcut-text small { white-space: normal; }
+    .today-head { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+    .timeline :global(.tl-item) {
+      grid-template-columns: 3.25rem minmax(0, 1fr);
+      gap: 0.65rem;
+      padding: 0.65rem 0.75rem;
+    }
   }
 </style>

@@ -1,56 +1,227 @@
 ---
 import Base from '../layouts/Base.astro';
 import { SITE } from '../consts';
+import { url } from '../utils/url';
 ---
 
-<Base title="Mentions légales" description="Mentions légales et politique de confidentialité de Marges.">
+<Base
+  title="Mentions légales & Crédits"
+  description="Mentions légales, politique de confidentialité, gestion des données personnelles et crédits techniques de Marges."
+>
   <article class="container">
     <header class="page-header">
-      <h1>Mentions légales</h1>
-      <p class="lede">Conformément à la loi n°&nbsp;2004-575 du 21&nbsp;juin 2004 pour la confiance dans l’économie numérique.</p>
+      <div class="header-pretitle">Transparence & Déontologie</div>
+      <h1>Mentions légales &amp; Crédits</h1>
+      <p class="lede">
+        Informations légales conformes à la loi n°&nbsp;2004-575 du 21&nbsp;juin 2004 pour la confiance dans l’économie
+        numérique (LCEN), au Règlement Général sur la Protection des Données (RGPD n°&nbsp;2016/679) et crédits du projet.
+      </p>
     </header>
 
-    <div class="prose">
-      <h2>Éditeur</h2>
+    <div class="prose dropcap">
+      <h2>1. Éditeur du site</h2>
       <p>
-        Le site <em>{SITE.title}</em> est édité à titre personnel et non commercial par {SITE.author}.<br />
-        Contact&#8239;: <a href={`mailto:${SITE.email}`}>{SITE.email}</a><br />
-        Directeur de la publication&#8239;: {SITE.author}.
+        Le site <em>{SITE.title}</em> (<a href={url('/')}>accueil</a>) est un carnet d’études, de réflexions
+        philosophiques et d’outils d’apprentissage édité à titre individuel et non commercial.
+      </p>
+      <ul>
+        <li><strong>Directeur de la publication &amp; conception&#8239;:</strong> {SITE.author}</li>
+        <li><strong>Courriel de contact&#8239;:</strong> <a href={`mailto:${SITE.email}`}>{SITE.email}</a></li>
+        <li><strong>Statut&#8239;:</strong> Projet personnel, indépendant et sans but lucratif.</li>
+      </ul>
+
+      <h2>2. Hébergement &amp; Services d’infrastructure</h2>
+      <p>
+        Pour garantir à la fois performance statique, sobriété numérique et souveraineté des données privées,
+        le site s’appuie sur les infrastructures suivantes&#8239;:
+      </p>
+      <ul>
+        <li>
+          <strong>Hébergement et diffusion web (site statique)&#8239;:</strong><br />
+          {SITE.host.name}<br />
+          {SITE.host.address}<br />
+          Site web&#8239;: <a href={SITE.host.url} rel="noopener" target="_blank">{SITE.host.url.replace('https://', '')}</a>
+        </li>
+        <li>
+          <strong>Base de données cloud, authentification &amp; stockage d’espace privé&#8239;:</strong><br />
+          Supabase, Inc.<br />
+          970 Folsom St, San Francisco, CA 94107, États-Unis<br />
+          Site web&#8239;: <a href="https://supabase.com" rel="noopener" target="_blank">supabase.com</a>
+        </li>
+        <li>
+          <strong>Génération et assistance éditoriale par intelligence artificielle&#8239;:</strong><br />
+          API Google Gemini (Google LLC, 1600 Amphitheatre Parkway, Mountain View, CA 94043, États-Unis),
+          déclenchée de façon programmée via des flux automatisés GitHub Actions.
+        </li>
+      </ul>
+
+      <h2>3. Données personnelles &amp; Respect de la vie privée (RGPD)</h2>
+
+      <h3>3.1. Consultation publique en accès libre</h3>
+      <p>
+        La lecture libre des essais, dialogues, questions, notes et thèmes s’effectue sans aucune obligation
+        d’inscription ni de connexion. Aucune donnée nominative n’est collectée lors de la simple visite.
+      </p>
+      <p>
+        Le moteur de recherche interne (<a href="https://pagefind.app/" rel="noopener" target="_blank">Pagefind</a>)
+        fonctionne de manière 100&#8239;% statique et locale côté client&#8239;: vos requêtes de recherche sont exécutées
+        directement dans votre navigateur sans jamais être transmises à un serveur distant.
       </p>
 
-      <h2>Hébergement</h2>
+      <h3>3.2. Espace personnel connecté (Cours, Emploi du temps, Rappels)</h3>
       <p>
-        {SITE.host.name}<br />
-        {SITE.host.address}<br />
-        <a href={SITE.host.url} rel="noopener" target="_blank">{SITE.host.url.replace('https://', '')}</a>
+        Lorsque vous créez un compte ou vous connectez pour accéder à vos outils personnels (banque de cours,
+        synchronisation d’agenda, révisions), les données strictement nécessaires au service sont traitées&#8239;:
+      </p>
+      <ul>
+        <li><strong>Adresse électronique&#8239;:</strong> Utilisée exclusivement pour la gestion de votre authentification et de votre session sécurisée.</li>
+        <li><strong>Profil (optionnel)&#8239;:</strong> Nom ou pseudonyme d’affichage configuré dans votre espace.</li>
+        <li><strong>Fichiers et documents de cours&#8239;:</strong> Documents (PDF, Markdown, texte) déposés dans votre bibliothèque de révision personnelle.</li>
+        <li><strong>Emplois du temps &amp; agendas&#8239;:</strong> URL de flux de calendrier (format iCal / ICS) ou événements personnalisés importés pour l’affichage de votre journée.</li>
+        <li><strong>Rappels et notifications&#8239;:</strong> Paramètres et historiques de révision programmés.</li>
+      </ul>
+      <p>
+        <strong>Sécurité et étanchéité stricte&#8239;:</strong> Les données des utilisateurs sont hébergées dans Supabase
+        avec activation systématique de la sécurité au niveau des lignes (<em>Row Level Security</em> — RLS). Chaque compte
+        bénéficie d’un cloisonnement hermétique&#8239;: aucun utilisateur ne peut accéder aux fichiers, emplois du temps ou
+        données d’un autre compte.
+      </p>
+      <p>
+        <strong>Absence d’exploitation commerciale&#8239;:</strong> Vos données personnelles ne font l’objet d’aucun profilage,
+        d’aucune publicité, ni d’aucune vente, cession ou transfert à des tiers.
+      </p>
+      <p>
+        <strong>Vos droits (art. 15 à 21 du RGPD)&#8239;:</strong> Vous disposez à tout moment d’un droit d’accès, de rectification,
+        de portabilité et de suppression définitive de vos données. Vous pouvez supprimer vos documents ou réinitialiser votre agenda
+        directement depuis l’application, ou formuler toute demande d’effacement intégral par courriel à
+        <a href={`mailto:${SITE.email}`}>{SITE.email}</a>.
       </p>
 
-      <h2>Données personnelles</h2>
+      <h2>4. Cookies &amp; Stockage local (Local Storage)</h2>
       <p>
-        Ce site ne collecte aucune donnée personnelle, ne dépose aucun cookie et n’utilise aucun outil de mesure
-        d’audience ou de traçage. Aucun bandeau de consentement n’est donc nécessaire.
+        Ce site n’utilise <strong>aucun cookie publicitaire, traceur ou outil de mesure d’audience intrusif</strong>.
+        Conformément aux recommandations de la CNIL et à l’article 82 de la loi Informatique et Libertés, aucun bandeau de
+        consentement n’est imposé pour les cookies et stockages strictement techniques.
       </p>
+      <p>Les éléments techniques stockés sur votre terminal comprennent&#8239;:</p>
+      <ul>
+        <li>
+          <strong>Préférence de thème (<code>theme</code>)&#8239;:</strong> Stocké dans le <code>localStorage</code>
+          de votre navigateur pour retenir votre choix d’affichage (clair ou sombre).
+        </li>
+        <li>
+          <strong>Jeton de session Supabase (<code>sb-*-auth-token</code>)&#8239;:</strong> Jeton chiffré stocké
+          localement pour maintenir votre connexion active sans vous réauthentifier à chaque page.
+        </li>
+        <li>
+          <strong>Cache et préférences locales (<code>marges_*</code>)&#8239;:</strong> Configuration des rappels
+          et des agendas pour une réactivité instantanée et une tolérance au fonctionnement hors-ligne.
+        </li>
+      </ul>
       <p>
-        Seule votre préférence de thème (clair ou sombre) est enregistrée dans le stockage local de votre navigateur,
-        sur votre appareil, et n’est jamais transmise. Vous pouvez l’effacer à tout moment depuis les réglages de votre
-        navigateur.
-      </p>
-      <p>
-        Les polices de caractères sont hébergées sur ce site&#8239;: aucune requête n’est adressée à un service tiers
-        lors de votre visite.
+        Vous pouvez effacer ces données à tout moment depuis la page de configuration de <em>Marges</em> ou directement
+        dans les paramètres d’historique et de stockage de votre navigateur web.
       </p>
 
-      <h2>Propriété intellectuelle</h2>
+      <h2>5. Propriété intellectuelle &amp; Démarche éditoriale</h2>
       <p>
-        Sauf mention contraire, les textes publiés sur ce site sont placés sous licence
-        <a href={SITE.license.url} rel="license noopener" target="_blank">{SITE.license.name}</a>&#8239;: vous pouvez
-        les partager et les adapter, à condition d’en citer l’auteur, de ne pas en faire un usage commercial et de
-        partager vos adaptations dans les mêmes conditions.
+        Sauf mention spécifique contraire, les textes et publications originales du site sont placés sous licence libre
+        <a href={SITE.license.url} rel="license noopener" target="_blank">{SITE.license.name}</a> (Attribution &ndash; Pas d’Utilisation Commerciale &ndash; Partage dans les Mêmes Conditions).
+        Vous êtes libres de les reproduire, diffuser et adapter sous réserve de citer la source, de ne pas en faire un usage commercial
+        et de distribuer vos travaux dérivés selon la même licence.
       </p>
       <p>
-        Les citations d’autres auteurs sont reproduites au titre du droit de courte citation (article L.&nbsp;122-5 du
-        Code de la propriété intellectuelle) et restent la propriété de leurs ayants droit.
+        Les citations philosophiques et extraits d’auteurs tiers sont mobilisés au titre du droit de courte citation
+        (article L.&nbsp;122-5 du Code de la propriété intellectuelle) à des fins pédagogiques, critiques et d’illustration.
+        Leurs droits demeurent la propriété de leurs auteurs ou ayants droit.
       </p>
+      <p>
+        <strong>Transparence quant à l’usage de l’intelligence artificielle&#8239;:</strong> <em>Marges</em> s’intéresse
+        à la place de l’IA dans la culture et la pensée. Dans un souci de rigueur déontologique, les textes co-rédigés
+        ou générés quotidiennement par des modèles de langage (notamment l’API Google Gemini 3.8 Flash) font l’objet
+        d’une indication explicite dans leurs métadonnées et leur en-tête (<code>isAiGenerated: true</code>).
+      </p>
+      <p>
+        <strong>Propriété des cours et documents importés&#8239;:</strong> Les supports de cours, polycopiés et notes
+        téléversés par un utilisateur dans son espace restent son entière propriété et sous sa responsabilité exclusive.
+      </p>
+
+      <h2>6. Crédits techniques &amp; Typographiques</h2>
+      <p>
+        La réalisation de <em>{SITE.title}</em> repose sur des technologies légères, performantes et respectueuses
+        des standards du web ouvert&#8239;:
+      </p>
+      <ul>
+        <li>
+          <strong>Framework &amp; Générateur de site&#8239;:</strong>
+          <a href="https://astro.build/" rel="noopener" target="_blank">Astro</a> (architecture statique orientée contenu et zéro JavaScript inutile).
+        </li>
+        <li>
+          <strong>Moteur de recherche statique&#8239;:</strong>
+          <a href="https://pagefind.app/" rel="noopener" target="_blank">Pagefind</a> (indexation et recherche locale ultra-rapide).
+        </li>
+        <li>
+          <strong>Base de données &amp; Authentification&#8239;:</strong>
+          <a href="https://supabase.com/" rel="noopener" target="_blank">Supabase</a> (PostgreSQL avec sécurité Row-Level Security).
+        </li>
+        <li>
+          <strong>Décodage et gestion des agendas&#8239;:</strong>
+          <a href="https://github.com/kewisch/ical.js/" rel="noopener" target="_blank">ical.js</a> pour le traitement des flux de calendrier iCal / ICS.
+        </li>
+        <li>
+          <strong>Modèles d’écriture &amp; Synthèse&#8239;:</strong>
+          <a href="https://ai.google.dev/" rel="noopener" target="_blank">Google Gemini API</a> via le SDK officiel <code>@google/genai</code>.
+        </li>
+        <li>
+          <strong>Typographies auto-hébergées&#8239;:</strong>
+          <ul>
+            <li>
+              <em>Source Serif 4</em> — dessinée par Frank Grießhammer (Adobe), distribuée sous licence SIL Open Font License (OFL).
+            </li>
+            <li>
+              <em>Inter</em> — dessinée par Rasmus Andersson, distribuée sous licence SIL Open Font License (OFL).
+            </li>
+            <li>
+              Toutes les polices de caractères sont hébergées localement sur le site&#8239;: aucune requête vers des CDN tiers n’est émise.
+            </li>
+          </ul>
+        </li>
+        <li>
+          <strong>Direction artistique&#8239;:</strong>
+          Monogramme typographique <em>M</em> signature en italique avec point carmin contrasté, typographie soignée et respect des règles typographiques françaises (guillemets cadratins, espaces insécables automatiques).
+        </li>
+      </ul>
+
+      <p class="signature">— {SITE.author}, {new Date().getFullYear()}</p>
     </div>
   </article>
 </Base>
+
+<style>
+  .header-pretitle {
+    font-family: var(--font-ui);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+  .prose h3 {
+    margin-top: 1.75rem;
+    font-size: 1.15rem;
+  }
+  .prose code {
+    font-size: 0.85em;
+    padding: 0.15em 0.35em;
+    background: var(--soft);
+    border-radius: 3px;
+    font-family: monospace;
+  }
+  .signature {
+    font-style: italic;
+    text-align: right;
+    margin-top: 3rem;
+    color: var(--muted);
+  }
+</style>

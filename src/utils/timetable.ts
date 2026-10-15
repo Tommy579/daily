@@ -1,4 +1,15 @@
+import ICAL from 'ical.js';
+import { STORAGE_KEYS, savePersistent, loadPersistent } from './persistence';
+import {
+  getSupabaseCredentials,
+  getCurrentUser,
+  fetchTimetableFromSupabase,
+  syncTimetableToSupabase,
+  clearUserScheduleEvents,
+} from './supabase';
+
 export interface TimetableEvent {
+
   id: string;
   title: string;
   start: string; // ISO string
@@ -39,19 +50,12 @@ export const WEEKLY_SCHEDULE_TEMPLATE: WeeklyTemplateEvent[] = [
   // LUNDI (0)
   {
     dayOffset: 0,
-    startHour: 8,
-    startMinute: 0,
-    durationMinutes: 30,
-    title: '20 pompes mini ⇄',
-    category: 'habit',
-  },
-  {
-    dayOffset: 0,
     startHour: 9,
     startMinute: 0,
     durationMinutes: 90,
-    title: 'CM - ECUE Analyse numérique 1 G01',
+    title: 'CM - Analyse numérique 1 G01',
     location: 'Amphi C',
+    description: 'Cours magistral : Méthodes directes et itératives de résolution de systèmes linéaires, conditionnement et interpolation polynomiale.',
     category: 'cm',
   },
   {
@@ -59,26 +63,20 @@ export const WEEKLY_SCHEDULE_TEMPLATE: WeeklyTemplateEvent[] = [
     startHour: 14,
     startMinute: 0,
     durationMinutes: 120,
-    title: 'TD - ECUE Analyse numérique 1 G02',
+    title: 'TD - Analyse numérique 1 G02',
     location: 'Salle E109',
+    description: 'Travaux dirigés : Exercices d’application sur les normes matricielles, factorisation LU et méthode de Cholesky. Apporter calculatrice ou support de notes.',
     category: 'td',
   },
 
   // MARDI (1)
   {
     dayOffset: 1,
-    startHour: 8,
-    startMinute: 0,
-    durationMinutes: 30,
-    title: '20 pompes mini ⇄',
-    category: 'habit',
-  },
-  {
-    dayOffset: 1,
     startHour: 9,
     startMinute: 0,
     durationMinutes: 75,
-    title: 'CM - ECUE Analyse numérique 1 G01',
+    title: 'CM - Analyse numérique 1 G01',
+    description: 'Cours magistral : Méthodes itératives de Jacobi, Gauss-Seidel et relaxation (SOR). Critères de convergence.',
     category: 'cm',
   },
   {
@@ -86,9 +84,9 @@ export const WEEKLY_SCHEDULE_TEMPLATE: WeeklyTemplateEvent[] = [
     startHour: 10,
     startMinute: 15,
     durationMinutes: 120,
-    title: 'TD - MA3 EDO & systèmes dynamiques G02/2',
+    title: 'TD - EDO & systèmes dynamiques G02/2',
     location: 'Salle E309',
-    description: '10:15 (08:15 GMT)',
+    description: 'Travaux dirigés : Équations différentielles linéaires d’ordre 1 et 2, résolvante, exponentielle de matrice et portraits de phase.',
     category: 'td',
   },
   {
@@ -96,7 +94,8 @@ export const WEEKLY_SCHEDULE_TEMPLATE: WeeklyTemplateEvent[] = [
     startHour: 13,
     startMinute: 45,
     durationMinutes: 60,
-    title: 'CM - ECUE Algèbre linéaire numérique &...',
+    title: 'CM - Algèbre linéaire numérique',
+    description: 'Cours magistral : Décomposition en valeurs singulières (SVD), moindres carrés linéaires et orthogonalisation de Gram-Schmidt.',
     category: 'cm',
   },
   {
@@ -104,29 +103,21 @@ export const WEEKLY_SCHEDULE_TEMPLATE: WeeklyTemplateEvent[] = [
     startHour: 14,
     startMinute: 45,
     durationMinutes: 135,
-    title: 'TD - ECUE Algèbre linéaire numérique & matlab G02',
+    title: 'TD - Algèbre linéaire numérique & matlab G02',
     location: 'Salle B214 (Salle informatique)',
-    description: '14:45 (12:45 GMT)',
+    description: 'Travaux pratiques sur machine : Implémentation des algorithmes de factorisation QR et SVD sous Matlab/Octave.',
     category: 'td',
   },
 
   // MERCREDI (2)
   {
     dayOffset: 2,
-    startHour: 8,
-    startMinute: 0,
-    durationMinutes: 30,
-    title: '20 pompes mini ⇄',
-    category: 'habit',
-  },
-  {
-    dayOffset: 2,
     startHour: 13,
     startMinute: 30,
     durationMinutes: 120,
-    title: 'TD - ECUE Analyse numérique 1 G02',
+    title: 'TD - Analyse numérique 1 G02',
     location: 'Salle E109',
-    description: '13:30 (11:30 GMT)',
+    description: 'Travaux dirigés : Intégration numérique (trapèzes, Simpson), calcul d’erreurs et quadrature de Gauss.',
     category: 'td',
   },
   {
@@ -134,28 +125,21 @@ export const WEEKLY_SCHEDULE_TEMPLATE: WeeklyTemplateEvent[] = [
     startHour: 15,
     startMinute: 45,
     durationMinutes: 120,
-    title: "CM - MA3 Histoire des sciences et de l'industrie",
+    title: "CM - Histoire des sciences et de l'industrie",
     location: 'Salle A231 (Amphi Gradiné)',
-    description: '15:45 (13:45 GMT)',
+    description: 'Cours magistral : Histoire des révolutions techniques et industrielles, genèse du calcul mécanisé et de l’informatique moderne.',
     category: 'cm',
   },
 
   // JEUDI (3)
   {
     dayOffset: 3,
-    startHour: 8,
-    startMinute: 0,
-    durationMinutes: 30,
-    title: '20 pompes mini ⇄',
-    category: 'habit',
-  },
-  {
-    dayOffset: 3,
     startHour: 10,
     startMinute: 15,
     durationMinutes: 120,
-    title: 'TD - MA3 EDO & systèmes dynamiques G02/2',
+    title: 'TD - EDO & systèmes dynamiques G02/2',
     location: 'Salle E309',
+    description: 'Travaux dirigés : Systèmes non-linéaires, points d’équilibre, linéarisation et théorème de stabilité de Lyapunov.',
     category: 'td',
   },
   {
@@ -163,27 +147,21 @@ export const WEEKLY_SCHEDULE_TEMPLATE: WeeklyTemplateEvent[] = [
     startHour: 14,
     startMinute: 0,
     durationMinutes: 180,
-    title: 'TD - ECUE Langage C G02',
+    title: 'TD - Langage C G02',
     location: 'Salle Info B204',
+    description: 'Programmation en C : Manipulation des pointeurs, allocation dynamique (malloc/free), gestion des structures et fichiers binaires.',
     category: 'td',
   },
 
   // VENDREDI (4)
   {
     dayOffset: 4,
-    startHour: 8,
-    startMinute: 0,
-    durationMinutes: 30,
-    title: '20 pompes mini ⇄',
-    category: 'habit',
-  },
-  {
-    dayOffset: 4,
     startHour: 10,
     startMinute: 0,
     durationMinutes: 120,
-    title: 'TD - ECUE Matlab & Modélisation G02',
+    title: 'TD - Matlab & Modélisation G02',
     location: 'Salle Info B102',
+    description: 'Simulation numérique : Résolution d’EDO par Runge-Kutta sous Matlab et tracé des trajectoires dans l’espace des phases.',
     category: 'td',
   },
   {
@@ -193,6 +171,7 @@ export const WEEKLY_SCHEDULE_TEMPLATE: WeeklyTemplateEvent[] = [
     durationMinutes: 120,
     title: 'CM - Épistémologie & Philosophie des Techniques',
     location: 'Amphi Émilie du Châtelet',
+    description: 'Séminaire philosophique : La technique comme milieu humain, critique de l’automatisation et dialogue avec les textes d’Arendt et Simondon.',
     category: 'cm',
   },
 ];
@@ -279,3 +258,353 @@ LOCATION:Salle A231 (Amphi Gradiné)
 DESCRIPTION:15:45 (13:45 GMT)
 END:VEVENT
 END:VCALENDAR`;
+
+/**
+ * Convertit un flux RSS/Atom contenant des événements vers le format iCalendar standard (VCalendar).
+ */
+export function convertRssToIcs(xmlText: string): string {
+  if (typeof DOMParser === 'undefined') return xmlText;
+  try {
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(xmlText, 'text/xml');
+    const items = Array.from(xml.querySelectorAll('item, entry'));
+    if (!items.length) return xmlText;
+
+    let ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Marges RSS Adapter//FR\r\nCALSCALE:GREGORIAN\r\n";
+    items.forEach((item, idx) => {
+      const title = item.querySelector('title')?.textContent || 'Événement';
+      const desc = item.querySelector('description, summary, content')?.textContent || '';
+      const dateStr = item.querySelector('pubDate, date, updated, published')?.textContent;
+      const d = dateStr ? new Date(dateStr) : new Date();
+      const end = new Date(d.getTime() + 90 * 60 * 1000); // 1h30 par défaut
+
+      const toIcsDate = (date: Date) => date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+      ics += "BEGIN:VEVENT\r\n";
+      ics += `UID:rss-${idx}-${d.getTime()}@marges\r\n`;
+      ics += `DTSTART:${toIcsDate(d)}\r\n`;
+      ics += `DTEND:${toIcsDate(end)}\r\n`;
+      ics += `SUMMARY:${title.replace(/\r?\n/g, ' ')}\r\n`;
+      if (desc) ics += `DESCRIPTION:${desc.slice(0, 200).replace(/\r?\n/g, ' ')}\r\n`;
+      ics += "END:VEVENT\r\n";
+    });
+    ics += "END:VCALENDAR\r\n";
+    return ics;
+  } catch {
+    return xmlText;
+  }
+}
+
+/**
+ * Télécharge un calendrier distant depuis une URL (iCal, Webcal, ou RSS) avec gestion robuste CORS et proxys de secours.
+ */
+export async function fetchCalendarFromUrl(rawUrl: string): Promise<string> {
+  let url = rawUrl.trim();
+  if (!url) throw new Error('URL de calendrier manquante.');
+
+  // Normalisation des protocoles Webcal et Feed
+  if (url.startsWith('webcal://')) {
+    url = 'https://' + url.slice('webcal://'.length);
+  } else if (url.startsWith('feed://')) {
+    url = 'https://' + url.slice('feed://'.length);
+  }
+
+  // 1. Tenter un fetch direct (navigateur -> serveur universitaire si CORS autorisé)
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        Accept: 'text/calendar, application/rss+xml, application/atom+xml, text/plain, */*',
+      },
+    });
+    clearTimeout(timer);
+    if (res.ok) {
+      const text = await res.text();
+      if (text && (text.includes('BEGIN:VCALENDAR') || text.includes('BEGIN:VEVENT'))) {
+        return text;
+      }
+      if (text && (text.includes('<rss') || text.includes('<feed'))) {
+        return convertRssToIcs(text);
+      }
+    }
+  } catch (directErr) {
+    console.warn('[Calendar Sync] Fetch direct indisponible (CORS ou réseau), repli...', directErr);
+  }
+
+  // 2. Si on est sur le serveur local Node (dev/preview), utiliser l'endpoint proxy interne
+  try {
+    const localProxyUrl = `/api/calendar/proxy?url=${encodeURIComponent(url)}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(localProxyUrl, { signal: controller.signal });
+    clearTimeout(timer);
+    if (res.ok) {
+      const text = await res.text();
+      if (text && (text.includes('BEGIN:VCALENDAR') || text.includes('BEGIN:VEVENT'))) {
+        return text;
+      }
+      if (text && (text.includes('<rss') || text.includes('<feed'))) {
+        return convertRssToIcs(text);
+      }
+    }
+  } catch {}
+
+  // 3. Fallback proxy public (CORS) pour GitHub Pages ou domaines universitaires stricts
+  const publicProxies = [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  ];
+
+  for (const proxyUrl of publicProxies) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(proxyUrl, { signal: controller.signal });
+      clearTimeout(timer);
+      if (res.ok) {
+        const text = await res.text();
+        if (text && (text.includes('BEGIN:VCALENDAR') || text.includes('BEGIN:VEVENT'))) {
+          return text;
+        }
+        if (text && (text.includes('<rss') || text.includes('<feed'))) {
+          return convertRssToIcs(text);
+        }
+      }
+    } catch {}
+  }
+
+  throw new Error(
+    "Impossible de récupérer le flux directement en ligne. Votre université restreint probablement les requêtes externes (sécurité ENT ou CORS). Conseil : téléchargez le fichier .ics depuis votre ENT et déposez-le dans le champ d'importation de fichier."
+  );
+}
+
+export interface ParsedCalendarEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  location?: string;
+  description?: string;
+  category: 'cm' | 'td' | 'tp' | 'habit' | 'other';
+}
+
+/**
+ * Extrait les événements d'un contenu iCalendar (.ics) strictement compris dans une fenêtre temporelle
+ * (en respectant les dates réelles, les fuseaux horaires et les récurrences RRULE éventuelles).
+ */
+export function parseIcsEvents(
+  icsContent: string,
+  rangeStart: Date,
+  rangeEnd: Date
+): ParsedCalendarEvent[] {
+  if (!icsContent || !icsContent.includes('BEGIN:VCALENDAR')) return [];
+  const events: ParsedCalendarEvent[] = [];
+  const seen = new Set<string>();
+
+  try {
+    const icalLib = (ICAL as any).default || ICAL;
+    if (!icalLib || !icalLib.parse) return [];
+
+    const jcal = icalLib.parse(icsContent);
+    const comp = new icalLib.Component(jcal);
+    const vevents = comp.getAllSubcomponents('vevent');
+
+    for (const vevent of vevents) {
+      const ev = new icalLib.Event(vevent);
+      const title = (ev.summary || 'Cours').trim();
+      if (!title) continue;
+
+      let category: 'cm' | 'td' | 'tp' | 'other' = 'cm';
+      const t = title.toUpperCase();
+      if (t.includes('TD')) category = 'td';
+      else if (t.includes('TP')) category = 'tp';
+
+      const location = ev.location ? ev.location.trim() : undefined;
+      const description = ev.description ? ev.description.trim() : undefined;
+
+      if (ev.isRecurring()) {
+        const iter = ev.iterator();
+        let next;
+        while ((next = iter.next())) {
+          const evStart = next.toJSDate();
+          if (evStart > rangeEnd) break;
+          const dur = ev.duration;
+          const evEnd = new Date(evStart.getTime() + (dur ? dur.toSeconds() * 1000 : 3600 * 1000));
+          if (evEnd >= rangeStart && evStart <= rangeEnd) {
+            const key = `${title}|${evStart.getTime()}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              events.push({
+                id: ev.uid ? `${ev.uid}-${evStart.getTime()}` : `ics-${Math.random()}`,
+                title,
+                start: evStart,
+                end: evEnd,
+                location,
+                description,
+                category,
+              });
+            }
+          }
+        }
+      } else {
+        const evStart = ev.startDate.toJSDate();
+        const evEnd = ev.endDate ? ev.endDate.toJSDate() : new Date(evStart.getTime() + 3600 * 1000);
+        if (evEnd >= rangeStart && evStart <= rangeEnd) {
+          const key = `${title}|${evStart.getTime()}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            events.push({
+              id: ev.uid || `ics-${Math.random()}`,
+              title,
+              start: evStart,
+              end: evEnd,
+              location,
+              description,
+              category,
+            });
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Calendar Parse] Erreur parseIcsEvents:', err);
+  }
+
+  events.sort((a, b) => a.start.getTime() - b.start.getTime());
+  return events;
+}
+
+/**
+ * Synchronisation automatique bidirectionnelle de l'emploi du temps entre le stockage local
+ * et le Cloud Supabase (permettant un affichage identique sur PC, mobile et tablette).
+ */
+export async function syncTimetableState(options?: {
+  forcePushLocal?: boolean;
+}): Promise<{
+  synced: boolean;
+  source: 'local' | 'cloud' | 'none';
+  icsContent?: string;
+  icsUrl?: string;
+}> {
+  if (typeof window === 'undefined') {
+    return { synced: false, source: 'none' };
+  }
+
+  const { isConfigured } = getSupabaseCredentials();
+  const localIcs = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
+  const localUrl = loadPersistent(STORAGE_KEYS.TIMETABLE_URL);
+
+  if (!isConfigured) {
+    return {
+      synced: false,
+      source: 'local',
+      icsContent: localIcs || undefined,
+      icsUrl: localUrl || undefined,
+    };
+  }
+
+  let user = null;
+  try {
+    user = await getCurrentUser();
+  } catch {
+    user = null;
+  }
+
+  if (!user) {
+    return {
+      synced: false,
+      source: 'local',
+      icsContent: localIcs || undefined,
+      icsUrl: localUrl || undefined,
+    };
+  }
+
+  try {
+    const cloud = await fetchTimetableFromSupabase();
+
+    // Cas 1 : L'utilisateur a explicitement demandé de pousser son fichier local (forcePushLocal: true)
+    if (options?.forcePushLocal && (localIcs || localUrl)) {
+      console.log('[Marges Sync] Synchronisation du calendrier local vers Supabase Cloud (forcée)...');
+      await syncTimetableToSupabase({
+        icsContent: localIcs || undefined,
+        icsUrl: localUrl || undefined,
+      });
+
+      // Nettoyer les faux créneaux auto-générés dans schedule_events pour éviter les doublons
+      await clearUserScheduleEvents().catch(() => {});
+
+      return {
+        synced: true,
+        source: 'local',
+        icsContent: localIcs || undefined,
+        icsUrl: localUrl || undefined,
+      };
+    }
+
+    // Cas 2 : Le Cloud Supabase possède l'emploi du temps de cet utilisateur
+    if (cloud && (cloud.icsContent || cloud.icsUrl)) {
+      let activeIcs = cloud.icsContent || '';
+      let activeUrl = cloud.icsUrl || '';
+
+      savePersistent(STORAGE_KEYS.TIMETABLE_ICS, activeIcs);
+      savePersistent(STORAGE_KEYS.TIMETABLE_URL, activeUrl);
+
+      // Si l'utilisateur a configuré une URL mais qu'aucun contenu ICS n'est en cache, on le télécharge
+      if (!activeIcs && activeUrl) {
+        try {
+          const fetched = await fetchCalendarFromUrl(activeUrl);
+          if (fetched) {
+            savePersistent(STORAGE_KEYS.TIMETABLE_ICS, fetched);
+            activeIcs = fetched;
+            await syncTimetableToSupabase({ icsContent: fetched }).catch(() => {});
+          }
+        } catch (fetchErr) {
+          console.warn('[Marges Sync] Impossible de télécharger l’URL de calendrier:', fetchErr);
+        }
+      }
+
+      await clearUserScheduleEvents().catch(() => {});
+
+      return {
+        synced: true,
+        source: 'cloud',
+        icsContent: activeIcs || undefined,
+        icsUrl: activeUrl || undefined,
+      };
+    }
+
+    // Cas 3 : Si l'utilisateur a configuré son emploi du temps localement (.ics ou URL) mais que le Cloud est encore vide,
+    // on le synchronise automatiquement vers son compte Supabase !
+    if (localIcs || localUrl) {
+      console.log('[Marges Sync] Synchronisation automatique du calendrier local vers le compte Supabase...');
+      await syncTimetableToSupabase({
+        icsContent: localIcs || undefined,
+        icsUrl: localUrl || undefined,
+      }).catch((e) => console.warn('[Marges Sync] Auto-sync échoué:', e));
+
+      return {
+        synced: true,
+        source: 'local',
+        icsContent: localIcs || undefined,
+        icsUrl: localUrl || undefined,
+      };
+    }
+
+    return {
+      synced: true,
+      source: 'none',
+      icsContent: '',
+      icsUrl: '',
+    };
+  } catch (syncErr) {
+    console.warn('[Marges Sync] Erreur lors de la synchronisation Supabase:', syncErr);
+    return {
+      synced: false,
+      source: 'local',
+      icsContent: localIcs || undefined,
+      icsUrl: localUrl || undefined,
+    };
+  }
+}
+
