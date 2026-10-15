@@ -197,6 +197,7 @@ const subjectsList = subjects.map((s) => ({
     getUserCoursesImmediate,
     getCurrentUserCached,
     createUserCourse,
+    updateUserCourse,
     deleteUserCourse,
     type DbCourse,
   } from '../../utils/supabase';
@@ -592,7 +593,27 @@ const subjectsList = subjects.map((s) => ({
       document.querySelectorAll('.file-item-supabase').forEach((el) => el.remove());
       document.querySelectorAll('.subject-card-supabase').forEach((el) => el.remove());
 
+      // Nettoyer les sous-dossiers devenus vides
+      document.querySelectorAll('.folder-tree .td-section').forEach((sec) => {
+        const fileList = sec.querySelector('.file-list');
+        if (fileList && fileList.children.length === 0) {
+          sec.remove();
+        }
+      });
+
       if (!dbCourses || dbCourses.length === 0) {
+        const statsBar = document.querySelector('.courses-hero .stats-bar');
+        const staticCards = document.querySelectorAll('.subject-card:not(.subject-card-supabase)');
+        const staticFiles = document.querySelectorAll('.static-file-item');
+        if (statsBar) {
+          statsBar.innerHTML = `
+            <span>${staticCards.length} matière${staticCards.length > 1 ? 's' : ''}</span>
+            <span class="sep">·</span>
+            <span>${staticFiles.length} fichier${staticFiles.length > 1 ? 's' : ''}</span>
+            <span class="sep">·</span>
+            <span>Synchronisé</span>
+          `;
+        }
         populateSubjectsSelect();
         return;
       }
@@ -698,20 +719,55 @@ const subjectsList = subjects.map((s) => ({
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                class="btn btn--sm btn-add-in-subject"
-                data-subject-target="${subject}"
-                title="Ajouter un document dans ${subject}"
-              >
-                + Ajouter un cours
-              </button>
+              <div class="subject-header-actions" style="display: flex; gap: 0.4rem; align-items: center;">
+                <button
+                  type="button"
+                  class="btn btn--sm btn-add-in-subject"
+                  data-subject-target="${subject}"
+                  title="Ajouter un document dans ${subject}"
+                >
+                  + Ajouter un cours
+                </button>
+                <button
+                  type="button"
+                  class="btn btn--danger btn--sm btn-del-subject"
+                  data-subject-target="${subject}"
+                  title="Supprimer la matière « ${subject} »"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
             <div class="folder-tree" id="tree-${slugId}"></div>
           `;
 
           card.querySelector('.btn-add-in-subject')?.addEventListener('click', () => {
             openModal('tab-file', subject);
+          });
+
+          card.querySelector('.btn-del-subject')?.addEventListener('click', async () => {
+            if (confirm(`Supprimer définitivement la matière « ${subject} » et tous ses documents ?`)) {
+              // 1. Suppression optimiste immédiate de la carte dans le DOM (0 ms)
+              card?.remove();
+              showToast(`Matière « ${subject} » supprimée.`);
+
+              try {
+                const current = getUserCoursesImmediate();
+                const toDelete = current.filter((c) => {
+                  const isTitle = c.title.toLowerCase().trim() === subject.toLowerCase().trim();
+                  const hasTag = c.tags && c.tags.some((t) => t.toLowerCase().trim() === subject.toLowerCase().trim());
+                  return isTitle || hasTag;
+                });
+
+                for (const c of toDelete) {
+                  await deleteUserCourse(c.id || c.title);
+                }
+
+                await loadAndRenderSupabaseCourses();
+              } catch (err: any) {
+                alert('Erreur lors de la suppression : ' + err.message);
+              }
+            }
           });
 
           container.appendChild(card);
@@ -770,7 +826,7 @@ const subjectsList = subjects.map((s) => ({
               </div>
               <div class="file-actions meta">
                 <button type="button" class="btn btn--sm btn-consult-db">Consulter</button>
-                ${file.id && file.rawCourse && file.rawCourse.title === file.title ? `<button type="button" class="btn btn--danger btn--sm btn-del-db" title="Supprimer">✕</button>` : ''}
+                ${file.id && file.rawCourse ? `<button type="button" class="btn btn--danger btn--sm btn-del-db" title="Supprimer ce document">✕</button>` : ''}
               </div>
             `;
 
@@ -790,13 +846,32 @@ const subjectsList = subjects.map((s) => ({
 
             li.querySelector('.btn-del-db')?.addEventListener('click', async () => {
               if (confirm(`Supprimer définitivement « ${file.title} » ?`)) {
+                // 1. Suppression optimiste immédiate dans l'interface (0 ms)
+                li.remove();
+                const remaining = fileList.querySelectorAll('.file-item').length;
+                const countBadge = tdSection.querySelector('.td-count');
+                if (countBadge) countBadge.textContent = String(remaining);
+                if (remaining === 0) tdSection.remove();
+
+                showToast(`« ${file.title} » supprimé.`);
+
                 try {
-                  if (file.id) await deleteUserCourse(file.id);
+                  // 2. Nettoyage du document local et distant
                   await deleteDocumentFile(file.title, {
                     subject,
                     folder: folderName,
                   });
-                  showToast(`« ${file.title} » supprimé.`);
+
+                  // 3. Mise à jour de la table Supabase
+                  if (file.rawCourse && file.rawCourse.title === file.title) {
+                    if (file.id) await deleteUserCourse(file.id);
+                  } else if (file.rawCourse && file.rawCourse.id) {
+                    const lines = (file.rawCourse.body_md || '').split('\n');
+                    const filteredLines = lines.filter((l) => !l.includes(file.title));
+                    const newBody = filteredLines.join('\n');
+                    await updateUserCourse(file.rawCourse.id, { body_md: newBody });
+                  }
+
                   await loadAndRenderSupabaseCourses();
                 } catch (err: any) {
                   alert(err.message);
@@ -875,15 +950,13 @@ const subjectsList = subjects.map((s) => ({
     async function loadAndRenderSupabaseCourses() {
       // 1. Affichage instantané depuis le cache local (0 milliseconde de latence)
       const immediateCourses = getUserCoursesImmediate();
-      if (immediateCourses && immediateCourses.length > 0) {
-        cachedDbCourses = immediateCourses;
-        renderCoursesGrid(immediateCourses);
-      }
+      cachedDbCourses = immediateCourses;
+      renderCoursesGrid(immediateCourses);
 
       // 2. Synchronisation transparente avec Supabase en arrière-plan
       try {
         const remoteCourses = await fetchUserCourses().catch(() => immediateCourses);
-        if (remoteCourses && remoteCourses.length > 0) {
+        if (remoteCourses) {
           cachedDbCourses = remoteCourses;
           renderCoursesGrid(remoteCourses);
         }
@@ -891,6 +964,16 @@ const subjectsList = subjects.map((s) => ({
         console.warn('[Courses] Synchronisation réseau en arrière-plan:', err);
       }
     }
+
+    // Réagir instantanément aux créations/suppressions de cours déclenchées depuis d'autres pages ou onglets
+    window.addEventListener('marges:courses-changed', () => {
+      loadAndRenderSupabaseCourses();
+    });
+    window.addEventListener('storage', (e) => {
+      if (e.key && (e.key.startsWith('marges_user_courses_') || e.key === 'marges_deleted_courses_tombstones')) {
+        loadAndRenderSupabaseCourses();
+      }
+    });
 
     loadAndRenderSupabaseCourses();
 
