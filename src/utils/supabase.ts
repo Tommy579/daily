@@ -313,12 +313,95 @@ export function getCurrentUserCached(): User | null {
   return null;
 }
 
+const DELETED_COURSES_KEY = 'marges_deleted_courses_tombstones';
+
+export function getDeletedCourseTombstones(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_COURSES_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.map((s: string) => String(s).toLowerCase().trim()) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function addDeletedCourseTombstone(idOrTitle: string): void {
+  if (typeof window === 'undefined' || !idOrTitle) return;
+  try {
+    const set = getDeletedCourseTombstones();
+    set.add(String(idOrTitle).toLowerCase().trim());
+    localStorage.setItem(DELETED_COURSES_KEY, JSON.stringify(Array.from(set).slice(-500)));
+  } catch {}
+}
+
+export function clearCourseTombstone(idOrTitle: string): void {
+  if (typeof window === 'undefined' || !idOrTitle) return;
+  try {
+    const set = getDeletedCourseTombstones();
+    set.delete(String(idOrTitle).toLowerCase().trim());
+    localStorage.setItem(DELETED_COURSES_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
+
+export function notifyCoursesChanged(action: 'create' | 'update' | 'delete' | 'clear', payload?: any): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.dispatchEvent(
+      new CustomEvent('marges:courses-changed', {
+        detail: { action, payload, timestamp: Date.now() },
+      })
+    );
+  } catch {}
+}
+
+export async function cleanupCourseFiles(course: DbCourse, userId?: string): Promise<void> {
+  if (typeof window === 'undefined' || !course) return;
+  const user = getCurrentUserCached();
+  const activeId = userId || user?.id || '';
+  try {
+    const { deleteDocumentFile } = await import('./fileStorage');
+
+    // 1. Si le titre correspond à un fichier (ex: document.pdf, TD1.docx)
+    if (course.title && course.title.includes('.')) {
+      const subject = course.tags?.[0];
+      const folder = course.tags?.[1];
+      await deleteDocumentFile(course.title, { userId: activeId, subject, folder }).catch(() => {});
+    }
+
+    // 2. Si le corps markdown référence des fichiers dans des sous-dossiers
+    if (course.body_md) {
+      const lines = course.body_md.split('\n');
+      let currentFolder = 'Documents';
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('### ')) {
+          currentFolder = trimmed.replace(/^###\s+/, '').trim();
+        } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+          const raw = trimmed.replace(/^[-*]\s+/, '').trim();
+          const linkMatch = raw.match(/^\[([^\]]+)\]/);
+          const fileName = (linkMatch ? linkMatch[1] : raw).trim();
+          if (fileName && fileName.includes('.')) {
+            await deleteDocumentFile(fileName, {
+              userId: activeId,
+              subject: course.title,
+              folder: currentFolder,
+            }).catch(() => {});
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Course Cleanup] Erreur suppression fichiers associés:', err);
+  }
+}
+
 export function getUserCoursesImmediate(): DbCourse[] {
   if (typeof window === 'undefined') return [];
   const user = getCurrentUserCached();
   if (user?.id) {
-    const list = getLocalUserCourses(user.id);
-    if (list && list.length > 0) return list;
+    return getLocalUserCourses(user.id);
   }
   // Si pas de session explicite, récupérer le dernier cache de cours utilisateur valide
   for (let i = 0; i < localStorage.length; i++) {
@@ -361,9 +444,25 @@ export async function fetchUserCourses(): Promise<DbCourse[]> {
     const { data, error } = await query;
     if (error) throw error;
 
+    const tombstones = getDeletedCourseTombstones();
+
     const remoteFiltered = (data || []).filter(
-      (c) => c.title !== TIMETABLE_SYNC_TITLE && (!c.tags || !c.tags.includes(SYSTEM_TAG))
+      (c) =>
+        c.title !== TIMETABLE_SYNC_TITLE &&
+        (!c.tags || !c.tags.includes(SYSTEM_TAG)) &&
+        !tombstones.has((c.id || '').toLowerCase().trim()) &&
+        !tombstones.has(c.title.toLowerCase().trim())
     );
+
+    // Supprimer silencieusement sur Supabase les éléments qui étaient dans les tombstones
+    (data || []).forEach((c) => {
+      const isDead =
+        tombstones.has((c.id || '').toLowerCase().trim()) ||
+        tombstones.has(c.title.toLowerCase().trim());
+      if (isDead && c.id && isValidUuid(c.id)) {
+        Promise.resolve(sb.from('courses').delete().eq('id', c.id)).catch(() => {});
+      }
+    });
 
     // Synchronisation bidirectionnelle intelligente :
     if (activeId) {
@@ -372,7 +471,11 @@ export async function fetchUserCourses(): Promise<DbCourse[]> {
         // Vérifier si des cours créés localement (ex: hors-ligne) ne sont pas encore dans Supabase
         const remoteTitles = new Set(remoteFiltered.map((r) => r.title.toLowerCase().trim()));
         const missingRemotely = localCourses.filter(
-          (l) => (!l.id || !isValidUuid(l.id)) && !remoteTitles.has(l.title.toLowerCase().trim())
+          (l) =>
+            (!l.id || !isValidUuid(l.id)) &&
+            !remoteTitles.has(l.title.toLowerCase().trim()) &&
+            !tombstones.has((l.id || '').toLowerCase().trim()) &&
+            !tombstones.has(l.title.toLowerCase().trim())
         );
 
         if (missingRemotely.length > 0) {
@@ -384,22 +487,29 @@ export async function fetchUserCourses(): Promise<DbCourse[]> {
 
         saveLocalUserCourses(activeId, remoteFiltered);
         return remoteFiltered;
-      } else if (localCourses.length > 0) {
-        // La base Supabase est vide pour cet utilisateur, mais des cours existent localement (ex: importés sur PC) !
-        // On les pousse immédiatement vers Supabase pour qu'ils soient synchronisés sur le mobile.
-        try {
-          const pushed = await createBatchUserCourses(localCourses);
-          if (pushed && pushed.length > 0) {
-            saveLocalUserCourses(activeId, pushed);
-            return pushed;
-          }
-        } catch (pushErr) {
-          console.warn('[Supabase Sync] Échec téléversement initial des cours:', pushErr);
-        }
-        return localCourses;
       } else {
-        saveLocalUserCourses(activeId, []);
-        return [];
+        // Supabase est vide ou tous les cours distants ont été supprimés
+        // Ne pousser les cours locaux que s'il ne s'agit pas de tombstones et que des cours existent
+        const validLocal = localCourses.filter(
+          (l) =>
+            !tombstones.has((l.id || '').toLowerCase().trim()) &&
+            !tombstones.has(l.title.toLowerCase().trim())
+        );
+        if (validLocal.length > 0 && tombstones.size === 0) {
+          try {
+            const pushed = await createBatchUserCourses(validLocal);
+            if (pushed && pushed.length > 0) {
+              saveLocalUserCourses(activeId, pushed);
+              return pushed;
+            }
+          } catch (pushErr) {
+            console.warn('[Supabase Sync] Échec téléversement initial des cours:', pushErr);
+          }
+          return validLocal;
+        } else {
+          saveLocalUserCourses(activeId, []);
+          return [];
+        }
       }
     }
 
@@ -415,15 +525,12 @@ export async function fetchUserCourses(): Promise<DbCourse[]> {
     return await Promise.race([remoteFetch(), timeout]);
   } catch (err) {
     console.warn('[Supabase Courses] Requête réseau expirée ou indisponible, utilisation du cache immédiat:', err);
-    if (localCourses.length > 0) {
-      return localCourses;
-    }
-    throw err;
+    return localCourses;
   }
 }
 
 export async function createUserCourse(course: Omit<DbCourse, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<DbCourse> {
-  const user = await getCurrentUser();
+  const user = getCurrentUserCached() || (await getCurrentUser().catch(() => null));
   if (!user) {
     throw new Error('Vous devez être connecté à votre compte pour enregistrer un cours.');
   }
@@ -440,10 +547,14 @@ export async function createUserCourse(course: Omit<DbCourse, 'id' | 'user_id' |
     updated_at: now,
   };
 
+  clearCourseTombstone(newCourse.title);
+  if (newCourse.id) clearCourseTombstone(newCourse.id);
+
   // Sauvegarde optimiste locale dédiée à ce compte
   const localList = getLocalUserCourses(user.id);
   const updatedList = [newCourse, ...localList.filter((c) => (newCourse.id && c.id !== newCourse.id) || c.title !== newCourse.title)];
   saveLocalUserCourses(user.id, updatedList);
+  notifyCoursesChanged('create', newCourse);
 
   // Synchronisation distante Supabase
   try {
@@ -475,6 +586,7 @@ export async function createUserCourse(course: Omit<DbCourse, 'id' | 'user_id' |
           if (idx !== -1) updatedList[idx] = retry.data;
           else updatedList.unshift(retry.data);
           saveLocalUserCourses(user.id, updatedList);
+          notifyCoursesChanged('create', retry.data);
           return retry.data;
         }
       }
@@ -483,6 +595,7 @@ export async function createUserCourse(course: Omit<DbCourse, 'id' | 'user_id' |
       if (idx !== -1) updatedList[idx] = data;
       else updatedList.unshift(data);
       saveLocalUserCourses(user.id, updatedList);
+      notifyCoursesChanged('create', data);
       return data;
     }
   } catch (netErr) {
@@ -494,7 +607,7 @@ export async function createUserCourse(course: Omit<DbCourse, 'id' | 'user_id' |
 
 export async function createBatchUserCourses(courses: Array<Omit<DbCourse, 'id' | 'user_id' | 'created_at' | 'updated_at'>>): Promise<DbCourse[]> {
   if (!courses || courses.length === 0) return [];
-  const user = await getCurrentUser();
+  const user = getCurrentUserCached() || (await getCurrentUser().catch(() => null));
   if (!user) {
     throw new Error('Vous devez être connecté à votre compte pour importer des cours.');
   }
@@ -512,6 +625,11 @@ export async function createBatchUserCourses(courses: Array<Omit<DbCourse, 'id' 
     };
   });
 
+  coursesWithUser.forEach((c) => {
+    clearCourseTombstone(c.title);
+    if (c.id) clearCourseTombstone(c.id);
+  });
+
   // Sauvegarde optimiste immédiate dans le stockage local du compte
   const currentLocal = getLocalUserCourses(user.id);
   const existingIds = new Set(currentLocal.map((c) => c.id).filter(Boolean));
@@ -522,6 +640,7 @@ export async function createBatchUserCourses(courses: Array<Omit<DbCourse, 'id' 
   );
   const merged = [...toAddLocally, ...currentLocal];
   saveLocalUserCourses(user.id, merged);
+  notifyCoursesChanged('create', coursesWithUser);
 
   // Synchronisation distante Supabase
   try {
@@ -552,11 +671,13 @@ export async function createBatchUserCourses(courses: Array<Omit<DbCourse, 'id' 
       if (retry.data && retry.data.length > 0) {
         const updated = [...retry.data, ...currentLocal.filter((c) => !retry.data.some((d) => d.title.toLowerCase() === c.title.toLowerCase()))];
         saveLocalUserCourses(user.id, updated);
+        notifyCoursesChanged('create', retry.data);
         return retry.data;
       }
     } else if (data && data.length > 0) {
       const updated = [...data, ...currentLocal.filter((c) => !data.some((d) => d.id === c.id || d.title.toLowerCase() === c.title.toLowerCase()))];
       saveLocalUserCourses(user.id, updated);
+      notifyCoursesChanged('create', data);
       return data;
     }
   } catch (netErr) {
@@ -567,7 +688,7 @@ export async function createBatchUserCourses(courses: Array<Omit<DbCourse, 'id' 
 }
 
 export async function updateUserCourse(id: string, updates: Partial<Omit<DbCourse, 'id' | 'user_id' | 'created_at'>>): Promise<DbCourse> {
-  const user = await getCurrentUser().catch(() => null);
+  const user = getCurrentUserCached() || (await getCurrentUser().catch(() => null));
   const now = new Date().toISOString();
   let updatedCourse: DbCourse = {
     id,
@@ -584,6 +705,7 @@ export async function updateUserCourse(id: string, updates: Partial<Omit<DbCours
       updatedCourse = { ...local[idx], ...updates, updated_at: now };
       local[idx] = updatedCourse;
       saveLocalUserCourses(user.id, local);
+      notifyCoursesChanged('update', updatedCourse);
     }
   }
 
@@ -603,6 +725,7 @@ export async function updateUserCourse(id: string, updates: Partial<Omit<DbCours
         if (idx !== -1) {
           local[idx] = data;
           saveLocalUserCourses(user.id, local);
+          notifyCoursesChanged('update', data);
         }
         return data;
       }
@@ -615,29 +738,69 @@ export async function updateUserCourse(id: string, updates: Partial<Omit<DbCours
 }
 
 export async function deleteUserCourse(id: string): Promise<void> {
-  const user = await getCurrentUser().catch(() => null);
-  if (user) {
-    const local = getLocalUserCourses(user.id);
-    saveLocalUserCourses(user.id, local.filter((c) => c.id !== id));
-  }
-  if (isValidUuid(id)) {
-    try {
-      const sb = getSupabase();
-      await sb.from('courses').delete().eq('id', id);
-    } catch (err) {
-      console.warn('[Supabase Course] Échec suppression distante (supprimé localement):', err);
+  const user = getCurrentUserCached() || (await getCurrentUser().catch(() => null));
+  const activeId = user?.id;
+
+  addDeletedCourseTombstone(id);
+
+  if (activeId) {
+    const local = getLocalUserCourses(activeId);
+    const targetCourse = local.find(
+      (c) => (c.id && c.id === id) || c.title.toLowerCase().trim() === id.toLowerCase().trim()
+    );
+    if (targetCourse) {
+      addDeletedCourseTombstone(targetCourse.title);
+      if (targetCourse.id) addDeletedCourseTombstone(targetCourse.id);
+      cleanupCourseFiles(targetCourse, activeId).catch(() => {});
     }
+
+    const updated = local.filter(
+      (c) => !(c.id && c.id === id) && c.title.toLowerCase().trim() !== id.toLowerCase().trim()
+    );
+    saveLocalUserCourses(activeId, updated);
+  }
+
+  notifyCoursesChanged('delete', id);
+
+  try {
+    const sb = getSupabase();
+    if (isValidUuid(id)) {
+      await sb.from('courses').delete().eq('id', id);
+    } else if (activeId) {
+      await sb.from('courses').delete().eq('user_id', activeId).eq('title', id);
+    }
+  } catch (err) {
+    console.warn('[Supabase Course] Échec suppression distante (supprimé localement):', err);
   }
 }
 
 export async function deleteBatchUserCourses(ids: string[]): Promise<void> {
   if (!ids || ids.length === 0) return;
-  const user = await getCurrentUser().catch(() => null);
-  if (user) {
-    const toDel = new Set(ids);
-    const local = getLocalUserCourses(user.id);
-    saveLocalUserCourses(user.id, local.filter((c) => c.id && !toDel.has(c.id)));
+  const user = getCurrentUserCached() || (await getCurrentUser().catch(() => null));
+  const activeId = user?.id;
+
+  ids.forEach((id) => addDeletedCourseTombstone(id));
+
+  if (activeId) {
+    const toDel = new Set(ids.map((i) => i.toLowerCase().trim()));
+    const local = getLocalUserCourses(activeId);
+    const targetCourses = local.filter(
+      (c) => (c.id && toDel.has(c.id.toLowerCase().trim())) || toDel.has(c.title.toLowerCase().trim())
+    );
+    targetCourses.forEach((tc) => {
+      addDeletedCourseTombstone(tc.title);
+      if (tc.id) addDeletedCourseTombstone(tc.id);
+      cleanupCourseFiles(tc, activeId).catch(() => {});
+    });
+
+    const remaining = local.filter(
+      (c) => !(c.id && toDel.has(c.id.toLowerCase().trim())) && !toDel.has(c.title.toLowerCase().trim())
+    );
+    saveLocalUserCourses(activeId, remaining);
   }
+
+  notifyCoursesChanged('delete', ids);
+
   const validIds = ids.filter((id) => isValidUuid(id));
   if (validIds.length > 0) {
     try {
@@ -650,15 +813,28 @@ export async function deleteBatchUserCourses(ids: string[]): Promise<void> {
 }
 
 export async function clearUserCourses(): Promise<void> {
-  const user = await getCurrentUser().catch(() => null);
-  if (user) {
-    saveLocalUserCourses(user.id, []);
+  const user = getCurrentUserCached() || (await getCurrentUser().catch(() => null));
+  const activeId = user?.id;
+
+  if (activeId) {
+    const local = getLocalUserCourses(activeId);
+    local.forEach((c) => {
+      if (c.id) addDeletedCourseTombstone(c.id);
+      addDeletedCourseTombstone(c.title);
+      cleanupCourseFiles(c, activeId).catch(() => {});
+    });
+    saveLocalUserCourses(activeId, []);
+  }
+
+  notifyCoursesChanged('clear');
+
+  if (activeId) {
     try {
       const sb = getSupabase();
       await sb
         .from('courses')
         .delete()
-        .eq('user_id', user.id)
+        .eq('user_id', activeId)
         .neq('title', TIMETABLE_SYNC_TITLE);
     } catch (err) {
       console.warn('[Supabase Courses] Échec purge distante:', err);

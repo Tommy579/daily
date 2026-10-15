@@ -808,23 +808,16 @@ const localPresetCourses = getCourses().map((s) => {
     async function loadCourses() {
       // 1. Chargement instantané depuis le cache local (0 ms de latence)
       const immediate = getUserCoursesImmediate();
-      if (immediate && immediate.length > 0) {
-        cachedCourses = immediate;
-        if (badgeCourses) badgeCourses.textContent = String(cachedCourses.length);
-        renderCourses();
-        if (coursesLoading) coursesLoading.style.display = 'none';
-        if (coursesEmpty) coursesEmpty.style.display = 'none';
-      } else if (cachedCourses.length === 0) {
-        if (coursesLoading) {
-          coursesLoading.style.display = 'block';
-          coursesLoading.textContent = 'Chargement de vos cours...';
-        }
-      }
+      cachedCourses = immediate;
+      if (badgeCourses) badgeCourses.textContent = String(cachedCourses.length);
+      renderCourses();
+      if (coursesLoading) coursesLoading.style.display = 'none';
+      if (coursesEmpty) coursesEmpty.style.display = cachedCourses.length === 0 ? 'block' : 'none';
 
       // 2. Synchronisation distante en arrière-plan sans perturber l'interface
       try {
         const remote = await fetchUserCourses().catch(() => immediate);
-        if (remote && remote.length > 0) {
+        if (remote) {
           const isDifferent =
             remote.length !== cachedCourses.length ||
             JSON.stringify(remote.map((r) => r.id)) !== JSON.stringify(cachedCourses.map((c) => c.id));
@@ -842,6 +835,16 @@ const localPresetCourses = getCourses().map((s) => {
         if (coursesEmpty) coursesEmpty.style.display = cachedCourses.length === 0 ? 'block' : 'none';
       }
     }
+
+    // Réagir immédiatement aux créations/suppressions de cours déclenchées depuis d'autres pages ou onglets
+    window.addEventListener('marges:courses-changed', () => {
+      loadCourses().catch(() => {});
+    });
+    window.addEventListener('storage', (e) => {
+      if (e.key && (e.key.startsWith('marges_user_courses_') || e.key === 'marges_deleted_courses_tombstones')) {
+        loadCourses().catch(() => {});
+      }
+    });
 
     function updateSelectionUI() {
       const validSelected = Array.from(selectedCourseIds).filter((id) =>
@@ -938,15 +941,24 @@ const localPresetCourses = getCourses().map((s) => {
 
         card.querySelector('.btn-del-course')?.addEventListener('click', async () => {
           if (confirm(`Supprimer définitivement le cours "${c.title}" ?`)) {
+            // 1. Suppression optimiste immédiate dans l'UI (0 ms)
+            card.remove();
+            if (c.id) selectedCourseIds.delete(c.id);
+            cachedCourses = cachedCourses.filter((item) => (c.id ? item.id !== c.id : item.title !== c.title));
+            if (badgeCourses) badgeCourses.textContent = String(cachedCourses.length);
+            updateSelectionUI();
+            if (cachedCourses.length === 0 && coursesEmpty) {
+              coursesEmpty.style.display = 'block';
+              if (coursesSelectionBar) coursesSelectionBar.style.display = 'none';
+            }
+
             try {
-              if (c.id) {
-                await deleteUserCourse(c.id);
-                selectedCourseIds.delete(c.id);
-              }
-              notify('Cours supprimé.');
-              await loadCourses();
+              const courseIdentifier = c.id || c.title;
+              await deleteUserCourse(courseIdentifier);
+              notify('Cours supprimé avec succès.');
             } catch (err: any) {
               notify(formatSupabaseError(err), true);
+              await loadCourses();
             }
           }
         });
@@ -977,14 +989,23 @@ const localPresetCourses = getCourses().map((s) => {
           : `Supprimer définitivement les ${count} cours sélectionnés ? Cette action est irréversible.`;
 
       if (confirm(confirmMsg)) {
+        const idsToDelete = Array.from(selectedCourseIds);
+        const toDeleteSet = new Set(idsToDelete);
+
+        // 1. Suppression optimiste immédiate dans l'interface (0 ms)
+        cachedCourses = cachedCourses.filter((c) => c.id && !toDeleteSet.has(c.id));
+        selectedCourseIds.clear();
+        if (badgeCourses) badgeCourses.textContent = String(cachedCourses.length);
+        renderCourses();
+        updateSelectionUI();
+
         try {
           notify(`Suppression de ${count} cours en cours...`);
-          await deleteBatchUserCourses(Array.from(selectedCourseIds));
-          selectedCourseIds.clear();
+          await deleteBatchUserCourses(idsToDelete);
           notify(count === 1 ? 'Cours supprimé avec succès.' : `${count} cours supprimés avec succès.`);
-          await loadCourses();
         } catch (err: any) {
           notify('Erreur lors de la suppression : ' + formatSupabaseError(err), true);
+          await loadCourses();
         }
       }
     });
@@ -992,14 +1013,20 @@ const localPresetCourses = getCourses().map((s) => {
     btnPurgeAllCourses?.addEventListener('click', async () => {
       if (cachedCourses.length === 0) return;
       if (confirm(`Attention : Voulez-vous vraiment supprimer l'intégralité de vos ${cachedCourses.length} cours ?\n\nCette action est irréversible. Votre emploi du temps sera conservé.\n\nContinuer ?`)) {
+        // 1. Suppression optimiste immédiate dans l'interface (0 ms)
+        cachedCourses = [];
+        selectedCourseIds.clear();
+        if (badgeCourses) badgeCourses.textContent = '0';
+        renderCourses();
+        updateSelectionUI();
+
         try {
           notify('Suppression de tous vos cours en cours...');
           await clearUserCourses();
-          selectedCourseIds.clear();
           notify('Tous vos cours ont été supprimés avec succès.');
-          await loadCourses();
         } catch (err: any) {
           notify('Erreur lors de la suppression : ' + formatSupabaseError(err), true);
+          await loadCourses();
         }
       }
     });

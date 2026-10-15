@@ -134,8 +134,7 @@ import Icon from './Icon.astro';
         <input
           type="file"
           id="course-folder-input"
-          webkitdirectory
-          directory
+          {...{ webkitdirectory: '', directory: '' }}
           multiple
           class="input-file"
         />

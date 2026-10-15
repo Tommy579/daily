@@ -1,4 +1,4 @@
-import { saveDocumentBlob } from './fileStorage';
+import { saveDocumentFile } from './fileStorage';
 import { createBatchUserCourses, getCurrentUserCached } from './supabase';
 
 export interface ImportFolderResult {
@@ -9,7 +9,7 @@ export interface ImportFolderResult {
 
 /**
  * Traite et enregistre l'arborescence complète d'un dossier sélectionné par l'utilisateur.
- * Sauvegarde les fichiers PDF dans IndexedDB et crée les matières correspondantes dans Supabase.
+ * Sauvegarde les fichiers dans IndexedDB et Supabase Storage, puis crée les matières correspondantes dans Supabase.
  */
 export async function processFolderUpload(
   fileList: FileList | File[],
@@ -25,23 +25,12 @@ export async function processFolderUpload(
   const user = getCurrentUserCached();
   const userId = user?.id || '';
 
-  // 1. Sauvegarde des fichiers dans IndexedDB pour lecture immédiate
   let pdfCount = 0;
-  for (let i = 0; i < files.length; i++) {
-    const f = files[i];
-    const isPdf = f.name.toLowerCase().endsWith('.pdf');
-    if (isPdf) pdfCount++;
-
-    try {
-      if (userId) await saveDocumentBlob(`doc:${userId}:${f.name}`, f);
-      await saveDocumentBlob(`doc:${f.name}`, f);
-      await saveDocumentBlob(f.name, f);
-    } catch (e) {
-      console.warn('[courseImport] Erreur sauvegarde document:', f.name, e);
-    }
+  for (const f of files) {
+    if (f.name.toLowerCase().endsWith('.pdf')) pdfCount++;
   }
 
-  // 2. Détection de la hiérarchie relative
+  // Détection de la hiérarchie relative
   const subjectsMap: Record<string, { subfolders: Record<string, string[]>; rootFiles: string[] }> = {};
   const paths = files.map((f) => (f.webkitRelativePath || f.name).split('/').filter(Boolean));
   const topSegments = new Set(paths.map((p) => p[0]));
@@ -65,10 +54,14 @@ export async function processFolderUpload(
       }
     }
 
-    // Sauvegarde également avec la clé contextuelle complète
+    // Sauvegarde unifiée dans IndexedDB locale et téléversement transparent vers Supabase Storage
     if (fileObj) {
-      saveDocumentBlob(`doc:${userId}:${subjectName}:${category}:${fileName}`, fileObj).catch(() => {});
-      saveDocumentBlob(`${subjectName}/${category}/${fileName}`, fileObj).catch(() => {});
+      saveDocumentFile(fileObj, {
+        userId,
+        subject: subjectName,
+        folder: category,
+        fileName,
+      }).catch((e) => console.warn('[courseImport] Erreur sauvegarde document:', fileName, e));
     }
 
     if (!subjectsMap[subjectName]) {
