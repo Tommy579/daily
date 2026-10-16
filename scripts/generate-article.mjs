@@ -254,6 +254,7 @@ ${
 2. Rigueur philosophique :
 - Ne cite que des auteurs, ouvrages et concepts philosophiques réels et vérifiables (ex: Kant, Arendt, Simondon, Barthes, Jonas, Merleau-Ponty, Benjamin, Illich, Spinoza, etc.).
 - N'invente aucune citation ni référence bibliographique.
+- Utilise des termes philosophiques sans qu'ils soient trop compliqués à comprendre pour le lecteur lambda.
 
 3. Format Markdown et Frontmatter YAML :
 Le texte DOIT commencer par le frontmatter YAML exact suivant :
