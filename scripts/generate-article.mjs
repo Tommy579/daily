@@ -42,14 +42,41 @@ function getExistingArticles() {
 const existing = getExistingArticles();
 const existingTitles = existing.map((a) => a.title);
 
-// Sélection intelligente d'un thème et d'un format (ou argument en ligne de commande)
-const themeArg = process.argv[2] && THEMES.includes(process.argv[2])
-  ? process.argv[2]
-  : THEMES[Math.floor(Math.random() * THEMES.length)];
+// Arguments en ligne de commande :
+// node scripts/generate-article.mjs [theme] [format] [subject]
+let rawTheme = (process.argv[2] || '').trim().toLowerCase();
+let rawFormat = (process.argv[3] || '').trim().toLowerCase();
+let rawSubject = (process.argv[4] || '').trim();
 
-const typeArg = process.argv[3] && FORMATS.includes(process.argv[3])
-  ? process.argv[3]
+// Si l'utilisateur a tapé son sujet dans le 1er paramètre (champ thème) au lieu d'un des 8 thèmes
+if (rawTheme && !THEMES.includes(rawTheme) && !rawSubject) {
+  rawSubject = process.argv[2].trim();
+  rawTheme = '';
+}
+
+// Fonction de détection intelligente du grand thème le plus proche selon les mots-clés du sujet libre
+function inferThemeFromSubject(text) {
+  const t = text.toLowerCase();
+  if (/conscien|senti|âme|mort|pensée|esprit|intérior|illusion|vivant/i.test(t)) return 'conscience';
+  if (/lang|mot|parol|silence|écr|dire|texte|poés|rhétor|bavard/i.test(t)) return 'langage';
+  if (/éthique|moral|just|bien|mal|responsab|faute|devoir|dignité|valeur/i.test(t)) return 'ethique';
+  if (/travail|métier|outil|techni|ouvri|aliénat|repos|effort|automatis|geste/i.test(t)) return 'travail';
+  if (/créat|art|styl|origin|génie|imagin|beauté|imitation|invent/i.test(t)) return 'creativite';
+  if (/relat|amour|ami|solitud|autrui|autre|empath|lien|social|polit/i.test(t)) return 'relations';
+  if (/pouvoir|contrôl|surveill|autorit|dominat|polit|état|loi|gouvern/i.test(t)) return 'pouvoir';
+  if (/attent|mémoir|ennui|temps|vitess|distract|lectur|sommeil|présen/i.test(t)) return 'attention';
+  return null;
+}
+
+const themeArg = THEMES.includes(rawTheme)
+  ? rawTheme
+  : (rawSubject && inferThemeFromSubject(rawSubject)) || THEMES[Math.floor(Math.random() * THEMES.length)];
+
+const typeArg = FORMATS.includes(rawFormat)
+  ? rawFormat
   : FORMATS[Math.floor(Math.random() * FORMATS.length)];
+
+const subjectArg = rawSubject;
 
 const todayDate = new Date().toISOString().slice(0, 10);
 
@@ -201,17 +228,31 @@ async function generateWithFallbackAndRetry(prompt) {
 async function generateDailyContent() {
   console.log(`🤖 [Gemini] Lancement de la génération pour le ${todayDate}`);
   console.log(`   Format : ${typeArg} | Thème : ${themeArg}`);
+  if (subjectArg) {
+    console.log(`   Sujet libre imposé : « ${subjectArg} »`);
+  }
   console.log(`   Titres existants à ne pas répéter (${existingTitles.length}) :`, existingTitles.slice(0, 5));
 
+  const subjectDirective = subjectArg
+    ? `\nSUJET OU QUESTION CENTRALE IMPOSÉE :
+Tu dois impérativement et de façon centrale traiter la question ou le sujet suivant :
+« ${subjectArg} »
+Rattache ce sujet au grand thème philosophique "${themeArg}".\n`
+    : '';
+
   const prompt = `Tu es un philosophe et écrivain exigeant pour la revue "Marges" (réflexion philosophique profonde sur l'intelligence artificielle et la condition humaine).
-Écris un article philosophique original, percutant et élégant, sur le thème "${themeArg}" sous la forme d'un "${typeArg}".
+Écris un article philosophique original, percutant et élégant, sur le thème "${themeArg}" sous la forme d'un "${typeArg}".${subjectDirective}
 
 CONSIGNES STRICTES :
-1. Titre et sujet UNIQUES : Ne traite pas un sujet déjà abordé dans ces titres :
-${existingTitles.map((t) => `- "${t}"`).join('\n')}
+1. Titre et sujet :
+${
+  subjectArg
+    ? `- Développe avec exigence le sujet imposé « ${subjectArg} ». Le titre doit être évocateur, inspiré et directement lié à cette réflexion philosophique.`
+    : `- Titre et sujet UNIQUES : Ne traite pas un sujet déjà abordé dans ces titres :\n${existingTitles.map((t) => `- "${t}"`).join('\n')}`
+}
 
 2. Rigueur philosophique :
-- Ne cite que des auteurs, ouvrages et concepts philosophiques réels et vérifiables (ex: Kant, Arendt, Simondon, Barthes, Jonas, Merleau-Ponty, Benjamin, Illich, etc.).
+- Ne cite que des auteurs, ouvrages et concepts philosophiques réels et vérifiables (ex: Kant, Arendt, Simondon, Barthes, Jonas, Merleau-Ponty, Benjamin, Illich, Spinoza, etc.).
 - N'invente aucune citation ni référence bibliographique.
 
 3. Format Markdown et Frontmatter YAML :

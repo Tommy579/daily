@@ -14,8 +14,12 @@ on:
         required: true
         type: boolean
         default: true
+      subject:
+        description: "Sujet ou question libre (ex: 'Le regret chez les machines', 'Spinoza et les algorithmes')"
+        required: false
+        default: ""
       theme:
-        description: "Thème de l'article (vide pour aléatoire : conscience, langage, ethique, travail, creativite, relations, pouvoir, attention)"
+        description: "Grand thème du site (optionnel si sujet renseigné : conscience, langage, ethique, travail, creativite, relations, pouvoir, attention)"
         required: false
         default: ""
       format:
@@ -64,6 +68,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           INPUT_THEME: ${{ inputs.theme }}
           INPUT_FORMAT: ${{ inputs.format }}
+          INPUT_SUBJECT: ${{ inputs.subject }}
         run: |
           if [ -z "$GEMINI_API_KEY" ]; then
             echo "❌ Erreur : Le secret GEMINI_API_KEY n'est pas configuré dans les secrets du dépôt."
@@ -71,7 +76,7 @@ jobs:
           fi
 
           echo "Lancement de generate-article.mjs..."
-          node scripts/generate-article.mjs "$INPUT_THEME" "$INPUT_FORMAT"
+          node scripts/generate-article.mjs "$INPUT_THEME" "$INPUT_FORMAT" "$INPUT_SUBJECT"
 
       # -------------------------------------------------------------
       # ÉTAPE : Commit et push du nouveau texte sur la branche active
