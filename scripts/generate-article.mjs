@@ -5,7 +5,7 @@ import { GoogleGenAI } from '@google/genai';
 // 1. Vérification de la clé API
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
-  console.error('❌ Erreur : Variable d\'environnement GEMINI_API_KEY manquante.');
+  console.error("❌ Erreur : Variable d'environnement GEMINI_API_KEY manquante.");
   process.exit(1);
 }
 
@@ -53,6 +53,151 @@ const typeArg = process.argv[3] && FORMATS.includes(process.argv[3])
 
 const todayDate = new Date().toISOString().slice(0, 10);
 
+// Délais de rétrogradation exponentielle (Exponential Backoff)
+const RETRY_DELAYS_MS = [10_000, 25_000, 60_000, 120_000];
+const MAX_RETRIES = RETRY_DELAYS_MS.length;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Détecte si une erreur de l'API Gemini est temporaire (503, 429, 500, etc.)
+ */
+function isTransientError(err) {
+  if (!err) return false;
+  const msg = typeof err === 'string'
+    ? err
+    : `${err.message || ''} ${err.status || ''} ${err.statusText || ''} ${JSON.stringify(err)}`;
+
+  const patterns = [
+    /503/,
+    /UNAVAILABLE/i,
+    /429/,
+    /RESOURCE_EXHAUSTED/i,
+    /500/,
+    /INTERNAL/i,
+    /502/,
+    /BAD_GATEWAY/i,
+    /504/,
+    /GATEWAY_TIMEOUT/i,
+    /high demand/i,
+    /spikes in demand/i,
+    /temporarily unavailable/i,
+    /overloaded/i,
+    /rate limit/i,
+    /quota exceeded/i,
+    /fetch failed/i,
+    /ECONNRESET/i,
+    /ETIMEDOUT/i,
+  ];
+
+  return patterns.some((p) => p.test(msg));
+}
+
+/**
+ * Extrait le code ou nom d'erreur pour les logs
+ */
+function getErrorSummary(err) {
+  if (!err) return 'UNKNOWN';
+  if (err.status) return String(err.status);
+  const msg = err.message || '';
+  const match = msg.match(/"code":\s*(\d+)/) || msg.match(/\b(503|429|500|502|504)\b/);
+  if (match) return match[1];
+  const statusMatch = msg.match(/"status":\s*"([^"]+)"/);
+  if (statusMatch) return statusMatch[1];
+  return '503';
+}
+
+/**
+ * Exécute l'appel Gemini avec Exponential Backoff + Jitter et Fallback multi-modèles
+ */
+async function generateWithFallbackAndRetry(prompt) {
+  const candidateModels = Array.from(
+    new Set(
+      [
+        process.env.GEMINI_MODEL,
+        'gemini-3.8-flash',
+        'gemini-3.5-flash-lite',
+        'gemini-3.1-flash-lite',
+      ].filter(Boolean)
+    )
+  );
+
+  let lastError = null;
+
+  for (let modelIdx = 0; modelIdx < candidateModels.length; modelIdx++) {
+    const model = candidateModels[modelIdx];
+    console.log(`\n🎯 Modèle sélectionné [${modelIdx + 1}/${candidateModels.length}] : ${model}`);
+
+    // Tentative initiale (0) + jusqu'à MAX_RETRIES réessais
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            temperature: 0.7,
+          },
+        });
+
+        const rawText = response.text ? response.text.trim() : '';
+
+        // Nettoyage éventuel des balises markdown englobantes
+        const content = rawText
+          .replace(/^```(?:markdown)?\n?/i, '')
+          .replace(/\n?```$/i, '')
+          .trim();
+
+        // Validation stricte du contenu
+        if (!content || content.length < 500) {
+          throw new Error(`Contenu généré trop court ou vide (${content.length} caractères reçus).`);
+        }
+
+        if (!content.startsWith('---')) {
+          throw new Error('Le frontmatter YAML est absent ou mal formé.');
+        }
+
+        const titleMatch = content.match(/title:\s*"([^"]+)"/);
+        if (!titleMatch || !titleMatch[1].trim()) {
+          throw new Error("Impossible d'extraire un titre valide depuis le frontmatter.");
+        }
+
+        return { content, title: titleMatch[1].trim(), modelUsed: model };
+      } catch (err) {
+        lastError = err;
+        const isTransient = isTransientError(err);
+        const errCode = getErrorSummary(err);
+
+        if (!isTransient) {
+          // Erreur non temporaire : arrêt immédiat
+          console.error(`❌ Erreur fatale non transitoire (${errCode}) avec ${model} :`, err.message || err);
+          throw err;
+        }
+
+        if (attempt < MAX_RETRIES) {
+          const baseDelay = RETRY_DELAYS_MS[attempt];
+          const jitter = Math.floor(Math.random() * 4000) + 1000; // 1s à 5s
+          const totalWaitMs = baseDelay + jitter;
+          const waitSec = (totalWaitMs / 1000).toFixed(1);
+
+          console.warn(
+            `⏳ Serveur Gemini occupé (${errCode}), nouvelle tentative ${attempt + 1}/${MAX_RETRIES} pour le modèle ${model} dans ${waitSec}s...`
+          );
+          await sleep(totalWaitMs);
+        } else {
+          console.warn(
+            `⚠️ Le modèle ${model} a échoué après ${MAX_RETRIES} tentatives (${errCode}).`
+          );
+          if (modelIdx < candidateModels.length - 1) {
+            console.log(`🔀 Bascule automatique vers le modèle de secours : ${candidateModels[modelIdx + 1]}...`);
+          }
+        }
+      }
+    }
+  }
+
+  throw new Error(`Tous les modèles ont échoué après les retries. Dernière erreur : ${lastError?.message || lastError}`);
+}
+
 async function generateDailyContent() {
   console.log(`🤖 [Gemini] Lancement de la génération pour le ${todayDate}`);
   console.log(`   Format : ${typeArg} | Thème : ${themeArg}`);
@@ -96,37 +241,7 @@ references:
 - Rends uniquement le code Markdown brut, sans délimiteurs \`\`\`markdown.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        temperature: 0.7,
-      },
-    });
-
-    const rawText = response.text ? response.text.trim() : '';
-
-    // Nettoyage éventuel des balises markdown englobantes
-    const content = rawText
-      .replace(/^```(?:markdown)?\n?/i, '')
-      .replace(/\n?```$/i, '')
-      .trim();
-
-    // 3. Validation stricte du contenu
-    if (!content || content.length < 500) {
-      throw new Error(`Le contenu généré est trop court ou vide (${content.length} caractères reçus).`);
-    }
-
-    if (!content.startsWith('---')) {
-      throw new Error('Le frontmatter YAML est absent ou mal formé.');
-    }
-
-    const titleMatch = content.match(/title:\s*"([^"]+)"/);
-    if (!titleMatch || !titleMatch[1].trim()) {
-      throw new Error('Impossible d\'extraire un titre valide depuis le frontmatter.');
-    }
-
-    const title = titleMatch[1].trim();
+    const { content, title, modelUsed } = await generateWithFallbackAndRetry(prompt);
 
     // Slugification propre pour le nom de fichier (ex: 2026-10-14-titre-du-texte.md)
     const slug = title
@@ -141,12 +256,13 @@ references:
 
     // Écriture sécurisée du fichier
     fs.writeFileSync(targetFile, content, 'utf-8');
-    console.log(`✅ Texte philosophique quotidien généré avec succès :`);
+    console.log(`\n✅ Texte philosophique quotidien généré avec succès :`);
     console.log(`   Fichier : ${fileName}`);
     console.log(`   Titre   : ${title}`);
+    console.log(`   Modèle  : ${modelUsed}`);
     console.log(`   Taille  : ${content.length} caractères`);
   } catch (err) {
-    console.error('❌ Échec de la génération :', err.message);
+    console.error('\n❌ Échec définitif de la génération :', err.message);
     process.exit(1); // Sortie en erreur pour empêcher un commit corrompu
   }
 }

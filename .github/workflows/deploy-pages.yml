@@ -3,9 +3,9 @@ name: Déploiement GitHub Pages & Publication Quotidienne
 on:
   push:
     branches: [dev, main]
-  # Exécution quotidienne programmée à 04h00 du matin (02h00 UTC = 04h00 heure de Paris en été / 03h00 en hiver)
+  # Exécution quotidienne programmée à une minute impaire hors pic (02h17 UTC = 04h17 heure de Paris en été / 03h17 en hiver)
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '17 2 * * *'
   # Déclenchement manuel avec paramètres
   workflow_dispatch:
     inputs:
