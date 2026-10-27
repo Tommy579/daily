@@ -500,12 +500,16 @@ export function parseIcsEvents(
   return events;
 }
 
+let lastLiveUrlRefreshTs = 0;
+const LIVE_REFRESH_INTERVAL_MS = 2 * 60 * 1000; // Rafraîchissement live toutes les 2 minutes max par session
+
 /**
- * Synchronisation automatique bidirectionnelle de l'emploi du temps entre le stockage local
- * et le Cloud Supabase (permettant un affichage identique sur PC, mobile et tablette).
+ * Synchronisation automatique bidirectionnelle de l'emploi du temps entre le stockage local,
+ * le flux live iCal (Hyperplanning / ADE) et le Cloud Supabase.
  */
 export async function syncTimetableState(options?: {
   forcePushLocal?: boolean;
+  forceLiveRefresh?: boolean;
 }): Promise<{
   synced: boolean;
   source: 'local' | 'cloud' | 'none';
@@ -575,17 +579,28 @@ export async function syncTimetableState(options?: {
       savePersistent(STORAGE_KEYS.TIMETABLE_ICS, activeIcs);
       savePersistent(STORAGE_KEYS.TIMETABLE_URL, activeUrl);
 
-      // Si l'utilisateur a configuré une URL mais qu'aucun contenu ICS n'est en cache, on le télécharge
-      if (!activeIcs && activeUrl) {
+      // Si une URL iCal (ex: Hyperplanning) est enregistrée, rafraîchir le flux en direct
+      // pour répercuter automatiquement les cours déplacés, ajoutés ou supprimés.
+      const shouldRefreshLive =
+        Boolean(activeUrl) &&
+        (options?.forceLiveRefresh ||
+          !activeIcs ||
+          Date.now() - lastLiveUrlRefreshTs > LIVE_REFRESH_INTERVAL_MS);
+
+      if (shouldRefreshLive && activeUrl) {
         try {
           const fetched = await fetchCalendarFromUrl(activeUrl);
-          if (fetched) {
-            savePersistent(STORAGE_KEYS.TIMETABLE_ICS, fetched);
+          if (fetched && fetched.includes('BEGIN:VCALENDAR')) {
+            lastLiveUrlRefreshTs = Date.now();
+            const hasChanged = fetched !== activeIcs;
             activeIcs = fetched;
-            await syncTimetableToSupabase({ icsContent: fetched }).catch(() => {});
+            savePersistent(STORAGE_KEYS.TIMETABLE_ICS, fetched);
+            if (hasChanged) {
+              await syncTimetableToSupabase({ icsContent: fetched, icsUrl: activeUrl }).catch(() => {});
+            }
           }
         } catch (fetchErr) {
-          console.warn('[Marges Sync] Impossible de télécharger l’URL de calendrier:', fetchErr);
+          console.warn('[Marges Sync] Repli sur la dernière version en cache du calendrier:', fetchErr);
         }
       }
 
