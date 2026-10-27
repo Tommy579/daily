@@ -4,8 +4,12 @@
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   display_name text,
+  ambiance_color text not null default 'default',
   created_at timestamptz not null default now()
 );
+
+alter table public.profiles
+  add column if not exists ambiance_color text not null default 'default';
 
 create table if not exists public.courses (
   id uuid primary key default gen_random_uuid(),

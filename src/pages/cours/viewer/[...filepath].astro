@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { COURS_ROOT, getCourses, type CourseFile, type CourseFolder } from '../../../utils/courses';
 import { url } from '../../../utils/url';
+import '../../../styles/global.css';
 
 export async function getStaticPaths() {
   const subjects = getCourses();
@@ -51,40 +52,32 @@ if (file.type === 'code' || file.type === 'text') {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{file.name} — Marges Cours</title>
     <link rel="icon" type="image/svg+xml" href={url('/favicon.svg')} />
+    <script is:inline>
+      (function () {
+        try {
+          var t = localStorage.getItem('theme');
+          if (t) document.documentElement.dataset.theme = t;
+          for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') !== -1) {
+              var raw = localStorage.getItem(k);
+              if (raw) {
+                var parsed = JSON.parse(raw);
+                var u = (parsed && parsed.user) || (parsed && parsed.currentSession && parsed.currentSession.user);
+                var c = u && u.user_metadata && u.user_metadata.ambiance_color;
+                if (c && typeof c === 'string' && c !== 'default') {
+                  document.documentElement.dataset.ambiance = c;
+                  break;
+                }
+              }
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
     <style>
       :root {
-        --bg: #fcfcfb;
-        --surface: #ffffff;
-        --soft: #f4f3f0;
-        --fg: #141414;
-        --muted: #66655f;
-        --line: #e7e5e0;
-        --line-strong: #cfcdc6;
-        --font-text: 'Source Serif 4 Variable', Georgia, serif;
-        --font-ui: 'Inter Variable', Inter, system-ui, sans-serif;
         --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-        --radius: 10px;
-        --r-sm: 6px;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root:not([data-theme='light']) {
-          --bg: #0b0b0c;
-          --surface: #121214;
-          --soft: #18181b;
-          --fg: #ededec;
-          --muted: #9d9c97;
-          --line: #242427;
-          --line-strong: #3a3a3e;
-        }
-      }
-      :root[data-theme='dark'] {
-        --bg: #0b0b0c;
-        --surface: #121214;
-        --soft: #18181b;
-        --fg: #ededec;
-        --muted: #9d9c97;
-        --line: #242427;
-        --line-strong: #3a3a3e;
       }
       body {
         margin: 0;

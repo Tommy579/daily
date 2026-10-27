@@ -166,6 +166,10 @@ export async function loginWithPassword(email: string, password: string): Promis
   if (error) throw error;
   if (!data.user) throw new Error('Aucun utilisateur renvoyé par Supabase.');
 
+  // Appliquer immédiatement la couleur d'ambiance associée à ce compte Supabase
+  const accountAmbiance = normalizeAmbianceColor(data.user.user_metadata?.ambiance_color);
+  applyAmbianceToDOM(accountAmbiance);
+
   // Si l'utilisateur avait une ancienne sauvegarde volumineuse dans ses métadonnées, on la purge pour alléger le JWT
   if (data.user.user_metadata?.timetable_ics) {
     sb.auth.updateUser({ data: { timetable_ics: null } }).catch(() => {});
@@ -176,6 +180,7 @@ export async function loginWithPassword(email: string, password: string): Promis
 
 export async function logoutUser(): Promise<void> {
   clearLocalUserData();
+  applyAmbianceToDOM('default');
   try {
     const sb = getSupabase();
     await sb.auth.signOut();
@@ -1067,4 +1072,232 @@ export async function deleteUserReminder(id: string): Promise<void> {
   const sb = getSupabase();
   const { error } = await sb.from('reminders').delete().eq('id', id);
   if (error) throw error;
+}
+
+// -------------------------------------------------------------
+// Couleur d'ambiance associée au compte Supabase
+// -------------------------------------------------------------
+
+export type AmbianceColorId =
+  | 'default'
+  | 'rose'
+  | 'vert'
+  | 'bleu'
+  | 'lavande'
+  | 'peche'
+  | 'citron'
+  | 'menthe';
+
+export interface AmbianceOption {
+  id: AmbianceColorId;
+  label: string;
+  subtitle: string;
+  lightBg: string;
+  lightSurface: string;
+  lightSoft: string;
+  lightAccent: string;
+  darkBg: string;
+  darkSurface: string;
+  darkSoft: string;
+  darkAccent: string;
+}
+
+export const AMBIANCE_OPTIONS: AmbianceOption[] = [
+  {
+    id: 'default',
+    label: 'Blanc d’origine',
+    subtitle: 'Ivoire clair & nuit carbone',
+    lightBg: '#fcfcfb',
+    lightSurface: '#ffffff',
+    lightSoft: '#f4f3f0',
+    lightAccent: '#3e5bd8',
+    darkBg: '#0b0b0c',
+    darkSurface: '#121214',
+    darkSoft: '#18181b',
+    darkAccent: '#8ea4ff',
+  },
+  {
+    id: 'rose',
+    label: 'Rose poudré',
+    subtitle: 'Pastel floral & nuit carmin',
+    lightBg: '#fceef2',
+    lightSurface: '#fff6f8',
+    lightSoft: '#f5dde4',
+    lightAccent: '#b83b66',
+    darkBg: '#170d11',
+    darkSurface: '#211318',
+    darkSoft: '#2c1a21',
+    darkAccent: '#f288ad',
+  },
+  {
+    id: 'vert',
+    label: 'Vert sauge',
+    subtitle: 'Pastel céladon & forêt sombre',
+    lightBg: '#eaf5ee',
+    lightSurface: '#f5fbf7',
+    lightSoft: '#d9ecdf',
+    lightAccent: '#216d43',
+    darkBg: '#0b150f',
+    darkSurface: '#112017',
+    darkSoft: '#192c21',
+    darkAccent: '#68d496',
+  },
+  {
+    id: 'bleu',
+    label: 'Bleu brume',
+    subtitle: 'Pastel azur & ardoise nocturne',
+    lightBg: '#eaf3fb',
+    lightSurface: '#f4f9fe',
+    lightSoft: '#d8e8f6',
+    lightAccent: '#235da2',
+    darkBg: '#0a121a',
+    darkSurface: '#101b27',
+    darkSoft: '#172636',
+    darkAccent: '#76b2f5',
+  },
+  {
+    id: 'lavande',
+    label: 'Lavande douce',
+    subtitle: 'Pastel mauve & prune profonde',
+    lightBg: '#f1eefb',
+    lightSurface: '#f8f6fe',
+    lightSoft: '#e3ddf5',
+    lightAccent: '#5b3fad',
+    darkBg: '#110d1a',
+    darkSurface: '#191426',
+    darkSoft: '#231c35',
+    darkAccent: '#b095f8',
+  },
+  {
+    id: 'peche',
+    label: 'Pêche ambrée',
+    subtitle: 'Pastel abricot & terre d’ombre',
+    lightBg: '#fceede',
+    lightSurface: '#fff7ef',
+    lightSoft: '#f5dfca',
+    lightAccent: '#b5501e',
+    darkBg: '#17100a',
+    darkSurface: '#22170f',
+    darkSoft: '#2e2015',
+    darkAccent: '#f29663',
+  },
+  {
+    id: 'citron',
+    label: 'Jaune vanille',
+    subtitle: 'Pastel blé & bronze nocturne',
+    lightBg: '#faf5df',
+    lightSurface: '#fffcf0',
+    lightSoft: '#efe7c6',
+    lightAccent: '#8c6610',
+    darkBg: '#141209',
+    darkSurface: '#1e1b0e',
+    darkSoft: '#292514',
+    darkAccent: '#e3bf59',
+  },
+  {
+    id: 'menthe',
+    label: 'Menthe d’eau',
+    subtitle: 'Pastel turquoise & abysse boréal',
+    lightBg: '#e8f6f6',
+    lightSurface: '#f4fcfc',
+    lightSoft: '#d5eced',
+    lightAccent: '#196f75',
+    darkBg: '#091516',
+    darkSurface: '#0f2022',
+    darkSoft: '#162c2f',
+    darkAccent: '#5ecbd2',
+  },
+];
+
+const VALID_AMBIANCE_IDS = new Set<string>(AMBIANCE_OPTIONS.map((o) => o.id));
+
+export function normalizeAmbianceColor(raw: unknown): AmbianceColorId {
+  if (typeof raw === 'string' && VALID_AMBIANCE_IDS.has(raw.trim().toLowerCase())) {
+    return raw.trim().toLowerCase() as AmbianceColorId;
+  }
+  return 'default';
+}
+
+export function applyAmbianceToDOM(color: AmbianceColorId): void {
+  if (typeof document === 'undefined') return;
+  const normalized = normalizeAmbianceColor(color);
+  if (normalized === 'default') {
+    delete document.documentElement.dataset.ambiance;
+  } else {
+    document.documentElement.dataset.ambiance = normalized;
+  }
+}
+
+export function getCachedAccountAmbianceColor(): AmbianceColorId {
+  const cachedUser = getCurrentUserCached();
+  if (!cachedUser) return 'default';
+  return normalizeAmbianceColor(cachedUser.user_metadata?.ambiance_color);
+}
+
+/**
+ * Récupère la couleur d'ambiance enregistrée sur le compte Supabase actif
+ * et l'applique immédiatement au document.
+ */
+export async function fetchUserAmbianceColor(): Promise<AmbianceColorId> {
+  const user = await getCurrentUser().catch(() => null);
+  if (!user) {
+    applyAmbianceToDOM('default');
+    return 'default';
+  }
+
+  let colorFromProfile: string | undefined;
+  try {
+    const sb = getSupabase();
+    const { data, error } = await sb
+      .from('profiles')
+      .select('ambiance_color')
+      .eq('id', user.id)
+      .maybeSingle();
+    if (!error && data && typeof data.ambiance_color === 'string') {
+      colorFromProfile = data.ambiance_color;
+    }
+  } catch {}
+
+  const resolved = normalizeAmbianceColor(
+    colorFromProfile || user.user_metadata?.ambiance_color
+  );
+  applyAmbianceToDOM(resolved);
+  return resolved;
+}
+
+/**
+ * Sauvegarde la couleur d'ambiance directement sur le compte Supabase de l'utilisateur
+ * (user_metadata Auth + table profiles) sans utiliser de paramètre local indépendant.
+ */
+export async function saveUserAmbianceColor(color: AmbianceColorId): Promise<AmbianceColorId> {
+  const normalized = normalizeAmbianceColor(color);
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error('Vous devez être connecté à votre compte Supabase pour enregistrer votre couleur d’ambiance.');
+  }
+
+  applyAmbianceToDOM(normalized);
+
+  const sb = getSupabase();
+  const currentMeta = user.user_metadata || {};
+  const { error: authErr } = await sb.auth.updateUser({
+    data: {
+      ...currentMeta,
+      ambiance_color: normalized,
+      ambiance_updated_at: new Date().toISOString(),
+    },
+  });
+
+  // Synchronisation complémentaire sur la table profiles (si la colonne est présente)
+  try {
+    await sb
+      .from('profiles')
+      .upsert({ id: user.id, ambiance_color: normalized }, { onConflict: 'id' });
+  } catch {}
+
+  if (authErr) {
+    throw authErr;
+  }
+
+  return normalized;
 }

@@ -53,10 +53,10 @@ const isEspace = Astro.url.pathname.includes('/espace');
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
 
-    <!-- Anti-flash : applique le thème mémorisé avant le premier rendu (Cookie + LocalStorage) -->
+    <!-- Anti-flash : applique le thème et la couleur d'ambiance du compte Supabase actif -->
     <script is:inline>
       (function () {
-        function saved() {
+        function savedTheme() {
           try {
             var local = localStorage.getItem('theme');
             if (local) return local;
@@ -64,12 +64,41 @@ const isEspace = Astro.url.pathname.includes('/espace');
           var match = document.cookie.match(/(?:^|; )theme=([^;]*)/);
           return match ? decodeURIComponent(match[1]) : null;
         }
-        var t = saved();
+        function savedAccountAmbiance() {
+          try {
+            for (var i = 0; i < localStorage.length; i++) {
+              var k = localStorage.key(i);
+              if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') !== -1) {
+                var raw = localStorage.getItem(k);
+                if (raw) {
+                  var parsed = JSON.parse(raw);
+                  var u = (parsed && parsed.user) || (parsed && parsed.currentSession && parsed.currentSession.user);
+                  var c = u && u.user_metadata && u.user_metadata.ambiance_color;
+                  if (c && typeof c === 'string' && c !== 'default') return c;
+                }
+              }
+            }
+          } catch (e) {}
+          return null;
+        }
+        var t = savedTheme();
         if (t) document.documentElement.dataset.theme = t;
-        // Conserve le thème lors des navigations (View Transitions)
+        var a = savedAccountAmbiance();
+        if (a) {
+          document.documentElement.dataset.ambiance = a;
+        } else {
+          delete document.documentElement.dataset.ambiance;
+        }
+        // Conserve le thème et l'ambiance lors des navigations (View Transitions)
         document.addEventListener('astro:before-swap', function (e) {
-          var s = saved();
+          var s = savedTheme();
           if (s) e.newDocument.documentElement.dataset.theme = s;
+          var amb = document.documentElement.dataset.ambiance || savedAccountAmbiance();
+          if (amb && amb !== 'default') {
+            e.newDocument.documentElement.dataset.ambiance = amb;
+          } else {
+            delete e.newDocument.documentElement.dataset.ambiance;
+          }
         });
       })();
     </script>
@@ -149,7 +178,13 @@ const isEspace = Astro.url.pathname.includes('/espace');
     </script>
 
     <script>
-      import { getCurrentSession, getSupabase } from '../utils/supabase';
+      import {
+        getCurrentSession,
+        getSupabase,
+        applyAmbianceToDOM,
+        normalizeAmbianceColor,
+        fetchUserAmbianceColor,
+      } from '../utils/supabase';
       import { url } from '../utils/url';
 
       async function verifySession() {
@@ -158,6 +193,7 @@ const isEspace = Astro.url.pathname.includes('/espace');
         try {
           const session = await getCurrentSession();
           if (!session || !session.user) {
+            applyAmbianceToDOM('default');
             if (!isEspace) {
               const isConfig = window.location.pathname.includes('/configuration');
               const target = isConfig
@@ -168,6 +204,8 @@ const isEspace = Astro.url.pathname.includes('/espace');
             }
           } else {
             document.documentElement.classList.add('is-authenticated');
+            applyAmbianceToDOM(normalizeAmbianceColor(session.user.user_metadata?.ambiance_color));
+            fetchUserAmbianceColor().catch(() => {});
           }
         } catch (err) {
           if (!isEspace) {
@@ -184,11 +222,15 @@ const isEspace = Astro.url.pathname.includes('/espace');
         sb.auth.onAuthStateChange((_event, session) => {
           const p = window.location.pathname.replace(/\/$/, '');
           const isEspace = p.endsWith('/espace');
-          if (!session && !isEspace) {
-            document.documentElement.classList.remove('is-authenticated');
-            window.location.replace(url('/espace/'));
-          } else if (session) {
+          if (!session) {
+            applyAmbianceToDOM('default');
+            if (!isEspace) {
+              document.documentElement.classList.remove('is-authenticated');
+              window.location.replace(url('/espace/'));
+            }
+          } else if (session.user) {
             document.documentElement.classList.add('is-authenticated');
+            applyAmbianceToDOM(normalizeAmbianceColor(session.user.user_metadata?.ambiance_color));
           }
         });
       } catch (e) {}

@@ -2,6 +2,7 @@
 import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
 import { getCourses } from '../../utils/courses';
+import { AMBIANCE_OPTIONS } from '../../utils/supabase';
 import { url } from '../../utils/url';
 
 const subjects = getCourses();
@@ -27,6 +28,83 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     </header>
 
     <div class="config-grid">
+      <!-- 0. Couleur d'ambiance du site (associée au compte Supabase) -->
+      <section class="panel config-card" id="ambiance-settings">
+        <div class="card-head">
+          <span class="icon-tile"><Icon name="palette" size={20} /></span>
+          <div>
+            <h2>Couleur d’ambiance du site</h2>
+            <p class="meta">Teintes pastel en mode clair et déclinaisons sombres en mode nuit, enregistrées sur votre compte Supabase</p>
+          </div>
+        </div>
+
+        <div class="config-form">
+          <p class="storage-info" style="margin-bottom: 0.25rem;">
+            Choisissez l’atmosphère visuelle de votre espace de lecture. Ce réglage est rattaché à votre compte Supabase : chaque compte conserve sa propre couleur d’ambiance sur tous ses appareils, avec une version pastel en thème clair et une version profonde en thème sombre.
+          </p>
+
+          <div class="ambiance-grid" id="ambiance-options-grid" role="radiogroup" aria-label="Couleur d'ambiance du site">
+            {AMBIANCE_OPTIONS.map((opt) => (
+              <button
+                type="button"
+                class="ambiance-card"
+                data-ambiance-choice={opt.id}
+                role="radio"
+                aria-checked={opt.id === 'default' ? 'true' : 'false'}
+              >
+                <div class="ambiance-swatches" aria-hidden="true">
+                  <span
+                    class="swatch-half swatch-light"
+                    style={`background: ${opt.lightBg}; border-color: ${opt.lightSoft};`}
+                    title="Aperçu mode clair (pastel)"
+                  >
+                    <span class="swatch-dot" style={`background: ${opt.lightAccent};`}></span>
+                    <span class="swatch-tag">Clair</span>
+                  </span>
+                  <span
+                    class="swatch-half swatch-dark"
+                    style={`background: ${opt.darkBg}; border-color: ${opt.darkSoft};`}
+                    title="Aperçu mode sombre"
+                  >
+                    <span class="swatch-dot" style={`background: ${opt.darkAccent};`}></span>
+                    <span class="swatch-tag">Sombre</span>
+                  </span>
+                </div>
+                <div class="ambiance-card-body">
+                  <div class="ambiance-card-title-row">
+                    <strong class="ambiance-card-name">{opt.label}</strong>
+                    <span class="ambiance-check" aria-hidden="true">
+                      <Icon name="check" size={14} />
+                    </span>
+                  </div>
+                  <span class="ambiance-card-sub meta">{opt.subtitle}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div class="status-box" id="ambiance-status-box">
+            <div class="status-indicator">
+              <span class="dot-status dot-active" id="ambiance-dot"></span>
+              <strong id="ambiance-status-title">Couleur associée à votre compte Supabase</strong>
+            </div>
+            <p class="status-desc meta" id="ambiance-status-desc">
+              Chargement du paramètre de couleur depuis votre compte...
+            </p>
+          </div>
+
+          <div class="card-actions">
+            <button type="button" class="btn btn--sm" id="btn-toggle-dark-preview">
+              <Icon name="sun" size={14} />
+              Basculer clair / sombre pour prévisualiser
+            </button>
+            <button type="button" class="btn btn--sm" id="btn-reset-ambiance">
+              Rétablir le blanc de base
+            </button>
+          </div>
+        </div>
+      </section>
+
       <!-- 1. Fichiers de Cours & Révisions -->
       <section class="panel config-card">
         <div class="card-head">
@@ -291,9 +369,108 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     saveSupabaseCredentials,
     resetSupabaseCredentialsToDefault,
     formatSupabaseError,
+    AMBIANCE_OPTIONS,
+    fetchUserAmbianceColor,
+    saveUserAmbianceColor,
+    getCachedAccountAmbianceColor,
+    normalizeAmbianceColor,
+    type AmbianceColorId,
   } from '../../utils/supabase';
 
   async function initConfigPage() {
+    // 0. GESTION DE LA COULEUR D'AMBIANCE (ASSOCIÉE AU COMPTE SUPABASE)
+    const ambianceGrid = document.getElementById('ambiance-options-grid');
+    const ambianceButtons = document.querySelectorAll<HTMLButtonElement>('[data-ambiance-choice]');
+    const ambianceStatusTitle = document.getElementById('ambiance-status-title');
+    const ambianceStatusDesc = document.getElementById('ambiance-status-desc');
+    const ambianceDot = document.getElementById('ambiance-dot');
+    const btnToggleDarkPreview = document.getElementById('btn-toggle-dark-preview');
+    const btnResetAmbiance = document.getElementById('btn-reset-ambiance');
+
+    function getAmbianceLabel(id: AmbianceColorId): string {
+      return AMBIANCE_OPTIONS.find((o) => o.id === id)?.label || 'Blanc d’origine';
+    }
+
+    function updateAmbianceSelectionUI(activeId: AmbianceColorId) {
+      ambianceButtons.forEach((btn) => {
+        const id = btn.getAttribute('data-ambiance-choice') as AmbianceColorId;
+        const isSelected = id === activeId;
+        btn.classList.toggle('is-active', isSelected);
+        btn.setAttribute('aria-checked', isSelected ? 'true' : 'false');
+      });
+    }
+
+    // Initialisation immédiate depuis la session du compte puis synchronisation Supabase
+    const initialAmbiance = getCachedAccountAmbianceColor();
+    updateAmbianceSelectionUI(initialAmbiance);
+
+    (async () => {
+      try {
+        const user = await getCurrentUser();
+        const remoteColor = await fetchUserAmbianceColor();
+        updateAmbianceSelectionUI(remoteColor);
+        if (user && ambianceStatusTitle && ambianceStatusDesc && ambianceDot) {
+          ambianceDot.className = 'dot-status dot-active';
+          ambianceStatusTitle.textContent = `Synchronisé avec le compte ${user.email || 'Supabase'}`;
+          ambianceStatusDesc.textContent = `Couleur active enregistrée sur Supabase : ${getAmbianceLabel(remoteColor)} (mode clair pastel et mode sombre).`;
+        } else if (ambianceStatusTitle && ambianceStatusDesc && ambianceDot) {
+          ambianceDot.className = 'dot-status';
+          ambianceDot.style.background = 'var(--warning)';
+          ambianceStatusTitle.textContent = 'Compte non connecté';
+          ambianceStatusDesc.textContent = 'Connectez-vous à votre compte dans Mon Espace pour enregistrer votre couleur d’ambiance sur Supabase.';
+        }
+      } catch (err) {
+        console.warn('[Ambiance Config] Erreur lecture initiale Supabase:', err);
+      }
+    })();
+
+    async function handleSelectAmbiance(chosenId: AmbianceColorId) {
+      updateAmbianceSelectionUI(chosenId);
+      if (ambianceStatusDesc) {
+        ambianceStatusDesc.textContent = `Enregistrement de « ${getAmbianceLabel(chosenId)} » sur votre compte Supabase...`;
+      }
+      try {
+        const saved = await saveUserAmbianceColor(chosenId);
+        const user = await getCurrentUser();
+        if (ambianceStatusTitle && ambianceStatusDesc && ambianceDot) {
+          ambianceDot.className = 'dot-status dot-active';
+          ambianceStatusTitle.textContent = `Synchronisé avec le compte ${user?.email || 'Supabase'}`;
+          ambianceStatusDesc.textContent = `Couleur « ${getAmbianceLabel(saved)} » enregistrée dans vos paramètres Supabase pour ce compte.`;
+        }
+      } catch (err: any) {
+        if (ambianceStatusTitle && ambianceStatusDesc && ambianceDot) {
+          ambianceDot.className = 'dot-status';
+          ambianceDot.style.background = 'var(--danger)';
+          ambianceStatusTitle.textContent = 'Erreur de synchronisation Supabase';
+          ambianceStatusDesc.textContent = formatSupabaseError(err);
+        }
+      }
+    }
+
+    ambianceGrid?.addEventListener('click', (e) => {
+      const target = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-ambiance-choice]');
+      if (!target) return;
+      const choice = normalizeAmbianceColor(target.getAttribute('data-ambiance-choice'));
+      handleSelectAmbiance(choice);
+    });
+
+    btnResetAmbiance?.addEventListener('click', () => {
+      handleSelectAmbiance('default');
+    });
+
+    btnToggleDarkPreview?.addEventListener('click', () => {
+      const root = document.documentElement;
+      const isDark =
+        root.dataset.theme === 'dark' ||
+        (!root.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      const next = isDark ? 'light' : 'dark';
+      root.dataset.theme = next;
+      try {
+        localStorage.setItem('theme', next);
+        document.cookie = 'theme=' + encodeURIComponent(next) + '; path=/; max-age=31536000; SameSite=Lax';
+      } catch {}
+    });
+
     // 1. GESTION DE L'EMPLOI DU TEMPS & SYNCHRONISATION SUPABASE
     const timetableForm = document.getElementById('form-timetable') as HTMLFormElement;
     const icsFileInput = document.getElementById('ics-file') as HTMLInputElement;
@@ -842,6 +1019,106 @@ const totalFiles = subjects.reduce((acc, s) => acc + s.stats.totalFiles, 0);
     flex-wrap: wrap;
     align-items: center;
     margin-top: 0.5rem;
+  }
+
+  /* Grille de sélection de la couleur d'ambiance */
+  .ambiance-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 215px), 1fr));
+    gap: 0.9rem;
+  }
+  .ambiance-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 0.75rem;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--line);
+    background: var(--surface);
+    color: var(--fg);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color .15s ease, transform .15s var(--ease), box-shadow .15s ease, background-color .15s ease;
+  }
+  .ambiance-card:hover {
+    border-color: var(--line-strong);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+  }
+  .ambiance-card.is-active {
+    border-color: var(--fg);
+    box-shadow: 0 0 0 1px var(--fg), var(--shadow-sm);
+  }
+  .ambiance-swatches {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 3.1rem;
+    border-radius: var(--r-sm);
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+  .swatch-half {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0.35rem 0.45rem;
+  }
+  .swatch-light {
+    color: #1f1f1f;
+    border-right: 1px solid rgb(0 0 0 / .08);
+  }
+  .swatch-dark {
+    color: #f0f0f0;
+  }
+  .swatch-dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    flex: none;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / .12);
+  }
+  .swatch-tag {
+    font-family: var(--font-ui);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    opacity: 0.8;
+  }
+  .ambiance-card-body {
+    display: grid;
+    gap: 0.15rem;
+  }
+  .ambiance-card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+  }
+  .ambiance-card-name {
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .ambiance-check {
+    display: inline-grid;
+    place-items: center;
+    width: 1.2rem;
+    height: 1.2rem;
+    border-radius: 50%;
+    background: var(--fg);
+    color: var(--bg);
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity .15s ease, transform .15s var(--ease);
+  }
+  .ambiance-card.is-active .ambiance-check {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .ambiance-card-sub {
+    font-size: 0.76rem;
+    line-height: 1.35;
   }
 
   @media (max-width: 48rem) {
