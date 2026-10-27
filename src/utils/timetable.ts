@@ -296,7 +296,64 @@ export function convertRssToIcs(xmlText: string): string {
 }
 
 /**
- * Télécharge un calendrier distant depuis une URL (iCal, Webcal, ou RSS) avec gestion robuste CORS et proxys de secours.
+ * Extrait et normalise un contenu iCalendar (.ics) ou RSS depuis une réponse brute ou enveloppée en JSON (ex: AllOrigins /get).
+ */
+function extractValidCalendarContent(rawText: string): string | null {
+  if (!rawText) return null;
+  let candidate = rawText.trim();
+
+  // Si la réponse provient d'un endpoint JSON type /get?url=... ({ contents: "..." })
+  if (candidate.startsWith('{') && candidate.includes('"contents"')) {
+    try {
+      const parsed = JSON.parse(candidate);
+      if (parsed && typeof parsed.contents === 'string') {
+        candidate = parsed.contents.trim();
+        // Certains proxys encodent application/octet-stream en data URI base64
+        if (candidate.startsWith('data:') && candidate.includes(';base64,')) {
+          const b64 = candidate.split(';base64,')[1] || '';
+          const binary = atob(b64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          candidate = new TextDecoder('utf-8').decode(bytes).trim();
+        }
+      }
+    } catch {}
+  }
+
+  if (candidate.includes('BEGIN:VCALENDAR') || candidate.includes('BEGIN:VEVENT')) {
+    return candidate;
+  }
+  if (candidate.includes('<rss') || candidate.includes('<feed')) {
+    return convertRssToIcs(candidate);
+  }
+  return null;
+}
+
+async function fetchWithTimeout(targetUrl: string, timeoutMs: number, headers?: Record<string, string>): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(targetUrl, {
+      signal: controller.signal,
+      headers,
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const text = await res.text();
+    const valid = extractValidCalendarContent(text);
+    if (!valid) {
+      throw new Error('Contenu iCalendar non reconnu');
+    }
+    return valid;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Télécharge un calendrier distant depuis une URL (iCal, Hyperplanning, ADE, Webcal ou RSS)
+ * avec contournement automatique du blocage CORS des navigateurs web.
  */
 export async function fetchCalendarFromUrl(rawUrl: string): Promise<string> {
   let url = rawUrl.trim();
@@ -309,74 +366,42 @@ export async function fetchCalendarFromUrl(rawUrl: string): Promise<string> {
     url = 'https://' + url.slice('feed://'.length);
   }
 
-  // 1. Tenter un fetch direct (navigateur -> serveur universitaire si CORS autorisé)
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 6000);
-    const res = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        Accept: 'text/calendar, application/rss+xml, application/atom+xml, text/plain, */*',
-      },
-    });
-    clearTimeout(timer);
-    if (res.ok) {
-      const text = await res.text();
-      if (text && (text.includes('BEGIN:VCALENDAR') || text.includes('BEGIN:VEVENT'))) {
-        return text;
-      }
-      if (text && (text.includes('<rss') || text.includes('<feed'))) {
-        return convertRssToIcs(text);
-      }
-    }
-  } catch (directErr) {
-    console.warn('[Calendar Sync] Fetch direct indisponible (CORS ou réseau), repli...', directErr);
-  }
-
-  // 2. Si on est sur le serveur local Node (dev/preview), utiliser l'endpoint proxy interne
-  try {
-    const localProxyUrl = `/api/calendar/proxy?url=${encodeURIComponent(url)}`;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(localProxyUrl, { signal: controller.signal });
-    clearTimeout(timer);
-    if (res.ok) {
-      const text = await res.text();
-      if (text && (text.includes('BEGIN:VCALENDAR') || text.includes('BEGIN:VEVENT'))) {
-        return text;
-      }
-      if (text && (text.includes('<rss') || text.includes('<feed'))) {
-        return convertRssToIcs(text);
-      }
-    }
-  } catch {}
-
-  // 3. Fallback proxy public (CORS) pour GitHub Pages ou domaines universitaires stricts
-  const publicProxies = [
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  ];
-
-  for (const proxyUrl of publicProxies) {
+  // 1. Si on est sur le serveur local Node (dev), tenter le proxy local en priorité (instantané et sans restriction CORS)
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(proxyUrl, { signal: controller.signal });
-      clearTimeout(timer);
-      if (res.ok) {
-        const text = await res.text();
-        if (text && (text.includes('BEGIN:VCALENDAR') || text.includes('BEGIN:VEVENT'))) {
-          return text;
-        }
-        if (text && (text.includes('<rss') || text.includes('<feed'))) {
-          return convertRssToIcs(text);
-        }
-      }
+      return await fetchWithTimeout(`${base}/api/calendar/proxy?url=${encodeURIComponent(url)}`, 5000);
     } catch {}
   }
 
-  throw new Error(
-    "Impossible de récupérer le flux directement en ligne. Votre université restreint probablement les requêtes externes (sécurité ENT ou CORS). Conseil : téléchargez le fichier .ics depuis votre ENT et déposez-le dans le champ d'importation de fichier."
-  );
+  // 2. Tenter un fetch direct (si le serveur universitaire autorise CORS)
+  try {
+    return await fetchWithTimeout(url, 3500, {
+      Accept: 'text/calendar, application/rss+xml, application/atom+xml, text/plain, */*',
+    });
+  } catch {}
+
+  // 3. Passerelles CORS publiques lancées en parallèle (Promise.any retient la première qui répond avec un .ics valide)
+  // Indispensable sur un site web statique (GitHub Pages) car les serveurs comme Hyperplanning / Apogée
+  // n'envoient pas l'en-tête navigateur Access-Control-Allow-Origin (contrairement à Apple Calendar qui n'est pas un navigateur).
+  const encoded = encodeURIComponent(url);
+  const proxyCandidates = [
+    `https://allorigins.hexlet.app/raw?url=${encoded}`,
+    `https://allorigins.hexlet.app/get?disableCache=true&url=${encoded}`,
+    `https://api.allorigins.win/raw?url=${encoded}`,
+    `https://api.allorigins.win/get?disableCache=true&url=${encoded}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encoded}`,
+  ];
+
+  try {
+    return await Promise.any(
+      proxyCandidates.map((proxyUrl) => fetchWithTimeout(proxyUrl, 10000))
+    );
+  } catch {
+    throw new Error(
+      "Impossible de récupérer le flux directement en ligne (les passerelles CORS n'ont pas pu joindre le serveur de votre établissement). Vous pouvez télécharger le fichier .ics en ouvrant votre lien dans un nouvel onglet puis le déposer dans le champ d'importation de fichier."
+    );
+  }
 }
 
 export interface ParsedCalendarEvent {
