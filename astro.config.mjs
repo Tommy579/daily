@@ -7,7 +7,7 @@ import rehypeFrenchTypography from './src/utils/rehype-french-typography.mjs';
 export default defineConfig({
   // Configuration GitHub Pages
   site: 'https://tommy579.github.io',
-  base: '/daily',
+  base: '/marges',
   trailingSlash: 'ignore',
   integrations: [mdx(), sitemap()],
   prefetch: {

@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
 
-# ⚠️ Remplacer par l'URL finale du site
-Sitemap: https://marges.example/sitemap-index.xml
+Sitemap: https://tommy579.github.io/marges/sitemap-index.xml
