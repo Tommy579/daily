@@ -339,6 +339,12 @@ import { url } from '../../utils/url';
   let activeDayIndex = (new Date().getDay() + 6) % 7; // 0 = Lundi, 6 = Dimanche
   let selectedEvent: CalendarEvent | null = null;
 
+  // Cache mémoire pour une navigation instantanée entre les semaines
+  let inMemoryIcs: string | null = null;
+  let inMemoryDbEvents: any[] | null = null;
+  let inMemoryCustomEvents: any[] | null = null;
+  let liveStatusInterval: any = null;
+
   // -------------------------------------------------------------
   // Helpers Dates & Heures
   // -------------------------------------------------------------
@@ -429,7 +435,7 @@ import { url } from '../../utils/url';
   // Chargement des événements (Supabase > LocalStorage > Template)
   // -------------------------------------------------------------
 
-  async function loadEvents(): Promise<CalendarEvent[]> {
+  async function loadEvents(forceNetwork = false): Promise<CalendarEvent[]> {
     const monday = getStartOfWeek(activeDate);
     const sunday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000 - 1);
     const events: CalendarEvent[] = [];
@@ -444,13 +450,26 @@ import { url } from '../../utils/url';
       }
     }
 
-    // 0. Auto-synchronisation Supabase Cloud (PC <-> Mobile)
-    const syncRes = await syncTimetableState().catch(() => null);
+    // Récupérer le contenu ICS depuis la mémoire ou le stockage persistant sans latence réseau
+    if (inMemoryIcs === null || forceNetwork) {
+      inMemoryIcs = loadPersistent(STORAGE_KEYS.TIMETABLE_ICS) || '';
+    }
 
-    // 1. Fichier ICS personnalisé (analyse précise par date et récurrence)
-    const savedIcs = syncRes?.icsContent !== undefined ? syncRes.icsContent : loadPersistent(STORAGE_KEYS.TIMETABLE_ICS);
-    if (savedIcs && savedIcs.trim().length > 30) {
-      const parsed = parseIcsEvents(savedIcs, monday, sunday);
+    // Synchronisation réseau en tâche de fond (non bloquante) si demandée
+    if (forceNetwork) {
+      syncTimetableState()
+        .then((syncRes) => {
+          if (syncRes?.icsContent && syncRes.icsContent !== inMemoryIcs) {
+            inMemoryIcs = syncRes.icsContent;
+            renderAll(false);
+          }
+        })
+        .catch(() => null);
+    }
+
+    // 1. Fichier ICS personnalisé (analyse ultra-rapide en mémoire pour la semaine demandée)
+    if (inMemoryIcs && inMemoryIcs.trim().length > 30) {
+      const parsed = parseIcsEvents(inMemoryIcs, monday, sunday);
       parsed.forEach((p) => {
         addCalEvent({
           id: p.id,
@@ -464,78 +483,74 @@ import { url } from '../../utils/url';
       });
     }
 
-    // 2. Créneaux hebdomadaires créés manuellement par l'étudiant dans Supabase
-    try {
-      const dbEvents = await fetchUserScheduleEvents();
-      if (dbEvents && dbEvents.length > 0) {
-        dbEvents.forEach((dbEv) => {
-          const dayOffset = (dbEv.day_of_week || 1) - 1;
-          const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + dayOffset);
-          const [sH, sM] = (dbEv.start_time || '08:30').split(':').map(Number);
-          const [eH, eM] = (dbEv.end_time || '10:30').split(':').map(Number);
-          const start = new Date(d);
-          start.setHours(sH, sM, 0, 0);
-          const end = new Date(d);
-          end.setHours(eH, eM, 0, 0);
-
-          let cat: 'cm' | 'td' | 'tp' | 'other' = 'cm';
-          const t = dbEv.title.toUpperCase();
-          if (t.includes('TD')) cat = 'td';
-          else if (t.includes('TP')) cat = 'tp';
-
-          addCalEvent({
-            id: dbEv.id || `db-${Math.random()}`,
-            title: dbEv.title,
-            start,
-            end,
-            location: dbEv.location || '',
-            description: dbEv.notes || '',
-            category: cat,
-            isCustom: true,
-            dbId: dbEv.id,
-          });
-        });
+    // 2. Créneaux hebdomadaires créés manuellement par l'étudiant dans Supabase (mis en cache mémoire)
+    if (inMemoryDbEvents === null || forceNetwork) {
+      try {
+        inMemoryDbEvents = await fetchUserScheduleEvents();
+      } catch {
+        inMemoryDbEvents = [];
       }
-    } catch {
-      // Ignorer si pas connecté à Supabase
+    }
+
+    if (inMemoryDbEvents && inMemoryDbEvents.length > 0) {
+      inMemoryDbEvents.forEach((dbEv) => {
+        const dayOffset = (dbEv.day_of_week || 1) - 1;
+        const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + dayOffset);
+        const [sH, sM] = (dbEv.start_time || '08:30').split(':').map(Number);
+        const [eH, eM] = (dbEv.end_time || '10:30').split(':').map(Number);
+        const start = new Date(d);
+        start.setHours(sH, sM, 0, 0);
+        const end = new Date(d);
+        end.setHours(eH, eM, 0, 0);
+
+        let cat: 'cm' | 'td' | 'tp' | 'other' = 'cm';
+        const t = dbEv.title.toUpperCase();
+        if (t.includes('TD')) cat = 'td';
+        else if (t.includes('TP')) cat = 'tp';
+
+        addCalEvent({
+          id: dbEv.id || `db-${Math.random()}`,
+          title: dbEv.title,
+          start,
+          end,
+          location: dbEv.location || '',
+          description: dbEv.notes || '',
+          category: cat,
+          isCustom: true,
+          dbId: dbEv.id,
+        });
+      });
     }
 
     // 3. Événements personnalisés sauvegardés localement (localStorage fallback)
-    try {
-      const localCustom = localStorage.getItem('marges_custom_schedule_events');
-      if (localCustom) {
-        const parsedCustom: Array<{
-          id: string;
-          title: string;
-          dayOffset: number;
-          startH: number;
-          startM: number;
-          endH: number;
-          endM: number;
-          location?: string;
-          notes?: string;
-          category?: any;
-        }> = JSON.parse(localCustom);
-
-        parsedCustom.forEach((c) => {
-          const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + c.dayOffset);
-          const start = new Date(d);
-          start.setHours(c.startH, c.startM, 0, 0);
-          const end = new Date(d);
-          end.setHours(c.endH, c.endM, 0, 0);
-          addCalEvent({
-            id: c.id,
-            title: c.title,
-            start,
-            end,
-            location: c.location || '',
-            description: c.notes || '',
-            category: c.category || 'cm',
-            isCustom: true,
-          });
-        });
+    if (inMemoryCustomEvents === null || forceNetwork) {
+      try {
+        const localCustom = localStorage.getItem('marges_custom_schedule_events');
+        inMemoryCustomEvents = localCustom ? JSON.parse(localCustom) : [];
+      } catch {
+        inMemoryCustomEvents = [];
       }
-    } catch {}
+    }
+
+    if (inMemoryCustomEvents && inMemoryCustomEvents.length > 0) {
+      inMemoryCustomEvents.forEach((c) => {
+        const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + c.dayOffset);
+        const start = new Date(d);
+        start.setHours(c.startH, c.startM, 0, 0);
+        const end = new Date(d);
+        end.setHours(c.endH, c.endM, 0, 0);
+        addCalEvent({
+          id: c.id,
+          title: c.title,
+          start,
+          end,
+          location: c.location || '',
+          description: c.notes || '',
+          category: c.category || 'cm',
+          isCustom: true,
+        });
+      });
+    }
 
     // Renvoyer les cours réels de l'utilisateur
     return events;
@@ -1087,7 +1102,7 @@ import { url } from '../../utils/url';
   // Rendu Global de l'Emploi du Temps
   // -------------------------------------------------------------
 
-  async function renderAll() {
+  async function renderAll(forceNetwork = false) {
     const monday = getStartOfWeek(activeDate);
     const sunday = new Date(monday.getTime() + 6 * 24 * 60 * 60 * 1000);
 
@@ -1100,7 +1115,7 @@ import { url } from '../../utils/url';
       headingEl.textContent = `${mDay} — ${sDay} ${monthStr}`;
     }
 
-    currentEvents = await loadEvents();
+    currentEvents = await loadEvents(forceNetwork);
 
     // Vérifier si le weekend a des cours
     const hasWeekendEvents = currentEvents.some((e) => {
@@ -1226,27 +1241,32 @@ import { url } from '../../utils/url';
   // -------------------------------------------------------------
 
   function initTimetable() {
-    renderAll();
+    const root = document.querySelector('.timetable-page');
+    if (!root || (root as any).__timetableInit) return;
+    (root as any).__timetableInit = true;
 
-    // Navigation semaines
-    document.getElementById('btn-prev-week')?.addEventListener('click', async () => {
+    // Premier rendu immédiat avec synchronisation réseau en arrière-plan
+    renderAll(true);
+
+    // Navigation semaines instantanée (saut précis de 7 jours, sans latence réseau)
+    document.getElementById('btn-prev-week')?.addEventListener('click', () => {
       const prev = new Date(activeDate);
       prev.setDate(prev.getDate() - 7);
       activeDate = prev;
-      await renderAll();
+      renderAll(false);
     });
 
-    document.getElementById('btn-next-week')?.addEventListener('click', async () => {
+    document.getElementById('btn-next-week')?.addEventListener('click', () => {
       const next = new Date(activeDate);
       next.setDate(next.getDate() + 7);
       activeDate = next;
-      await renderAll();
+      renderAll(false);
     });
 
-    document.getElementById('btn-today')?.addEventListener('click', async () => {
+    document.getElementById('btn-today')?.addEventListener('click', () => {
       activeDate = new Date();
       activeDayIndex = (new Date().getDay() + 6) % 7;
-      await renderAll();
+      renderAll(false);
     });
 
     // Bascule Week-end
@@ -1350,7 +1370,7 @@ import { url } from '../../utils/url';
 
       modalInspection?.close();
       toast('Cours supprimé.', 'success');
-      await renderAll();
+      await renderAll(true);
     });
 
     // Modale Ajout de créneau
@@ -1437,11 +1457,12 @@ import { url } from '../../utils/url';
       dialogAdd?.close();
       formAdd.reset();
       toast('Nouveau créneau enregistré !', 'success');
-      await renderAll();
+      await renderAll(true);
     });
 
     // Actualisation du statut direct toutes les 30 secondes
-    setInterval(updateLiveStatusCard, 30000);
+    if (liveStatusInterval) clearInterval(liveStatusInterval);
+    liveStatusInterval = setInterval(updateLiveStatusCard, 30000);
   }
 
   if (typeof window !== 'undefined') {
