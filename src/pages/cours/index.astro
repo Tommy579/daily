@@ -205,6 +205,11 @@ const subjectsList = subjects.map((s) => ({
     deleteUserCourse,
     type DbCourse,
   } from '../../utils/supabase';
+  import {
+    deleteUnifiedNote,
+    getLocalNotes,
+    noteToDbCourse,
+  } from '../../utils/notes';
   import { setupPdfViewerModal, openPdfViewer } from '../../utils/pdfViewer';
   import {
     saveDocumentFile,
@@ -646,7 +651,9 @@ const subjectsList = subjects.map((s) => ({
       const subjectsMap = new Map<string, SubjectData>();
 
       dbCourses.forEach((c) => {
-        // Ignorer les notes non classées (libres à la racine) pour ne pas polluer les cours
+        let isRootNote = false;
+
+        // Détection des notes non affiliées (à la racine)
         if (c.tags && c.tags.includes('note')) {
           const hasRealSubject = c.tags.some(
             (t) =>
@@ -663,36 +670,57 @@ const subjectsList = subjects.map((s) => ({
               t !== 'TD' &&
               t !== 'Documents racines'
           );
-          if (!hasRealSubject) return;
+          if (!hasRealSubject) {
+            isRootNote = true;
+          }
         }
 
         let subject = '';
-        if (c.tags && c.tags.length > 0) {
-          const cleanTags = c.tags.filter(
-            (t) =>
-              t !== 'Université' &&
-              t !== 'Dossier importé' &&
-              t !== 'Matière' &&
-              t !== 'Supports de cours' &&
-              t !== 'note' &&
-              !t.startsWith('icon:') &&
-              t !== 'Sans matière' &&
-              t !== 'Notes libres' &&
-              t !== 'Fiches de révisions' &&
-              t !== 'CM' &&
-              t !== 'TD' &&
-              t !== 'Documents racines'
-          );
-          if (cleanTags.length > 0) subject = cleanTags[0];
+        if (isRootNote) {
+          subject = 'Notes';
+        } else {
+          if (c.tags && c.tags.length > 0) {
+            const cleanTags = c.tags.filter(
+              (t) =>
+                t !== 'Université' &&
+                t !== 'Dossier importé' &&
+                t !== 'Matière' &&
+                t !== 'Supports de cours' &&
+                t !== 'note' &&
+                !t.startsWith('icon:') &&
+                t !== 'Sans matière' &&
+                t !== 'Notes libres' &&
+                t !== 'Fiches de révisions' &&
+                t !== 'CM' &&
+                t !== 'TD' &&
+                t !== 'Documents racines'
+            );
+            if (cleanTags.length > 0) subject = cleanTags[0];
+          }
+          if (!subject && c.tags && c.tags.includes('Matière') && c.title) subject = c.title;
+          subject = (subject || '').trim();
+          if (!subject) return;
         }
-        if (!subject && c.tags && c.tags.includes('Matière') && c.title) subject = c.title;
-        subject = (subject || '').trim();
-        if (!subject) return;
 
         if (!subjectsMap.has(subject)) {
           subjectsMap.set(subject, { name: subject, folders: new Map() });
         }
         const sData = subjectsMap.get(subject)!;
+
+        if (isRootNote) {
+          const folder = 'Notes libres';
+          if (!sData.folders.has(folder)) {
+            sData.folders.set(folder, []);
+          }
+          sData.folders.get(folder)!.push({
+            id: c.id,
+            title: c.title || 'Sans titre',
+            ext: 'note',
+            rawCourse: c,
+            content: c.body_md,
+          });
+          return;
+        }
 
         // Vérifier si c'est un module / conteneur de cours avec sous-dossiers markdown
         const parsedSections = parseMarkdownSubfolders(c.body_md);
@@ -742,8 +770,12 @@ const subjectsList = subjects.map((s) => ({
       let totalSubjectCount = subjectsMap.size;
       let totalDocCount = 0;
 
-      // Trier les matières par ordre alphabétique
-      const sortedSubjects = Array.from(subjectsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+      // Trier les matières (en plaçant 'Notes' au début si présente)
+      const sortedSubjects = Array.from(subjectsMap.values()).sort((a, b) => {
+        if (a.name === 'Notes') return -1;
+        if (b.name === 'Notes') return 1;
+        return a.name.localeCompare(b.name, 'fr');
+      });
 
       sortedSubjects.forEach((sData) => {
         const subject = sData.name;
@@ -768,19 +800,22 @@ const subjectsList = subjects.map((s) => ({
                 <div>
                   <h2 class="subject-title">${subject}</h2>
                   <p class="subject-meta meta">
-                    <span class="subject-count-label">Matière synchronisée</span>
+                    <span class="subject-count-label">${subject === 'Notes' ? 'Notes non classées' : 'Matière synchronisée'}</span>
                   </p>
                 </div>
               </div>
               <div class="subject-header-actions" style="display: flex; gap: 0.4rem; align-items: center;">
-                <button
-                  type="button"
-                  class="btn btn--sm btn-add-in-subject"
-                  data-subject-target="${subject}"
-                  title="Ajouter un document dans ${subject}"
-                >
-                  + Ajouter un cours
-                </button>
+                ${subject === 'Notes'
+                  ? `<a href="${import.meta.env.BASE_URL.replace(/\/$/, '')}/notes/" class="btn btn--sm" title="Ouvrir l'espace de notes">+ Nouvelle note</a>`
+                  : `<button
+                      type="button"
+                      class="btn btn--sm btn-add-in-subject"
+                      data-subject-target="${subject}"
+                      title="Ajouter un document dans ${subject}"
+                    >
+                      + Ajouter un cours
+                    </button>`
+                }
                 <button
                   type="button"
                   class="btn btn--danger btn--sm btn-del-subject"
@@ -799,21 +834,33 @@ const subjectsList = subjects.map((s) => ({
           });
 
           card.querySelector('.btn-del-subject')?.addEventListener('click', async () => {
-            if (confirm(`Supprimer définitivement la matière « ${subject} » et tous ses documents ?`)) {
+            const confirmMsg =
+              subject === 'Notes'
+                ? 'Supprimer définitivement toutes les notes non classées ?'
+                : `Supprimer définitivement la matière « ${subject} » et tous ses documents ?`;
+
+            if (confirm(confirmMsg)) {
               // 1. Suppression optimiste immédiate de la carte dans le DOM (0 ms)
               card?.remove();
-              showToast(`Matière « ${subject} » supprimée.`);
+              showToast(subject === 'Notes' ? 'Notes non classées supprimées.' : `Matière « ${subject} » supprimée.`);
 
               try {
-                const current = getUserCoursesImmediate();
-                const toDelete = current.filter((c) => {
-                  const isTitle = c.title.toLowerCase().trim() === subject.toLowerCase().trim();
-                  const hasTag = c.tags && c.tags.some((t) => t.toLowerCase().trim() === subject.toLowerCase().trim());
-                  return isTitle || hasTag;
-                });
+                if (subject === 'Notes') {
+                  const rootNotes = getLocalNotes().filter((n) => !n.subject || !n.subject.trim());
+                  for (const n of rootNotes) {
+                    await deleteUnifiedNote(n.id);
+                  }
+                } else {
+                  const current = getUserCoursesImmediate();
+                  const toDelete = current.filter((c) => {
+                    const isTitle = c.title.toLowerCase().trim() === subject.toLowerCase().trim();
+                    const hasTag = c.tags && c.tags.some((t) => t.toLowerCase().trim() === subject.toLowerCase().trim());
+                    return isTitle || hasTag;
+                  });
 
-                for (const c of toDelete) {
-                  await deleteUserCourse(c.id || c.title);
+                  for (const c of toDelete) {
+                    await deleteUserCourse(c.id || c.title);
+                  }
                 }
 
                 await loadAndRenderSupabaseCourses();
@@ -911,19 +958,23 @@ const subjectsList = subjects.map((s) => ({
 
                 try {
                   // 2. Nettoyage du document local et distant
-                  await deleteDocumentFile(file.title, {
-                    subject,
-                    folder: folderName,
-                  });
+                  if (file.id && (file.ext === 'note' || file.rawCourse?.tags?.includes('note'))) {
+                    await deleteUnifiedNote(file.id);
+                  } else {
+                    await deleteDocumentFile(file.title, {
+                      subject,
+                      folder: folderName,
+                    });
 
-                  // 3. Mise à jour de la table Supabase
-                  if (file.rawCourse && file.rawCourse.title === file.title) {
-                    if (file.id) await deleteUserCourse(file.id);
-                  } else if (file.rawCourse && file.rawCourse.id) {
-                    const lines = (file.rawCourse.body_md || '').split('\n');
-                    const filteredLines = lines.filter((l) => !l.includes(file.title));
-                    const newBody = filteredLines.join('\n');
-                    await updateUserCourse(file.rawCourse.id, { body_md: newBody });
+                    // 3. Mise à jour de la table Supabase
+                    if (file.rawCourse && file.rawCourse.title === file.title) {
+                      if (file.id) await deleteUserCourse(file.id);
+                    } else if (file.rawCourse && file.rawCourse.id) {
+                      const lines = (file.rawCourse.body_md || '').split('\n');
+                      const filteredLines = lines.filter((l) => !l.includes(file.title));
+                      const newBody = filteredLines.join('\n');
+                      await updateUserCourse(file.rawCourse.id, { body_md: newBody });
+                    }
                   }
 
                   await loadAndRenderSupabaseCourses();
@@ -943,8 +994,12 @@ const subjectsList = subjects.map((s) => ({
         // Mettre à jour le libellé de stats de la carte
         const countLabel = card.querySelector('.subject-count-label');
         if (countLabel) {
-          const folderCount = sortedFolderNames.length;
-          countLabel.textContent = `${folderCount} dossier${folderCount > 1 ? 's' : ''} · ${subjectDocCount} document${subjectDocCount > 1 ? 's' : ''}`;
+          if (subject === 'Notes') {
+            countLabel.textContent = `${subjectDocCount} note${subjectDocCount > 1 ? 's non classées' : ' non classée'}`;
+          } else {
+            const folderCount = sortedFolderNames.length;
+            countLabel.textContent = `${folderCount} dossier${folderCount > 1 ? 's' : ''} · ${subjectDocCount} document${subjectDocCount > 1 ? 's' : ''}`;
+          }
         }
       });
 
@@ -1004,6 +1059,15 @@ const subjectsList = subjects.map((s) => ({
     async function loadAndRenderSupabaseCourses() {
       // 1. Affichage instantané depuis le cache local (0 milliseconde de latence)
       const immediateCourses = getUserCoursesImmediate();
+      const localNotes = getLocalNotes();
+      const existingIds = new Set(immediateCourses.map((c) => c.id));
+      localNotes.forEach((n) => {
+        if (!existingIds.has(n.id)) {
+          immediateCourses.push(noteToDbCourse(n));
+          existingIds.add(n.id);
+        }
+      });
+
       cachedDbCourses = immediateCourses;
       renderCoursesGrid(immediateCourses);
 
@@ -1011,6 +1075,13 @@ const subjectsList = subjects.map((s) => ({
       try {
         const remoteCourses = await fetchUserCourses().catch(() => immediateCourses);
         if (remoteCourses) {
+          const remoteIds = new Set(remoteCourses.map((c) => c.id));
+          localNotes.forEach((n) => {
+            if (!remoteIds.has(n.id)) {
+              remoteCourses.push(noteToDbCourse(n));
+              remoteIds.add(n.id);
+            }
+          });
           cachedDbCourses = remoteCourses;
           renderCoursesGrid(remoteCourses);
         }
@@ -1024,7 +1095,13 @@ const subjectsList = subjects.map((s) => ({
       loadAndRenderSupabaseCourses();
     });
     window.addEventListener('storage', (e) => {
-      if (e.key && (e.key.startsWith('marges_user_courses_') || e.key === 'marges_deleted_courses_tombstones')) {
+      if (
+        e.key &&
+        (e.key.startsWith('marges_user_courses_') ||
+          e.key === 'marges_deleted_courses_tombstones' ||
+          e.key === 'marges_notes_cache' ||
+          e.key === 'marges_guest_notes')
+      ) {
         loadAndRenderSupabaseCourses();
       }
     });
