@@ -1778,7 +1778,13 @@ const subjectsList = subjects.map((s) => ({
               t !== 'Université' &&
               t !== 'Dossier importé' &&
               t !== 'Matière' &&
-              t !== 'Supports de cours'
+              t !== 'Supports de cours' &&
+              t !== 'Sans matière' &&
+              t !== 'Notes libres' &&
+              t !== 'Fiches de révisions' &&
+              t !== 'CM' &&
+              t !== 'TD' &&
+              t !== 'Documents racines'
           );
           if (clean.length > 0) sName = clean[0].trim();
         }
@@ -1787,21 +1793,21 @@ const subjectsList = subjects.map((s) => ({
         }
       });
 
-      // 3. Matières issues des notes actuelles
+      // 3. Matières issues des notes actuelles (uniquement les matières réelles)
       notes.forEach((n) => {
-        const s = (n.subject || 'Général').trim();
-        if (!subjectMap.has(s)) subjectMap.set(s, 0);
+        const s = (n.subject || '').trim();
+        if (s && s !== 'Sans matière' && s !== 'Notes libres' && !subjectMap.has(s)) {
+          subjectMap.set(s, 0);
+        }
       });
 
-      // 4. Compter les notes par matière
+      // 4. Compter les notes strictement affiliées à chaque matière
       notes.forEach((n) => {
-        const s = (n.subject || 'Général').trim();
-        subjectMap.set(s, (subjectMap.get(s) || 0) + 1);
+        const s = (n.subject || '').trim();
+        if (s && subjectMap.has(s)) {
+          subjectMap.set(s, (subjectMap.get(s) || 0) + 1);
+        }
       });
-
-      if (subjectMap.size === 0) {
-        subjectMap.set('Général', notes.length);
-      }
 
       return Array.from(subjectMap.entries())
         .map(([name, count]) => ({ name, count }))
@@ -1812,6 +1818,16 @@ const subjectsList = subjects.map((s) => ({
     function refreshSubjectsDropdown(selectedSubject?: string) {
       const all = getAllSubjects();
       propSubjectSelect.innerHTML = '';
+
+      // Option Racine : note libre, non affiliée à une matière
+      const noneOpt = document.createElement('option');
+      noneOpt.value = '';
+      noneOpt.textContent = 'Aucune matière (Racine)';
+      if (!selectedSubject) {
+        noneOpt.selected = true;
+      }
+      propSubjectSelect.appendChild(noneOpt);
+
       all.forEach(({ name }) => {
         const opt = document.createElement('option');
         opt.value = name;
@@ -1822,8 +1838,12 @@ const subjectsList = subjects.map((s) => ({
         propSubjectSelect.appendChild(opt);
       });
 
-      if (!selectedSubject && all.length > 0) {
-        propSubjectSelect.value = all[0].name;
+      if (selectedSubject && !all.some((s) => s.name === selectedSubject)) {
+        const customOpt = document.createElement('option');
+        customOpt.value = selectedSubject;
+        customOpt.textContent = selectedSubject;
+        customOpt.selected = true;
+        propSubjectSelect.appendChild(customOpt);
       }
     }
 
@@ -1837,6 +1857,31 @@ const subjectsList = subjects.map((s) => ({
       return c.length > 10 ? c.slice(0, 9) + '…' : c;
     }
 
+    // Helper création d'élément de note dans l'arborescence
+    function createNoteTreeItemElement(n: NoteItem): HTMLElement {
+      const itemEl = document.createElement('div');
+      itemEl.className = `note-tree-item ${n.id === currentNoteId ? 'active' : ''}`;
+      itemEl.setAttribute('data-id', n.id);
+
+      const displayTitle = n.title.trim() || 'Sans titre';
+      const badgeLabel = formatCategoryBadge(n.category);
+
+      itemEl.innerHTML = `
+        <div class="item-main">
+          <svg class="item-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M14 3H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
+          <span class="item-title" title="${esc(displayTitle)}">${esc(displayTitle)}</span>
+        </div>
+        ${badgeLabel ? `<span class="item-badge" title="${esc(n.category)}">${esc(badgeLabel)}</span>` : ''}
+      `;
+
+      itemEl.addEventListener('click', () => {
+        loadNoteIntoCanvas(n.id);
+        if (isMobile()) collapseSidebar();
+      });
+
+      return itemEl;
+    }
+
     // 2. Rendu de l'arbre des notes dans la barre latérale
     function renderNotesTree(filterQuery: string = '') {
       if (!notesTree) return;
@@ -1844,20 +1889,108 @@ const subjectsList = subjects.map((s) => ({
 
       const allSubjects = getAllSubjects();
 
-      // Regrouper les notes par matière
+      // Regrouper séparément : 1) Notes libres (sans matière) 2) Notes par matière
+      const rootNotes: NoteItem[] = [];
       const groups = new Map<string, NoteItem[]>();
       allSubjects.forEach(({ name }) => groups.set(name, []));
 
       notes.forEach((n) => {
-        const sub = (n.subject || 'Général').trim();
-        if (!groups.has(sub)) groups.set(sub, []);
-        groups.get(sub)!.push(n);
+        const sub = (n.subject || '').trim();
+        if (sub && sub !== 'Sans matière' && sub !== 'Notes libres') {
+          if (!groups.has(sub)) groups.set(sub, []);
+          groups.get(sub)!.push(n);
+        } else {
+          rootNotes.push(n);
+        }
       });
 
       notesTree.innerHTML = '';
-
       let hasAnyVisible = false;
 
+      // Section 1 : Notes libres (Racine, sans affiliation)
+      const matchingRootNotes = q
+        ? rootNotes.filter(
+            (n) =>
+              (n.title && n.title.toLowerCase().includes(q)) ||
+              (n.body_md && n.body_md.toLowerCase().includes(q)) ||
+              'notes libres'.includes(q) ||
+              'racine'.includes(q)
+          )
+        : rootNotes;
+
+      if (!q || matchingRootNotes.length > 0) {
+        hasAnyVisible = true;
+        const rootGroupEl = document.createElement('div');
+        rootGroupEl.className = 'subject-group';
+
+        const isRootCollapsed = !q && collapsedGroups.has('__root__');
+
+        const rootHeaderEl = document.createElement('div');
+        rootHeaderEl.className = 'subject-group-header';
+        rootHeaderEl.setAttribute('role', 'button');
+        rootHeaderEl.setAttribute('tabindex', '0');
+        rootHeaderEl.setAttribute('aria-expanded', String(!isRootCollapsed));
+        rootHeaderEl.innerHTML = `
+          <div class="group-title-wrap">
+            <svg class="group-chevron ${isRootCollapsed ? 'collapsed' : ''}" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span class="group-name" title="Notes libres (Racine)">Notes libres</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.35rem;">
+            <button type="button" class="btn-group-add-note" data-subject="" title="Créer une note libre">+</button>
+            <span class="group-badge">${rootNotes.length}</span>
+          </div>
+        `;
+
+        const toggleRootGroup = () => {
+          if (collapsedGroups.has('__root__')) collapsedGroups.delete('__root__');
+          else collapsedGroups.add('__root__');
+          localStorage.setItem('marges_notes_collapsed', JSON.stringify([...collapsedGroups]));
+          renderNotesTree(searchInput?.value || '');
+        };
+
+        rootHeaderEl.addEventListener('click', (e) => {
+          const target = e.target as HTMLElement;
+          if (target && target.classList.contains('btn-group-add-note')) {
+            e.stopPropagation();
+            createNewNote('');
+            return;
+          }
+          toggleRootGroup();
+        });
+
+        rootHeaderEl.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault();
+            toggleRootGroup();
+          }
+        });
+
+        rootGroupEl.appendChild(rootHeaderEl);
+
+        if (!isRootCollapsed) {
+          const rootListEl = document.createElement('div');
+          rootListEl.className = 'subject-notes-list';
+
+          if (matchingRootNotes.length === 0) {
+            const emptyItem = document.createElement('div');
+            emptyItem.className = 'subject-empty-hint';
+            emptyItem.innerHTML = `<span>Aucune note libre.</span> <button type="button" class="btn-inline-new" data-sub="">+ Rédiger</button>`;
+            emptyItem.querySelector('.btn-inline-new')?.addEventListener('click', () => createNewNote(''));
+            rootListEl.appendChild(emptyItem);
+          } else {
+            matchingRootNotes.forEach((n) => {
+              rootListEl.appendChild(createNoteTreeItemElement(n));
+            });
+          }
+
+          rootGroupEl.appendChild(rootListEl);
+        }
+
+        notesTree.appendChild(rootGroupEl);
+      }
+
+      // Section 2 : Matières
       Array.from(groups.keys())
         .sort((a, b) => a.localeCompare(b, 'fr'))
         .forEach((subjectName) => {
@@ -1938,27 +2071,7 @@ const subjectsList = subjects.map((s) => ({
               listEl.appendChild(emptyItem);
             } else {
               matchingNotes.forEach((n) => {
-                const itemEl = document.createElement('div');
-                itemEl.className = `note-tree-item ${n.id === currentNoteId ? 'active' : ''}`;
-                itemEl.setAttribute('data-id', n.id);
-
-                const displayTitle = n.title.trim() || 'Sans titre';
-                const badgeLabel = formatCategoryBadge(n.category);
-
-                itemEl.innerHTML = `
-                  <div class="item-main">
-                    <svg class="item-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>
-                    <span class="item-title" title="${esc(displayTitle)}">${esc(displayTitle)}</span>
-                  </div>
-                  ${badgeLabel ? `<span class="item-badge" title="${esc(n.category)}">${esc(badgeLabel)}</span>` : ''}
-                `;
-
-                itemEl.addEventListener('click', () => {
-                  loadNoteIntoCanvas(n.id);
-                  if (isMobile()) collapseSidebar();
-                });
-
-                listEl.appendChild(itemEl);
+                listEl.appendChild(createNoteTreeItemElement(n));
               });
             }
 
@@ -1989,9 +2102,9 @@ const subjectsList = subjects.map((s) => ({
       noteTitle.value = target.title === 'Sans titre' ? '' : target.title;
       noteBody.value = target.body_md || '';
 
-      // Matière & catégorie
-      refreshSubjectsDropdown(target.subject || 'Général');
-      if (propSubjectSelect) propSubjectSelect.value = target.subject || 'Général';
+      // Matière & catégorie (libre / sans matière si vide)
+      refreshSubjectsDropdown(target.subject || '');
+      if (propSubjectSelect) propSubjectSelect.value = target.subject || '';
 
       if (propCategorySelect) {
         const opts = Array.from(propCategorySelect.options).map((o) => o.value);
@@ -2014,7 +2127,7 @@ const subjectsList = subjects.map((s) => ({
       }
 
       // Breadcrumbs
-      if (crumbSubjectLabel) crumbSubjectLabel.textContent = target.subject || 'Général';
+      if (crumbSubjectLabel) crumbSubjectLabel.textContent = target.subject || 'Notes libres';
       if (crumbTitleLabel) crumbTitleLabel.textContent = target.title || 'Sans titre';
 
       // Temps et statistiques
@@ -2063,7 +2176,7 @@ const subjectsList = subjects.map((s) => ({
 
       const titleVal = noteTitle.value.trim() || 'Sans titre';
       const bodyVal = noteBody.value;
-      const subjectVal = propSubjectSelect.value || 'Général';
+      const subjectVal = propSubjectSelect.value || '';
       const categoryVal =
         propCategorySelect.value === '__new__'
           ? propCustomCategory.value.trim() || 'Fiches de révisions'
@@ -2083,7 +2196,7 @@ const subjectsList = subjects.map((s) => ({
       target.subject = subjectVal;
       target.category = categoryVal;
 
-      if (crumbSubjectLabel) crumbSubjectLabel.textContent = subjectVal;
+      if (crumbSubjectLabel) crumbSubjectLabel.textContent = subjectVal || 'Notes libres';
       if (crumbTitleLabel) crumbTitleLabel.textContent = titleVal;
 
       if (autosaveStatus) {
@@ -2133,10 +2246,9 @@ const subjectsList = subjects.map((s) => ({
       }, 400);
     }
 
-    // 7. Créer une nouvelle note
+    // 7. Créer une nouvelle note (non affiliée par défaut)
     function createNewNote(customSubject?: string) {
-      const all = getAllSubjects();
-      const defaultSubject = customSubject || propSubjectSelect?.value || (all.length > 0 ? all[0].name : 'Général');
+      const defaultSubject = customSubject || '';
       const newNote: NoteItem = {
         id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'note_' + Date.now(),
         title: 'Sans titre',
@@ -2171,6 +2283,8 @@ const subjectsList = subjects.map((s) => ({
 
     // Reclassification directe dans une matière
     propSubjectSelect?.addEventListener('change', () => {
+      const chosen = propSubjectSelect.value || '';
+      if (crumbSubjectLabel) crumbSubjectLabel.textContent = chosen || 'Notes libres';
       scheduleAutoSave();
       renderNotesTree(searchInput?.value || '');
     });

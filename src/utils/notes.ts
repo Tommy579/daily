@@ -43,8 +43,10 @@ export function isCourseNote(c: DbCourse): boolean {
   return true;
 }
 
+const STANDARD_CATEGORIES = new Set(['Fiches de révisions', 'CM', 'TD', 'Documents racines']);
+
 export function dbCourseToNote(c: DbCourse): NoteItem {
-  let subject = 'Général';
+  let subject = '';
   let category = 'Fiches de révisions';
   let icon = 'file';
 
@@ -56,10 +58,18 @@ export function dbCourseToNote(c: DbCourse): NoteItem {
         t !== 'Université' &&
         t !== 'Dossier importé' &&
         t !== 'Matière' &&
-        t !== 'Supports de cours'
+        t !== 'Supports de cours' &&
+        t !== 'Sans matière' &&
+        t !== 'Notes libres'
     );
-    if (cleanTags.length > 0) subject = cleanTags[0];
-    if (cleanTags.length > 1) category = cleanTags[1];
+    if (cleanTags.length > 0) {
+      if (STANDARD_CATEGORIES.has(cleanTags[0])) {
+        category = cleanTags[0];
+      } else {
+        subject = cleanTags[0];
+        if (cleanTags.length > 1) category = cleanTags[1];
+      }
+    }
 
     const iconTag = c.tags.find((t) => t.startsWith('icon:'));
     if (iconTag) icon = iconTag.replace('icon:', '');
@@ -78,7 +88,17 @@ export function dbCourseToNote(c: DbCourse): NoteItem {
 }
 
 export function noteToDbCourse(note: NoteItem): DbCourse {
-  const tags = [note.subject || 'Général', note.category || 'Fiches de révisions', 'note'];
+  const tags: string[] = [];
+  const cleanSubject = (note.subject || '').trim();
+  if (cleanSubject && cleanSubject !== 'Sans matière' && cleanSubject !== 'Notes libres') {
+    tags.push(cleanSubject);
+  }
+  if (note.category && note.category.trim()) {
+    tags.push(note.category.trim());
+  } else {
+    tags.push('Fiches de révisions');
+  }
+  tags.push('note');
   if (note.icon) {
     tags.push(`icon:${note.icon}`);
   }

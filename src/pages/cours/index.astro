@@ -293,11 +293,26 @@ const subjectsList = subjects.map((s) => ({
     function populateSubjectsSelect(selectedName?: string) {
       const dbSubjectNames = new Set<string>();
       cachedDbCourses.forEach((c) => {
-        if (c.tags && c.tags.length > 0) {
-          const s = c.tags[0];
-          if (s && s !== 'Université' && s !== 'Dossier importé') dbSubjectNames.add(s);
-        } else if (c.title) {
-          dbSubjectNames.add(c.title);
+        if (c.tags && c.tags.includes('note')) return;
+        if (c.tags && c.tags.includes('Matière') && c.title) {
+          dbSubjectNames.add(c.title.trim());
+        } else if (c.tags && c.tags.length > 0) {
+          const cleanTags = c.tags.filter(
+            (t) =>
+              t !== 'Université' &&
+              t !== 'Dossier importé' &&
+              t !== 'Matière' &&
+              t !== 'Supports de cours' &&
+              t !== 'note' &&
+              !t.startsWith('icon:') &&
+              t !== 'Sans matière' &&
+              t !== 'Notes libres' &&
+              t !== 'Fiches de révisions' &&
+              t !== 'CM' &&
+              t !== 'TD' &&
+              t !== 'Documents racines'
+          );
+          if (cleanTags.length > 0) dbSubjectNames.add(cleanTags[0]);
         }
       });
 
@@ -631,14 +646,48 @@ const subjectsList = subjects.map((s) => ({
       const subjectsMap = new Map<string, SubjectData>();
 
       dbCourses.forEach((c) => {
+        // Ignorer les notes non classées (libres à la racine) pour ne pas polluer les cours
+        if (c.tags && c.tags.includes('note')) {
+          const hasRealSubject = c.tags.some(
+            (t) =>
+              !t.startsWith('icon:') &&
+              t !== 'note' &&
+              t !== 'Sans matière' &&
+              t !== 'Notes libres' &&
+              t !== 'Université' &&
+              t !== 'Dossier importé' &&
+              t !== 'Matière' &&
+              t !== 'Supports de cours' &&
+              t !== 'Fiches de révisions' &&
+              t !== 'CM' &&
+              t !== 'TD' &&
+              t !== 'Documents racines'
+          );
+          if (!hasRealSubject) return;
+        }
+
         let subject = '';
         if (c.tags && c.tags.length > 0) {
-          const cleanTags = c.tags.filter((t) => t !== 'Université' && t !== 'Dossier importé' && t !== 'Matière' && t !== 'Supports de cours');
+          const cleanTags = c.tags.filter(
+            (t) =>
+              t !== 'Université' &&
+              t !== 'Dossier importé' &&
+              t !== 'Matière' &&
+              t !== 'Supports de cours' &&
+              t !== 'note' &&
+              !t.startsWith('icon:') &&
+              t !== 'Sans matière' &&
+              t !== 'Notes libres' &&
+              t !== 'Fiches de révisions' &&
+              t !== 'CM' &&
+              t !== 'TD' &&
+              t !== 'Documents racines'
+          );
           if (cleanTags.length > 0) subject = cleanTags[0];
         }
-        if (!subject && c.title) subject = c.title;
-        subject = subject.trim();
-        if (!subject) subject = 'Général';
+        if (!subject && c.tags && c.tags.includes('Matière') && c.title) subject = c.title;
+        subject = (subject || '').trim();
+        if (!subject) return;
 
         if (!subjectsMap.has(subject)) {
           subjectsMap.set(subject, { name: subject, folders: new Map() });
