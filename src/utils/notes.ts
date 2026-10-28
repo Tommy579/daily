@@ -24,6 +24,7 @@ export interface NoteItem {
 }
 
 const GUEST_STORAGE_KEY = 'marges_guest_notes';
+const NOTES_CACHE_KEY = 'marges_notes_cache';
 
 function generateId(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -34,7 +35,8 @@ function generateId(): string {
 
 export function isCourseNote(c: DbCourse): boolean {
   if (!c) return false;
-  // Ne pas considérer les conteneurs de matière comme des notes
+  // Ne pas considérer les conteneurs de matière ou synchronisations de planning comme des notes
+  if (c.title === '__timetable_sync__') return false;
   if (c.tags && (c.tags.includes('Matière') || c.tags.includes('Dossier importé'))) return false;
   if (c.body_md && (c.body_md.startsWith('## Matière :') || c.body_md.startsWith('# Dossier importé :'))) return false;
 
@@ -117,16 +119,25 @@ export function noteToDbCourse(note: NoteItem): DbCourse {
  */
 export function getLocalNotes(): NoteItem[] {
   if (typeof window === 'undefined') return [];
-  const courses = getUserCoursesImmediate();
-  const notesFromCourses = courses.filter(isCourseNote).map(dbCourseToNote);
-
-  // Vérifier également si des notes hors-ligne existent dans le stockage invité
-  const guestNotes = loadPersistentJSON<NoteItem[]>(GUEST_STORAGE_KEY, []);
   const noteMap = new Map<string, NoteItem>();
 
-  notesFromCourses.forEach((n) => noteMap.set(n.id, n));
+  // 1. Cache dédié aux notes (garantie locale immédiate à 100%)
+  const dedicatedNotes = loadPersistentJSON<NoteItem[]>(NOTES_CACHE_KEY, []);
+  dedicatedNotes.forEach((n) => {
+    if (n && n.id) noteMap.set(n.id, n);
+  });
+
+  // 2. Cache cours utilisateur
+  const courses = getUserCoursesImmediate();
+  const notesFromCourses = courses.filter(isCourseNote).map(dbCourseToNote);
+  notesFromCourses.forEach((n) => {
+    if (n && n.id && !noteMap.has(n.id)) noteMap.set(n.id, n);
+  });
+
+  // 3. Stockage invité persistant
+  const guestNotes = loadPersistentJSON<NoteItem[]>(GUEST_STORAGE_KEY, []);
   guestNotes.forEach((n) => {
-    if (!noteMap.has(n.id)) noteMap.set(n.id, n);
+    if (n && n.id && !noteMap.has(n.id)) noteMap.set(n.id, n);
   });
 
   return Array.from(noteMap.values()).sort(
@@ -144,13 +155,18 @@ export async function fetchUnifiedNotes(): Promise<NoteItem[]> {
     if (remoteCourses && remoteCourses.length > 0) {
       const remoteNotes = remoteCourses.filter(isCourseNote).map(dbCourseToNote);
       const noteMap = new Map<string, NoteItem>();
-      remoteNotes.forEach((n) => noteMap.set(n.id, n));
-      immediate.forEach((n) => {
-        if (!noteMap.has(n.id)) noteMap.set(n.id, n);
+      remoteNotes.forEach((n) => {
+        if (n && n.id) noteMap.set(n.id, n);
       });
-      return Array.from(noteMap.values()).sort(
+      immediate.forEach((n) => {
+        if (n && n.id && !noteMap.has(n.id)) noteMap.set(n.id, n);
+      });
+      const unified = Array.from(noteMap.values()).sort(
         (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       );
+      // Mettre à jour le cache dédié pour les futurs accès instantanés
+      savePersistentJSON(NOTES_CACHE_KEY, unified);
+      return unified;
     }
   } catch (err) {
     console.warn('[Notes] Synchronisation distante impossible, repli local:', err);
@@ -170,13 +186,23 @@ export async function saveUnifiedNote(note: NoteItem): Promise<NoteItem> {
     created_at: note.created_at || now,
   };
 
+  // 1. Sauvegarde systématique et immédiate dans le cache dédié aux notes
+  const dedicatedNotes = loadPersistentJSON<NoteItem[]>(NOTES_CACHE_KEY, []);
+  const dIdx = dedicatedNotes.findIndex((n) => n.id === updatedNote.id);
+  if (dIdx !== -1) {
+    dedicatedNotes[dIdx] = updatedNote;
+  } else {
+    dedicatedNotes.unshift(updatedNote);
+  }
+  savePersistentJSON(NOTES_CACHE_KEY, dedicatedNotes);
+
   const user = getCurrentUserCached();
   const dbCourse = noteToDbCourse(updatedNote);
 
   if (user?.id) {
-    // 1. Utilisateur connecté : sauvegarde optimiste locale immédiate (0 ms)
+    // 2. Utilisateur connecté : sauvegarde locale cours (0 ms)
     const local = getLocalUserCourses(user.id);
-    const existingIndex = local.findIndex((c) => c.id === updatedNote.id || c.title === updatedNote.title);
+    const existingIndex = local.findIndex((c) => c.id === updatedNote.id);
 
     if (existingIndex !== -1) {
       local[existingIndex] = dbCourse;
@@ -197,7 +223,7 @@ export async function saveUnifiedNote(note: NoteItem): Promise<NoteItem> {
       createUserCourse(dbCourse).catch((e) => console.warn('[Notes] Create distant différé:', e));
     }
   } else {
-    // 2. Utilisateur invité ou hors-ligne : sauvegarde persistante locale
+    // 3. Utilisateur invité ou hors-ligne : sauvegarde persistante locale
     const guestList = loadPersistentJSON<NoteItem[]>(GUEST_STORAGE_KEY, []);
     const idx = guestList.findIndex((n) => n.id === updatedNote.id);
     if (idx !== -1) {
@@ -209,7 +235,7 @@ export async function saveUnifiedNote(note: NoteItem): Promise<NoteItem> {
 
     // Mettre aussi à jour le cache de cours pour que la page /cours/ affiche la note
     const localCourses = getUserCoursesImmediate();
-    const courseIdx = localCourses.findIndex((c) => c.id === updatedNote.id || c.title === updatedNote.title);
+    const courseIdx = localCourses.findIndex((c) => c.id === updatedNote.id);
     if (courseIdx !== -1) {
       localCourses[courseIdx] = dbCourse;
     } else {
@@ -226,6 +252,13 @@ export async function saveUnifiedNote(note: NoteItem): Promise<NoteItem> {
  * Supprime une note du stockage unifié.
  */
 export async function deleteUnifiedNote(id: string): Promise<void> {
+  // Nettoyage dans le cache dédié
+  const dedicatedNotes = loadPersistentJSON<NoteItem[]>(NOTES_CACHE_KEY, []);
+  savePersistentJSON(
+    NOTES_CACHE_KEY,
+    dedicatedNotes.filter((n) => n.id !== id)
+  );
+
   const user = getCurrentUserCached();
   if (user?.id) {
     await deleteUserCourse(id);

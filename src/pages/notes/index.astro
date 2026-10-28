@@ -2669,32 +2669,49 @@ const subjectsList = subjects.map((s) => ({
     });
 
     // 18. Raccourcis clavier (Ctrl+S, Ctrl+N)
-    window.addEventListener('keydown', (e) => {
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (!document.querySelector('[data-notes-workspace]')) return;
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         triggerAutoSave();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();
-        createNewNote();
+        createNewNote('');
       }
-    });
+    };
+    window.addEventListener('keydown', handleKeydown);
 
     // 19. Sauvegarder impérativement si l'utilisateur quitte la page
-    window.addEventListener('beforeunload', () => {
+    const handleBeforeUnload = () => {
       if (isSaving || autoSaveTimer) {
         triggerAutoSave();
       }
-    });
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     // Écouter les mises à jour des cours en direct
-    window.addEventListener('marges:courses-changed', () => {
+    const handleCoursesChanged = () => {
+      if (!document.querySelector('[data-notes-workspace]')) return;
       refreshSubjectsDropdown();
       renderNotesTree(searchInput?.value || '');
-    });
+    };
+    window.addEventListener('marges:courses-changed', handleCoursesChanged);
+
+    // Nettoyage et sauvegarde lors d'une transition Astro SPA (ClientRouter)
+    document.addEventListener(
+      'astro:before-swap',
+      () => {
+        handleBeforeUnload();
+        window.removeEventListener('keydown', handleKeydown);
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        window.removeEventListener('marges:courses-changed', handleCoursesChanged);
+      },
+      { once: true }
+    );
 
     // 20. Chargement initial instantané (0 milliseconde de latence)
     function loadAppNotes() {
-      // 1. Chargement instantané depuis le cache local
+      // 1. Chargement instantané depuis le cache local dédié
       notes = getLocalNotes();
       refreshSubjectsDropdown();
 
@@ -2703,7 +2720,7 @@ const subjectsList = subjects.map((s) => ({
 
       if (notes.length === 0) {
         // Création synchrone sans bloquer l'UI
-        createNewNote();
+        createNewNote('');
       } else {
         const found = reqId ? notes.find((n) => n.id === reqId) : null;
         loadNoteIntoCanvas(found ? found.id : notes[0].id);
@@ -2717,8 +2734,9 @@ const subjectsList = subjects.map((s) => ({
             notes = fresh;
             refreshSubjectsDropdown();
             renderNotesTree(searchInput?.value || '');
-            if (currentNoteId) {
-              const upToDate = notes.find((n) => n.id === currentNoteId);
+            const targetId = reqId && notes.some((n) => n.id === reqId) ? reqId : currentNoteId;
+            if (targetId) {
+              const upToDate = notes.find((n) => n.id === targetId);
               if (upToDate && document.activeElement !== noteBody && document.activeElement !== noteTitle) {
                 loadNoteIntoCanvas(upToDate.id);
               }
@@ -2739,5 +2757,7 @@ const subjectsList = subjects.map((s) => ({
     } else {
       initNotesApp();
     }
+    // Indispensable pour Astro ClientRouter (transitions SPA entre pages)
+    document.addEventListener('astro:page-load', initNotesApp);
   }
 </script>
