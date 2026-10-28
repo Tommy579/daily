@@ -239,7 +239,7 @@ const subjectsList = subjects.map((s) => ({
             </div>
 
             <!-- Catégorie / Dossier -->
-            <div class="prop-row">
+            <div class="prop-row" id="prop-row-category" style="display: none;">
               <div class="prop-label">
                 <Icon name="tag" size={13} />
                 <span>Catégorie</span>
@@ -1684,6 +1684,7 @@ const subjectsList = subjects.map((s) => ({
     const noteTitle = document.getElementById('note-title') as HTMLInputElement;
     const noteBody = document.getElementById('note-body') as HTMLTextAreaElement;
     const propSubjectSelect = document.getElementById('prop-subject-select') as HTMLSelectElement;
+    const propRowCategory = document.getElementById('prop-row-category');
     const propCategorySelect = document.getElementById('prop-category-select') as HTMLSelectElement;
     const propCustomCategory = document.getElementById('prop-custom-category-input') as HTMLInputElement;
     const btnAddCustomSubject = document.getElementById('btn-add-custom-subject');
@@ -1845,6 +1846,15 @@ const subjectsList = subjects.map((s) => ({
         customOpt.selected = true;
         propSubjectSelect.appendChild(customOpt);
       }
+      updateCategoryVisibility();
+    }
+
+    // Gestion de la visibilité du sélecteur de catégorie (masqué pour les notes à la racine)
+    function updateCategoryVisibility() {
+      const subject = (propSubjectSelect?.value || '').trim();
+      if (propRowCategory) {
+        propRowCategory.style.display = subject === '' ? 'none' : 'flex';
+      }
     }
 
     // Helper formatage badge catégorie
@@ -1864,7 +1874,8 @@ const subjectsList = subjects.map((s) => ({
       itemEl.setAttribute('data-id', n.id);
 
       const displayTitle = n.title.trim() || 'Sans titre';
-      const badgeLabel = formatCategoryBadge(n.category);
+      const hasSubject = Boolean(n.subject && n.subject.trim());
+      const badgeLabel = hasSubject ? formatCategoryBadge(n.category) : '';
 
       itemEl.innerHTML = `
         <div class="item-main">
@@ -2105,6 +2116,7 @@ const subjectsList = subjects.map((s) => ({
       // Matière & catégorie (libre / sans matière si vide)
       refreshSubjectsDropdown(target.subject || '');
       if (propSubjectSelect) propSubjectSelect.value = target.subject || '';
+      updateCategoryVisibility();
 
       if (propCategorySelect) {
         const opts = Array.from(propCategorySelect.options).map((o) => o.value);
@@ -2178,9 +2190,11 @@ const subjectsList = subjects.map((s) => ({
       const bodyVal = noteBody.value;
       const subjectVal = propSubjectSelect.value || '';
       const categoryVal =
-        propCategorySelect.value === '__new__'
-          ? propCustomCategory.value.trim() || 'Fiches de révisions'
-          : propCategorySelect.value;
+        subjectVal === ''
+          ? 'Fiches de révisions'
+          : propCategorySelect.value === '__new__'
+            ? propCustomCategory.value.trim() || 'Fiches de révisions'
+            : propCategorySelect.value;
 
       if (
         target.title === titleVal &&
@@ -2285,6 +2299,7 @@ const subjectsList = subjects.map((s) => ({
     propSubjectSelect?.addEventListener('change', () => {
       const chosen = propSubjectSelect.value || '';
       if (crumbSubjectLabel) crumbSubjectLabel.textContent = chosen || 'Notes libres';
+      updateCategoryVisibility();
       scheduleAutoSave();
       renderNotesTree(searchInput?.value || '');
     });
@@ -2315,6 +2330,8 @@ const subjectsList = subjects.map((s) => ({
         opt.textContent = clean;
         opt.selected = true;
         propSubjectSelect.appendChild(opt);
+        if (crumbSubjectLabel) crumbSubjectLabel.textContent = clean;
+        updateCategoryVisibility();
         scheduleAutoSave();
         renderNotesTree(searchInput?.value || '');
       }
